@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+.next/
 
 # Expo
 .expo/
@@ -39,3 +40,5 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+.vercel
+.env*

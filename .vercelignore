@@ -1,0 +1,20 @@
+node_modules
+.next
+.vercel
+
+# Retained Expo/native migration artifacts are not part of the Next.js deployment.
+expo-retired
+android
+ios
+artifacts
+design-system
+dist
+web-build
+.expo
+.expo-shared
+
+# Local and generated files.
+.env*
+*.log
+*.tsbuildinfo
+.DS_Store

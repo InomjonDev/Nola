@@ -1,0 +1,2 @@
+artifacts/Walletly-android-release.apk filter=lfs diff=lfs merge=lfs -text
+artifacts/Walletly-ios-simulator.zip filter=lfs diff=lfs merge=lfs -text

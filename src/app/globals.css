@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+  --color-bg: 242 240 248;
+  --color-surface: 255 255 255;
+  --color-raised: 232 228 240;
+  --color-text: 23 21 29;
+  --color-muted: 109 104 119;
+  --color-line: 220 216 229;
+  --color-accent: 91 92 226;
+  --color-accent-strong: 66 68 187;
+  --color-accent-soft: 228 227 255;
+  --color-danger: 200 77 98;
+  --color-danger-soft: 249 225 232;
+  --color-success: 36 133 104;
+  --color-warning: 165 107 34;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: 13 12 16;
+  --color-surface: 22 21 26;
+  --color-raised: 36 34 43;
+  --color-text: 247 245 250;
+  --color-muted: 162 158 170;
+  --color-line: 48 45 56;
+  --color-accent: 154 155 255;
+  --color-accent-strong: 183 183 255;
+  --color-accent-soft: 41 40 74;
+  --color-danger: 255 139 160;
+  --color-danger-soft: 66 33 43;
+  --color-success: 114 211 176;
+  --color-warning: 224 174 98;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: rgb(var(--color-bg));
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 3px;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl bg-surface p-4 sm:p-5;
+  }
+
+  .control {
+    @apply inline-flex min-h-14 items-center gap-2 rounded-full px-4 py-2 font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .icon-button {
+    @apply grid h-11 w-11 place-items-center rounded-full bg-raised text-text transition hover:bg-line;
+  }
+
+  .input {
+    @apply min-h-[52px] w-full rounded-2xl border border-line bg-raised px-4 py-3 text-text outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+
+  .amount-input {
+    @apply min-h-[72px] w-full rounded-2xl border border-transparent bg-raised px-4 py-3 text-4xl font-bold text-text outline-none transition placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
+
+  .chip {
+    @apply inline-flex min-h-11 items-center gap-2 rounded-full bg-raised px-4 py-2 text-sm font-semibold text-text transition;
+  }
+
+  .chip-active {
+    background-color: rgb(var(--color-accent-soft));
+    color: rgb(var(--color-accent-strong));
+  }
+
+  .label {
+    @apply text-sm font-semibold text-muted;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-normal text-muted;
+  }
+
+  .section-title {
+    @apply text-[17px] font-semibold tracking-normal;
+  }
+}
+
+@layer utilities {
+  .bg-accent-soft { background-color: rgb(var(--color-accent-soft)); }
+  .text-accent-strong { color: rgb(var(--color-accent-strong)); }
+  .bg-success { background-color: rgb(var(--color-success)); }
+  .bg-warning { background-color: rgb(var(--color-warning)); }
+  .text-success { color: rgb(var(--color-success)); }
+  .text-warning { color: rgb(var(--color-warning)); }
+}
+
+.expense-sheet-backdrop {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgb(5 5 8 / 0.58);
+  backdrop-filter: blur(10px);
+  animation: expense-backdrop-in 360ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.expense-sheet {
+  width: min(100%, 760px);
+  max-height: min(860px, calc(100dvh - 1.5rem));
+  overflow-y: auto;
+  border: 1px solid rgb(var(--color-line));
+  border-radius: 1.75rem;
+  background: rgb(var(--color-surface));
+  box-shadow: 0 24px 80px rgb(0 0 0 / 0.3);
+  transform-origin: bottom center;
+  animation: expense-sheet-in 420ms cubic-bezier(0.05, 0.7, 0.1, 1) both;
+}
+
+.expense-sheet-backdrop.is-closing {
+  animation: expense-backdrop-out 220ms cubic-bezier(0.3, 0, 1, 1) both;
+}
+
+.expense-sheet-backdrop.is-closing .expense-sheet {
+  animation: expense-sheet-out 220ms cubic-bezier(0.3, 0, 1, 1) both;
+}
+
+.expense-sheet-header {
+  padding: 1.15rem 1.25rem 0;
+}
+
+.expense-sheet .add-expense-panel {
+  gap: 0.85rem;
+  padding: 1.25rem;
+}
+
+.sheet-handle {
+  display: block;
+  width: 2.5rem;
+  height: 0.25rem;
+  margin: 0.65rem auto 0;
+  border-radius: 999px;
+  background: rgb(var(--color-muted) / 0.5);
+}
+
+.category-card,
+.tag-card {
+  min-width: 82px;
+  min-height: 68px;
+  flex: 0 0 82px;
+}
+
+.category-rail,
+.tag-rail {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-line)) transparent;
+  overscroll-behavior-inline: contain;
+}
+
+.tag-creator {
+  align-items: center;
+}
+
+.action-link,
+.expense-row {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes expense-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes expense-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes expense-sheet-in {
+  from { opacity: 0; transform: translateY(32px) scale(0.985); }
+  72% { opacity: 1; transform: translateY(-2px) scale(1.002); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes expense-sheet-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(24px) scale(0.985); }
+}
+
+.calendar-popover {
+  border: 1px solid rgb(var(--color-line));
+}
+
+@media (max-width: 639px) {
+  .expense-sheet {
+    border-radius: 1.5rem 1.5rem 1rem 1rem;
+  }
+
+  .expense-sheet-header {
+    padding: 0.9rem 1rem 0;
+  }
+
+  .expense-sheet .add-expense-panel {
+    gap: 0.65rem;
+    padding: 1rem;
+  }
+
+  .expense-sheet .amount-input {
+    min-height: 64px;
+    font-size: 2.75rem;
+  }
+
+  .expense-sheet .category-icon-well {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+
+  .expense-sheet .input {
+    min-height: 46px;
+    padding-bottom: 0.65rem;
+    padding-top: 0.65rem;
+  }
+
+  .expense-sheet .chip {
+    min-height: 40px;
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+    font-size: 0.75rem;
+  }
+
+  .expense-sheet .control {
+    min-height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .panel,
+  .control,
+  .input,
+  .chip {
+    transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expense-sheet-backdrop,
+  .expense-sheet-backdrop.is-closing,
+  .expense-sheet-backdrop.is-closing .expense-sheet,
+  .expense-sheet {
+    animation: none;
+  }
+}

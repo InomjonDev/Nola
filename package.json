@@ -1,22 +1,35 @@
 {
-  "name": "expense-tracker",
+  "name": "walletly",
   "version": "1.0.0",
-  "main": "index.ts",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --max-warnings=0",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/**/*.test.ts",
+    "test:rls": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/rls.integration.test.ts",
+    "build": "next build",
+    "pwa:validate": "node scripts/validate-pwa.mjs",
+    "seo:validate": "node scripts/validate-seo.mjs"
+  },
   "dependencies": {
-    "expo": "~57.0.26",
-    "expo-status-bar": "~57.0.1",
+    "@supabase/supabase-js": "^2.117.2",
+    "lucide-react": "^0.545.0",
+    "next": "^15.5.4",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/node": "^24.6.0",
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
-  },
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
-  },
-  "private": true
+    "@types/react-dom": "19.2.2",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^15.5.4",
+    "playwright": "^1.63.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.45.0"
+  }
 }
