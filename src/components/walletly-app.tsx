@@ -174,9 +174,9 @@ function OnboardingScreen() {
         <h1 className="mt-2 text-3xl font-semibold">{t("onboarding.title")}</h1>
         <div className="mt-6">
           <p className="label">{t("onboarding.currency")}</p>
-          <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-2">
+          <div className="mt-3 grid grid-cols-5 gap-2">
             {WALLETLY_CURRENCIES.map((item) => (
-              <button key={item} className={cx("chip min-w-20", currency === item && "chip-active")} onClick={() => setCurrency(item)}>{item}</button>
+              <button key={item} className={cx("chip min-w-0 justify-center px-3", currency === item && "chip-active")} onClick={() => setCurrency(item)}>{item}</button>
             ))}
           </div>
         </div>
@@ -184,8 +184,8 @@ function OnboardingScreen() {
           <p className="label">{t("onboarding.payment")}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {DEFAULT_PAYMENT_METHODS.map((item) => (
-              <button key={item} className={cx("control justify-between bg-raised", payment === item && "ring-2 ring-accent")} onClick={() => setPayment(item)}>
-                {item}{payment === item && <Check className="h-4 w-4" />}
+              <button key={item} className={cx("control min-w-0 justify-center gap-2 whitespace-nowrap bg-raised px-3 text-sm sm:px-4 sm:text-base", payment === item && "ring-2 ring-accent")} onClick={() => setPayment(item)}>
+                <span>{item}</span>{payment === item && <Check className="h-4 w-4 shrink-0" />}
               </button>
             ))}
           </div>
