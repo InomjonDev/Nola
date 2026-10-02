@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, ChevronRight, Clock3, Cloud, Download, Eye, EyeOff, Home, LineChart, ListFilter, LogOut, Moon, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Sun, Tags, Trash2, User, WalletCards, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { CategoryIcon, categoryIconNames } from "@/components/category-icon";
 import { GoogleLogo } from "@/components/google-logo";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, WALLETLY_CURRENCIES } from "@/lib/constants";
 import { formatExpenseDate, formatMoney } from "@/lib/format";
+import { languageLocale, type TranslationKey } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notifications";
 import { useAppStore } from "@/lib/app-store";
@@ -18,10 +19,10 @@ import { useLedgerTheme } from "@/theme/theme-provider";
 type View = "home" | "add" | "history" | "insights" | "manage" | "profile" | "settings";
 
 const navItems = [
-  { href: "/", view: "home", label: "Home", icon: Home },
-  { href: "/history", view: "history", label: "History", icon: ListFilter },
-  { href: "/insights", view: "insights", label: "Insights", icon: LineChart },
-  { href: "/profile", view: "profile", label: "Profile", icon: User },
+  { href: "/", view: "home", labelKey: "nav.home", icon: Home },
+  { href: "/history", view: "history", labelKey: "nav.activity", icon: ListFilter },
+  { href: "/insights", view: "insights", labelKey: "nav.insights", icon: LineChart },
+  { href: "/profile", view: "profile", labelKey: "nav.profile", icon: User },
 ] as const;
 
 function visibleExpenses(expenses: Expense[]) {
@@ -47,6 +48,10 @@ function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
+function ActivePill({ index, count, variant = "default" }: { index: number; count: number; variant?: "default" | "segment" | "vertical" }) {
+  return <span aria-hidden="true" className={cx("active-pill", variant === "segment" && "active-pill--segment", variant === "vertical" && "active-pill--vertical")} style={{ "--active-index": index, "--active-count": count } as CSSProperties} />;
+}
+
 export function WalletlyApp({ view, overlay }: { view: View; overlay?: "add" }) {
   const store = useAppStore();
   const { t } = useI18n();
@@ -65,7 +70,7 @@ export function WalletlyApp({ view, overlay }: { view: View; overlay?: "add" }) 
   }
 
   if (!store.hydrated) {
-    return <div className="grid min-h-dvh place-items-center px-6 text-muted">Loading Walletly...</div>;
+    return <div className="grid min-h-dvh place-items-center px-6 text-muted">{t("common.loading")}</div>;
   }
 
   if (needsAuth) return <AuthScreen />;
@@ -100,6 +105,7 @@ export function WalletlyApp({ view, overlay }: { view: View; overlay?: "add" }) 
 
 function AuthScreen() {
   const store = useAppStore();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -110,7 +116,7 @@ function AuthScreen() {
     try {
       await store.signInSocial("google");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not start Google sign-in.");
+      setMessage(error instanceof Error ? error.message : t("auth.googleError"));
     } finally {
       setBusy(false);
     }
@@ -121,9 +127,9 @@ function AuthScreen() {
     setMessage("");
     try {
       await store.signInEmail(email);
-      setMessage("Magic link sent. Open it on this device to continue.");
+      setMessage(t("auth.magicLinkSent"));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not send the link.");
+      setMessage(error instanceof Error ? error.message : t("auth.emailError"));
     } finally {
       setBusy(false);
     }
@@ -135,22 +141,22 @@ function AuthScreen() {
         <div className="mb-8">
           <img src="/branding/walletly-mascot.png" alt="Walletly" className="h-auto w-52 rounded-2xl bg-white p-2 shadow-sm" />
           <h1 className="sr-only">Walletly</h1>
-          <p className="mt-3 text-sm text-muted">Private expense tracking for the web.</p>
+          <p className="mt-3 text-sm text-muted">{t("auth.description")}</p>
         </div>
         <button className="control w-full justify-center bg-text text-bg" disabled={busy} onClick={() => void submitGoogle()}>
-          <GoogleLogo /> Continue with Google
+          <GoogleLogo /> {t("auth.continueGoogle")}
         </button>
         <div className="my-5 h-px bg-line" />
-        <label className="label" htmlFor="email">Email magic link</label>
-        <input id="email" className="input mt-2" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
+        <label className="label" htmlFor="email">{t("auth.emailMagicLink")}</label>
+        <input id="email" className="input mt-2" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t("auth.emailPlaceholder")} />
         <button className="control mt-3 w-full justify-center bg-accent text-white" disabled={busy || !email.includes("@")} onClick={() => void submitEmail()}>
-          {busy ? "Sending..." : "Send magic link"}
+          {busy ? t("auth.sending") : t("auth.sendMagicLink")}
         </button>
         <button className="control mt-3 w-full justify-center bg-raised text-text" onClick={() => void store.signInDemo()}>
-          Try local demo
+          {t("auth.tryDemo")}
         </button>
         {message && <p className="mt-4 text-sm text-muted">{message}</p>}
-        <p className="mt-6 text-xs leading-5 text-muted">By continuing, confirm you are old enough to consent to Walletly processing your data for expense tracking.</p>
+        <p className="mt-6 text-xs leading-5 text-muted">{t("auth.consent")}</p>
       </section>
     </main>
   );
@@ -158,15 +164,16 @@ function AuthScreen() {
 
 function OnboardingScreen() {
   const store = useAppStore();
+  const { t } = useI18n();
   const [currency, setCurrency] = useState("USD");
   const [payment, setPayment] = useState<string>(DEFAULT_PAYMENT_METHODS[0]);
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-4 py-8 text-text">
       <section className="w-full max-w-lg rounded-[28px] bg-surface p-6 shadow-soft">
-        <p className="eyebrow">Set up Walletly</p>
-        <h1 className="mt-2 text-3xl font-semibold">Make it yours in one minute.</h1>
+        <p className="eyebrow">{t("onboarding.eyebrow")}</p>
+        <h1 className="mt-2 text-3xl font-semibold">{t("onboarding.title")}</h1>
         <div className="mt-6">
-          <p className="label">Main currency</p>
+          <p className="label">{t("onboarding.currency")}</p>
           <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-2">
             {WALLETLY_CURRENCIES.map((item) => (
               <button key={item} className={cx("chip min-w-20", currency === item && "chip-active")} onClick={() => setCurrency(item)}>{item}</button>
@@ -174,7 +181,7 @@ function OnboardingScreen() {
           </div>
         </div>
         <div className="mt-5">
-          <p className="label">Default payment method</p>
+          <p className="label">{t("onboarding.payment")}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {DEFAULT_PAYMENT_METHODS.map((item) => (
               <button key={item} className={cx("control justify-between bg-raised", payment === item && "ring-2 ring-accent")} onClick={() => setPayment(item)}>
@@ -183,53 +190,57 @@ function OnboardingScreen() {
             ))}
           </div>
         </div>
-        <button className="control mt-8 w-full justify-center bg-text text-bg" onClick={() => store.completeOnboarding(currency, payment)}>Enter Walletly</button>
+        <button className="control mt-8 w-full justify-center bg-text text-bg" onClick={() => store.completeOnboarding(currency, payment)}>{t("onboarding.enter")}</button>
       </section>
     </main>
   );
 }
 
 function DesktopNav({ active, onAddExpense }: { active: View; onAddExpense: () => void }) {
+  const { t } = useI18n();
+  const items = [...navItems, { href: "/settings", view: "settings", labelKey: "nav.settings", icon: Settings } as const];
+  const activeIndex = items.findIndex((item) => item.view === active);
   return (
     <nav className="fixed left-6 top-6 z-20 hidden w-56 rounded-[24px] bg-surface/88 p-3 shadow-soft backdrop-blur-xl lg:block">
       <Link href="/" className="mb-6 flex items-center gap-3 px-2 py-2">
         <img src="/branding/walletly-mascot.png" alt="" className="h-10 w-10 rounded-xl bg-white object-cover p-0.5" />
         <span className="text-lg font-bold">Walletly</span>
       </Link>
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Link key={item.href} href={item.href} className={cx("mb-1 flex min-h-12 items-center gap-3 rounded-full px-4 text-sm font-semibold text-muted transition hover:bg-raised hover:text-text", active === item.view && "bg-accent-soft text-accent-strong")}>
-            <Icon className="h-5 w-5" /> {item.label}
-          </Link>
-        );
-      })}
+      <div className="relative grid gap-1">
+        {activeIndex >= 0 && <ActivePill index={activeIndex} count={items.length} variant="vertical" />}
+        {items.map((item) => {
+          const Icon = item.icon;
+          return <Link key={item.href} href={item.href} className={cx("relative z-10 flex min-h-12 items-center gap-3 rounded-full px-4 text-sm font-semibold text-muted transition hover:text-text", active === item.view && "text-accent-strong")}>
+            <Icon className="h-5 w-5" /> {t(item.labelKey as TranslationKey)}
+          </Link>;
+        })}
+      </div>
       <button type="button" onClick={() => onAddExpense()} className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-text px-4 text-sm font-semibold text-bg shadow-soft transition hover:opacity-85">
-        <Plus className="h-5 w-5" /> Add expense
+        <Plus className="h-5 w-5" /> {t("nav.addExpense")}
       </button>
-      <Link href="/settings" className={cx("mt-3 flex min-h-12 items-center gap-3 rounded-full px-4 text-sm font-semibold text-muted transition hover:bg-raised hover:text-text", active === "settings" && "bg-accent-soft text-accent-strong")}>
-        <Settings className="h-5 w-5" /> Settings
-      </Link>
     </nav>
   );
 }
 
 function MobileNav({ active, onAddExpense }: { active: View; onAddExpense: () => void }) {
+  const { t } = useI18n();
+  const activeIndex = navItems.findIndex((item) => item.view === active);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
       <div className="mx-auto flex max-w-md items-center gap-2">
-        <div className="flex min-h-[70px] flex-1 items-center justify-between rounded-full border border-white/30 bg-surface/78 p-1.5 shadow-glass backdrop-blur-2xl">
+        <div className="relative flex min-h-[70px] flex-1 items-center justify-between rounded-full border border-white/30 bg-surface/78 p-1.5 shadow-glass backdrop-blur-2xl">
+        {activeIndex >= 0 && <ActivePill index={activeIndex} count={navItems.length} />}
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
-            <Link key={item.href} href={item.href} aria-label={item.label} className={cx("grid h-14 min-w-[58px] flex-1 place-items-center rounded-full text-muted transition", active === item.view && "bg-surface text-text shadow-sm")}>
+            <Link key={item.href} href={item.href} aria-label={t(item.labelKey)} className={cx("relative z-10 grid h-14 min-w-[58px] flex-1 place-items-center rounded-full text-muted transition", active === item.view && "text-text")}>
               <Icon className="h-5 w-5" strokeWidth={active === item.view ? 2.3 : 1.8} />
-              <span className="sr-only">{item.label}</span>
+              <span className="sr-only">{t(item.labelKey)}</span>
             </Link>
           );
         })}
         </div>
-        <button type="button" aria-label="Add expense" onClick={() => onAddExpense()} className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-text text-bg shadow-soft transition hover:opacity-85">
+        <button type="button" aria-label={t("nav.addExpense")} onClick={() => onAddExpense()} className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-text text-bg shadow-soft transition hover:opacity-85">
           <Plus className="h-6 w-6" />
         </button>
       </div>
@@ -239,6 +250,7 @@ function MobileNav({ active, onAddExpense }: { active: View; onAddExpense: () =>
 
 function TopBar() {
   const store = useAppStore();
+  const { t } = useI18n();
   const name = store.user?.name?.trim() || "there";
   const greeting = name === "there" ? name : name.split(/\s+/)[0];
   return (
@@ -248,19 +260,19 @@ function TopBar() {
           {store.user?.avatarUrl ? <img src={store.user.avatarUrl} alt="" className="h-full w-full object-cover" /> : greeting === "there" ? <img src="/branding/walletly-mascot.png" alt="" className="h-full w-full object-cover" /> : greeting.slice(0, 2).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <p className="text-[13px] text-muted">Welcome back,</p>
+          <p className="text-[13px] text-muted">{t("topbar.welcome")}</p>
           <h1 className="truncate text-[17px] font-semibold">{greeting}</h1>
         </div>
       </div>
       <div className="flex items-center gap-2">
         <span className="hidden min-h-8 items-center gap-1.5 rounded-full bg-raised px-3 text-[11px] font-bold text-muted sm:flex">
           <span className={cx("h-1.5 w-1.5 rounded-full", !store.isOnline ? "bg-warning" : store.syncQueue.length ? "bg-accent" : "bg-success")} />
-          {!store.isOnline ? "OFFLINE" : store.syncQueue.length ? "SYNCING" : "SYNCED"}
+          {!store.isOnline ? t("topbar.offline") : store.syncQueue.length ? t("topbar.syncing") : t("topbar.synced")}
         </span>
-        <button aria-label="Refresh sync" className="icon-button" onClick={store.retrySync}>
+        <button aria-label={t("nav.refreshSync")} className="icon-button" onClick={store.retrySync}>
           <RefreshCw className={cx("h-5 w-5", store.isSyncing && "animate-spin")} />
         </button>
-        <button aria-label="Notifications" className="icon-button hidden sm:grid"><Bell className="h-5 w-5" /></button>
+        <button aria-label={t("nav.notifications")} className="icon-button hidden sm:grid"><Bell className="h-5 w-5" /></button>
       </div>
     </header>
   );
@@ -268,6 +280,7 @@ function TopBar() {
 
 function HomeView({ onAddExpense, onEditExpense }: { onAddExpense: () => void; onEditExpense: (id: string) => void }) {
   const store = useAppStore();
+  const { t } = useI18n();
   const expenses = visibleExpenses(store.expenses);
   const monthTotal = expenses.filter((expense) => new Date(expense.spentAt) >= startOfMonth()).reduce((sum, expense) => sum + expense.amount, 0);
   const weekTotal = expenses.filter((expense) => new Date(expense.spentAt) >= startOfWeek()).reduce((sum, expense) => sum + expense.amount, 0);
@@ -276,15 +289,15 @@ function HomeView({ onAddExpense, onEditExpense }: { onAddExpense: () => void; o
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <WalletCard total={monthTotal} currency={store.profile?.currency ?? "USD"} weekTotal={weekTotal} />
       <div className="grid grid-cols-4 gap-2 rounded-2xl bg-transparent py-1 sm:gap-4 xl:col-span-2 xl:grid-cols-4">
-        <QuickAction icon={Plus} label="Add" onClick={onAddExpense} accent />
-        <QuickAction icon={Clock3} label="Activity" href="/history" />
-        <QuickAction icon={ChartNoAxesColumnIncreasing} label="Insights" href="/insights" />
-        <QuickAction icon={SlidersHorizontal} label="Manage" href="/manage" />
+        <QuickAction icon={Plus} label={t("home.add")} onClick={onAddExpense} accent />
+        <QuickAction icon={Clock3} label={t("home.activity")} href="/history" />
+        <QuickAction icon={ChartNoAxesColumnIncreasing} label={t("nav.insights")} href="/insights" />
+        <QuickAction icon={SlidersHorizontal} label={t("home.manage")} href="/manage" />
       </div>
       <section className="xl:col-span-2">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="section-title">Recent activity</h2>
-          <Link href="/history" className="flex min-h-11 items-center gap-1 text-sm font-semibold text-accent">View all <ChevronRight className="h-4 w-4" /></Link>
+          <h2 className="section-title">{t("home.recent")}</h2>
+          <Link href="/history" className="flex min-h-11 items-center gap-1 text-sm font-semibold text-accent">{t("home.viewAll")} <ChevronRight className="h-4 w-4" /></Link>
         </div>
         <ExpenseList expenses={recent} onEdit={onEditExpense} />
       </section>
@@ -299,15 +312,17 @@ function QuickAction({ icon: Icon, label, href, onClick, accent = false }: { ico
 }
 
 function WalletCard({ total, currency, weekTotal }: { total: number; currency: string; weekTotal: number }) {
+  const { t, language } = useI18n();
   const [visible, setVisible] = useState(true);
   return <section className="relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-xl bg-[linear-gradient(135deg,#d5d9ff_0%,#a7b3f6_48%,#6a74e5_100%)] p-6 text-white shadow-soft dark:bg-[linear-gradient(135deg,#25294d_0%,#4c558b_48%,#9ea3ff_100%)]">
-    <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm font-semibold"><WalletCards className="h-5 w-5" /> Walletly</div><button aria-label={visible ? "Hide total" : "Show total"} className="grid h-11 w-11 place-items-center rounded-full text-white/90 transition hover:bg-white/15" onClick={() => setVisible((current) => !current)}>{visible ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div>
-    <div><p className="text-[13px] text-white/75">Total spent this month · {currency}</p><p className="mt-1 text-4xl font-bold tabular-nums">{visible ? formatMoney(total, currency) : "••••"}</p></div>
-    <div className="flex items-center justify-between text-[13px] text-white/75"><span>This week</span><span className="font-semibold text-white">{visible ? formatMoney(weekTotal, currency) : "••••"}</span></div>
+    <div className="flex items-center justify-between"><div className="flex items-center gap-2 text-sm font-semibold"><WalletCards className="h-5 w-5" /> Walletly</div><button aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} className="grid h-11 w-11 place-items-center rounded-full text-white/90 transition hover:bg-white/15" onClick={() => setVisible((current) => !current)}>{visible ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}</button></div>
+    <div><p className="text-[13px] text-white/75">{t("home.totalMonth")} · {currency}</p><p className="mt-1 text-4xl font-bold tabular-nums">{visible ? formatMoney(total, currency, languageLocale(language)) : "••••"}</p></div>
+    <div className="flex items-center justify-between text-[13px] text-white/75"><span>{t("home.thisWeek")}</span><span className="font-semibold text-white">{visible ? formatMoney(weekTotal, currency, languageLocale(language)) : "••••"}</span></div>
   </section>;
 }
 
 function ExpenseSheet({ editId, onClose }: { editId?: string; onClose: () => void }) {
+  const { t } = useI18n();
   const params = useSearchParams();
   const resolvedEditId = editId ?? params.get("edit") ?? undefined;
   const editing = Boolean(resolvedEditId);
@@ -329,10 +344,10 @@ function ExpenseSheet({ editId, onClose }: { editId?: string; onClose: () => voi
         <span className="sheet-handle" aria-hidden="true" />
         <header className="expense-sheet-header flex items-center justify-between gap-4">
           <div>
-            <p className="eyebrow">{editing ? "Update a record" : "Quick capture"}</p>
-            <h2 id="expense-sheet-title" className="mt-1 text-2xl font-bold">{editing ? "Edit expense" : "Add expense"}</h2>
+            <p className="eyebrow">{editing ? t("expense.updateRecord") : t("expense.quickCapture")}</p>
+            <h2 id="expense-sheet-title" className="mt-1 text-2xl font-bold">{editing ? t("expense.editTitle") : t("expense.addTitle")}</h2>
           </div>
-          <button type="button" className="icon-button" aria-label="Close add expense" onClick={dismiss}><X className="h-5 w-5" /></button>
+          <button type="button" className="icon-button" aria-label={t("expense.close")} onClick={dismiss}><X className="h-5 w-5" /></button>
         </header>
         <ExpenseForm compact editId={resolvedEditId} onSaved={dismiss} />
       </section>
@@ -342,6 +357,7 @@ function ExpenseSheet({ editId, onClose }: { editId?: string; onClose: () => voi
 
 function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { compact?: boolean; editId?: string; onSaved?: () => void }) {
   const store = useAppStore();
+  const { t } = useI18n();
   const params = useSearchParams();
   const editId = explicitEditId ?? params.get("edit") ?? undefined;
   const editing = store.expenses.find((expense) => expense.id === editId);
@@ -365,11 +381,11 @@ function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { com
   function save() {
     const parsed = Number(amount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError("Enter an amount greater than zero.");
+      setError(t("expense.amountError"));
       return;
     }
     if (!categoryId || !paymentMethodId) {
-      setError("Choose a category and payment method.");
+      setError(t("expense.selectionError"));
       return;
     }
     setError("");
@@ -397,23 +413,23 @@ function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { com
 
   return (
     <div className={cx("add-expense-panel grid", !compact && "panel")}>
-      {!compact && <h2 className="section-title">{editing ? "Edit expense" : "Add expense"}</h2>}
+      {!compact && <h2 className="section-title">{editing ? t("expense.editTitle") : t("expense.addTitle")}</h2>}
       <div className="grid gap-2">
-        <label className="label" htmlFor="expense-amount">Amount</label>
+        <label className="label" htmlFor="expense-amount">{t("expense.amount")}</label>
         <input id="expense-amount" className="amount-input" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setError(""); }} placeholder="0.00" />
       </div>
       <div className="grid gap-2">
-        <p className="label">Category</p>
+        <p className="label">{t("expense.category")}</p>
         <div className="category-rail flex gap-2 overflow-x-auto pb-1">
           {store.categories.filter((item) => !item.archivedAt).map((item) => {
             const selected = categoryId === item.id;
             return <button type="button" key={item.id} aria-pressed={selected} className={cx("category-card flex flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center transition", selected ? "bg-accent-soft text-accent-strong" : "bg-raised text-text")} onClick={() => setCategoryId(item.id)}><span className={cx("category-icon-well grid place-items-center rounded-full", selected ? "bg-accent-soft" : "bg-transparent")}><CategoryIcon name={item.name} icon={item.icon} color={selected ? "currentColor" : item.color} size={18} /></span><span className="category-label max-w-full text-[11px] font-semibold">{item.name}</span></button>;
           })}
-          <Link href="/manage" className="add-category-card category-card flex flex-col items-center justify-center gap-1 rounded-2xl bg-raised px-2 text-center text-accent"><span className="category-icon-well grid place-items-center rounded-full bg-accent-soft"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">Add category</span></Link>
+          <Link href="/manage" className="add-category-card category-card flex flex-col items-center justify-center gap-1 rounded-2xl bg-raised px-2 text-center text-accent"><span className="category-icon-well grid place-items-center rounded-full bg-accent-soft"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">{t("expense.addCategory")}</span></Link>
         </div>
       </div>
       <div className="grid gap-2">
-        <p className="label">Payment method</p>
+        <p className="label">{t("expense.paymentMethod")}</p>
         <div className="flex flex-wrap gap-2">
           {store.paymentMethods.map((item) => <button type="button" key={item.id} aria-pressed={paymentMethodId === item.id} className={cx("chip", paymentMethodId === item.id && "chip-active")} onClick={() => setPaymentMethodId(item.id)}>{item.name}</button>)}
         </div>
@@ -421,17 +437,17 @@ function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { com
       <div className="grid grid-cols-2 gap-3">
         <DatePicker value={spentAt} onChange={setSpentAt} />
         <div className="grid gap-2">
-          <p className="label">Tags</p>
+          <p className="label">{t("expense.tags")}</p>
           <div className="tag-rail flex gap-2 overflow-x-auto pb-1">
             {store.tags.map((tag) => <button type="button" key={tag.id} aria-pressed={selectedTagIds.includes(tag.id)} className={cx("tag-card flex flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center transition", selectedTagIds.includes(tag.id) ? "bg-accent-soft text-accent-strong" : "bg-raised text-text")} onClick={() => toggleTag(tag.id)}><span className="grid h-6 w-6 place-items-center rounded-full"><Tags className="h-4 w-4" /></span><span className="max-w-full truncate text-[11px] font-semibold">{tag.name}</span></button>)}
-            <button type="button" className="add-tag-card tag-card flex flex-col items-center justify-center gap-1 rounded-2xl bg-raised px-2 text-center text-accent transition hover:bg-accent-soft" onClick={() => setAddingTag((current) => !current)}><span className="grid h-6 w-6 place-items-center rounded-full bg-accent-soft"><Plus className="h-4 w-4" /></span><span className="text-[11px] font-semibold">Add tag</span></button>
+            <button type="button" className="add-tag-card tag-card flex flex-col items-center justify-center gap-1 rounded-2xl bg-raised px-2 text-center text-accent transition hover:bg-accent-soft" onClick={() => setAddingTag((current) => !current)}><span className="grid h-6 w-6 place-items-center rounded-full bg-accent-soft"><Plus className="h-4 w-4" /></span><span className="text-[11px] font-semibold">{t("expense.addTag")}</span></button>
           </div>
-          {addingTag && <div className="tag-creator flex gap-2"><input autoFocus className="input min-h-11" value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addTag(); }} placeholder="New tag" /><button type="button" className="control min-h-11 bg-text px-4 text-bg" onClick={addTag}>Add</button></div>}
+          {addingTag && <div className="tag-creator flex gap-2"><input autoFocus className="input min-h-11" value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addTag(); }} placeholder={t("expense.newTag")} /><button type="button" className="control min-h-11 bg-text px-4 text-bg" onClick={addTag}>{t("common.add")}</button></div>}
         </div>
       </div>
-      <label className="label" htmlFor="expense-note">Note (optional)<input id="expense-note" className="input mt-2" value={note} onChange={(event) => setNote(event.target.value)} placeholder="What was this for?" /></label>
+      <label className="label" htmlFor="expense-note">{t("expense.noteOptional")}<input id="expense-note" className="input mt-2" value={note} onChange={(event) => setNote(event.target.value)} placeholder={t("expense.notePlaceholder")} /></label>
       {error && <p className="text-sm text-danger">{error}</p>}
-      <button className="control justify-center bg-text text-bg" onClick={save}><Check className="h-5 w-5" />{editing ? "Save changes" : "Save expense"}</button>
+      <button className="control justify-center bg-text text-bg" onClick={save}><Check className="h-5 w-5" />{editing ? t("expense.saveChanges") : t("expense.save")}</button>
     </div>
   );
 }
@@ -454,6 +470,7 @@ function formatDateLabel(value: string) {
 }
 
 function DatePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const { t, language } = useI18n();
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => { const date = dateFromInput(value); return new Date(date.getFullYear(), date.getMonth(), 1); });
   const firstDay = (month.getDay() + 6) % 7;
@@ -466,18 +483,18 @@ function DatePicker({ value, onChange }: { value: string; onChange: (value: stri
 
   return (
     <div className="relative">
-      <p className="label">Date</p>
+      <p className="label">{t("expense.date")}</p>
       <button type="button" className="input mt-2 flex w-full items-center justify-between text-left" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
         <span>{formatDateLabel(value)}</span>
         <CalendarDays className="h-5 w-5 text-text" />
       </button>
-      {open && <div className="calendar-popover absolute inset-x-0 top-[calc(100%+8px)] z-40 rounded-2xl bg-surface p-3 shadow-soft" role="dialog" aria-label="Choose date">
+      {open && <div className="calendar-popover absolute inset-x-0 top-[calc(100%+8px)] z-40 rounded-2xl bg-surface p-3 shadow-soft" role="dialog" aria-label={t("expense.chooseDate")}>
         <div className="flex items-center justify-between">
-          <button type="button" className="icon-button h-9 w-9" aria-label="Previous month" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronLeft className="h-4 w-4" /></button>
-          <p className="text-sm font-semibold">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</p>
-          <button type="button" className="icon-button h-9 w-9" aria-label="Next month" onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight className="h-4 w-4" /></button>
+          <button type="button" className="icon-button h-9 w-9" aria-label={t("expense.previousMonth")} onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronLeft className="h-4 w-4" /></button>
+          <p className="text-sm font-semibold">{month.toLocaleDateString(languageLocale(language), { month: "long", year: "numeric" })}</p>
+          <button type="button" className="icon-button h-9 w-9" aria-label={t("expense.nextMonth")} onClick={() => setMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight className="h-4 w-4" /></button>
         </div>
-        <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-semibold text-muted">{["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <span key={`${day}-${index}`} className="py-1">{day}</span>)}</div>
+        <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-semibold text-muted">{Array.from({ length: 7 }, (_, index) => <span key={index} className="py-1">{new Intl.DateTimeFormat(languageLocale(language), { weekday: "narrow" }).format(new Date(2024, 0, 1 + index))}</span>)}</div>
         <div className="grid grid-cols-7 gap-1">
           {cells.map((date, index) => date ? <button type="button" key={date.toISOString()} className={cx("grid aspect-square place-items-center rounded-full text-sm transition hover:bg-raised", dateInputValue(date) === dateInputValue(selected) && "bg-accent text-white")} onClick={() => { onChange(dateInputValue(date)); setOpen(false); }}>{date.getDate()}</button> : <span key={`empty-${index}`} />)}
         </div>
@@ -488,6 +505,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (value: stri
 
 function HistoryView({ onEditExpense }: { onEditExpense: (id: string) => void }) {
   const store = useAppStore();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [range, setRange] = useState<"all" | "week" | "month">("month");
   const [category, setCategory] = useState("all");
@@ -500,16 +518,16 @@ function HistoryView({ onEditExpense }: { onEditExpense: (id: string) => void })
   return (
     <section>
       <div className="grid gap-4 pb-5">
-        <div><p className="eyebrow">Your spending, in context</p><h2 className="mt-1 text-2xl font-bold">History</h2></div>
-        <label className="relative block"><Search className="pointer-events-none absolute left-4 top-4 h-5 w-5 text-muted" /><input className="input pl-12" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search notes or categories" /></label>
+        <div><p className="eyebrow">{t("history.context")}</p><h2 className="mt-1 text-2xl font-bold">{t("history.title")}</h2></div>
+        <label className="relative block"><Search className="pointer-events-none absolute left-4 top-4 h-5 w-5 text-muted" /><input className="input pl-12" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("history.search")} /></label>
         <div className="flex flex-wrap gap-2">
-          {(["week", "month", "all"] as const).map((item) => <button key={item} className={cx("chip", range === item && "chip-active")} onClick={() => setRange(item)}>{item === "all" ? "All time" : item === "week" ? "This week" : "This month"}</button>)}
+          {(["week", "month", "all"] as const).map((item) => <button key={item} className={cx("chip", range === item && "chip-active")} onClick={() => setRange(item)}>{item === "all" ? t("history.allTime") : item === "week" ? t("history.thisWeek") : t("history.thisMonth")}</button>)}
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
-          <button className={cx("chip shrink-0", category === "all" && "chip-active")} onClick={() => setCategory("all")}>All categories</button>
+          <button className={cx("chip shrink-0", category === "all" && "chip-active")} onClick={() => setCategory("all")}>{t("history.allCategories")}</button>
           {store.categories.filter((item) => !item.archivedAt).map((item) => <button key={item.id} className={cx("chip shrink-0", category === item.id && "chip-active")} onClick={() => setCategory(item.id)}>{item.name}</button>)}
         </div>
-        <p className="text-[13px] text-muted">{filtered.length} {filtered.length === 1 ? "expense" : "expenses"}</p>
+        <p className="text-[13px] text-muted">{t("history.resultCount").replace("{count}", String(filtered.length)).replace("{label}", filtered.length === 1 ? t("history.expense") : t("history.expenses"))}</p>
       </div>
       <ExpenseList expenses={filtered} onEdit={onEditExpense} />
     </section>
@@ -518,7 +536,8 @@ function HistoryView({ onEditExpense }: { onEditExpense: (id: string) => void })
 
 function ExpenseList({ expenses, onEdit }: { expenses: Expense[]; onEdit?: (id: string) => void }) {
   const store = useAppStore();
-  if (!expenses.length) return <div className="rounded-2xl bg-raised p-6 text-center text-muted">No expenses yet.</div>;
+  const { t, language } = useI18n();
+  if (!expenses.length) return <div className="rounded-2xl bg-raised p-6 text-center text-muted">{t("history.noExpenses")}</div>;
   return (
     <div>
       {expenses.map((expense) => {
@@ -528,12 +547,12 @@ function ExpenseList({ expenses, onEdit }: { expenses: Expense[]; onEdit?: (id: 
             <div className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-accent"><CategoryIcon icon={category?.icon} /></div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{category?.name ?? "Expense"}</p>
-              <p className="truncate text-[13px] text-muted">{expense.note || formatExpenseDate(expense.spentAt)}</p>
+              <p className="truncate text-[13px] text-muted">{expense.note || formatExpenseDate(expense.spentAt, languageLocale(language))}</p>
             </div>
             <div className="flex items-center gap-2">
-              {onEdit ? <button type="button" onClick={() => onEdit(expense.id)} className="hidden min-h-11 items-center px-2 text-sm font-semibold text-muted hover:text-text sm:flex">Edit</button> : <Link href={`/add-expense?edit=${expense.id}`} className="hidden min-h-11 items-center px-2 text-sm font-semibold text-muted hover:text-text sm:flex">Edit</Link>}
-              <button className="icon-button" aria-label="Delete expense" onClick={() => store.deleteExpense(expense.id)}><Trash2 className="h-4 w-4" /></button>
-              <p className="w-20 text-right text-sm font-semibold tabular-nums sm:w-24">{formatMoney(expense.amount, expense.currency)}</p>
+              {onEdit ? <button type="button" onClick={() => onEdit(expense.id)} className="hidden min-h-11 items-center px-2 text-sm font-semibold text-muted hover:text-text sm:flex">{t("common.edit")}</button> : <Link href={`/add-expense?edit=${expense.id}`} className="hidden min-h-11 items-center px-2 text-sm font-semibold text-muted hover:text-text sm:flex">{t("common.edit")}</Link>}
+              <button className="icon-button" aria-label={t("history.deleteExpense")} onClick={() => store.deleteExpense(expense.id)}><Trash2 className="h-4 w-4" /></button>
+              <p className="w-20 text-right text-sm font-semibold tabular-nums sm:w-24">{formatMoney(expense.amount, expense.currency, languageLocale(language))}</p>
             </div>
           </div>
         );
@@ -544,6 +563,7 @@ function ExpenseList({ expenses, onEdit }: { expenses: Expense[]; onEdit?: (id: 
 
 function InsightsView() {
   const store = useAppStore();
+  const { t, language } = useI18n();
   const expenses = visibleExpenses(store.expenses);
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [mode, setMode] = useState<"expenses" | "income">("expenses");
@@ -567,18 +587,19 @@ function InsightsView() {
   })).filter((item) => item.total > 0).sort((a, b) => b.total - a.total);
   return (
     <section className="grid gap-6">
-      <div className="flex items-center justify-between"><div><p className="eyebrow">Your money, in focus</p><h2 className="mt-1 text-2xl font-bold">Insights</h2></div><ChartNoAxesColumnIncreasing className="h-6 w-6 text-accent" /></div>
-      <div className="grid min-h-12 grid-cols-2 rounded-full bg-raised p-1">
-        {(["expenses", "income"] as const).map((item) => <button key={item} className={cx("control min-h-10 justify-center rounded-full bg-transparent text-sm", mode === item && "bg-surface shadow-sm")} onClick={() => setMode(item)}>{item === "expenses" ? "Expenses" : "Income"}</button>)}
+      <div className="flex items-center justify-between"><div><p className="eyebrow">{t("insights.context")}</p><h2 className="mt-1 text-2xl font-bold">{t("nav.insights")}</h2></div><ChartNoAxesColumnIncreasing className="h-6 w-6 text-accent" /></div>
+      <div className="segmented-control grid-cols-2">
+        <ActivePill index={mode === "expenses" ? 0 : 1} count={2} variant="segment" />
+        {(["expenses", "income"] as const).map((item) => <button key={item} className={cx("control min-h-10 justify-center rounded-full bg-transparent text-sm", mode === item && "text-text")} onClick={() => setMode(item)}>{item === "expenses" ? t("insights.expenses") : t("insights.income")}</button>)}
       </div>
-      {mode === "income" ? <div className="rounded-xl bg-raised p-6 text-center text-sm text-muted">Income is not enabled. Walletly is focused on spending for now.</div> : <>
+      {mode === "income" ? <div className="rounded-xl bg-raised p-6 text-center text-sm text-muted">{t("insights.incomeDisabled")}</div> : <>
         <section className="grid gap-6">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-[13px] text-muted">{period === "week" ? "This week" : "This month"} · {currency}</p><p className="mt-1 text-4xl font-bold tabular-nums">{formatMoney(total, currency)}</p></div><div className="flex gap-1">{(["week", "month"] as const).map((item) => <button key={item} className={cx("chip", period === item && "chip-active")} onClick={() => setPeriod(item)}>{item === "week" ? "Week" : "Month"}</button>)}</div></div>
+          <div className="flex items-start justify-between gap-4"><div><p className="text-[13px] text-muted">{period === "week" ? t("history.thisWeek") : t("history.thisMonth")} · {currency}</p><p className="mt-1 text-4xl font-bold tabular-nums">{formatMoney(total, currency, languageLocale(language))}</p></div><div className="flex gap-1">{(["week", "month"] as const).map((item) => <button key={item} className={cx("chip", period === item && "chip-active")} onClick={() => setPeriod(item)}>{item === "week" ? t("insights.week") : t("insights.month")}</button>)}</div></div>
           <div className="flex min-h-[190px] items-end gap-2 sm:gap-4">
             {bars.map((bar) => <div key={bar.label} className="flex flex-1 flex-col items-center gap-2"><div className="flex h-36 w-full items-end overflow-hidden rounded-full bg-raised"><div className="w-full rounded-full bg-accent" style={{ height: `${Math.max(bar.amount ? 8 : 2, Math.min(100, (bar.amount / max) * 100))}%` }} /></div><span className="text-[11px] font-semibold text-muted">{bar.label}</span></div>)}
           </div>
         </section>
-        <section className="grid gap-4"><div className="flex items-center justify-between"><h3 className="section-title">Where it went</h3><span className="text-[13px] text-muted">{totals.length} {totals.length === 1 ? "category" : "categories"}</span></div>{totals.length ? <div className="grid gap-3">{totals.slice(0, 6).map(({ category, total: amount, color }) => { const share = total > 0 ? Math.round((amount / total) * 100) : 0; return <div key={category.id} className="flex min-h-12 items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft" style={{ color }}><CategoryIcon icon={category.icon} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{category.name}</p><p className="text-[11px] text-muted">{share}% of total</p></div><p className="text-sm font-semibold tabular-nums">{formatMoney(amount, currency)}</p></div>; })}</div> : <p className="text-[13px] text-muted">Log a few expenses to see your spending shape.</p>}</section>
+        <section className="grid gap-4"><div className="flex items-center justify-between"><h3 className="section-title">{t("insights.whereItWent")}</h3><span className="text-[13px] text-muted">{totals.length} {totals.length === 1 ? t("insights.category") : t("insights.categories")}</span></div>{totals.length ? <div className="grid gap-3">{totals.slice(0, 6).map(({ category, total: amount, color }) => { const share = total > 0 ? Math.round((amount / total) * 100) : 0; return <div key={category.id} className="flex min-h-12 items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft" style={{ color }}><CategoryIcon icon={category.icon} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{category.name}</p><p className="text-[11px] text-muted">{t("insights.shareOfTotal").replace("{share}", String(share))}</p></div><p className="text-sm font-semibold tabular-nums">{formatMoney(amount, currency, languageLocale(language))}</p></div>; })}</div> : <p className="text-[13px] text-muted">{t("insights.empty")}</p>}</section>
       </>}
     </section>
   );
@@ -586,29 +607,30 @@ function InsightsView() {
 
 function ManageView() {
   const store = useAppStore();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<CategoryIconName>("more-horizontal");
   const [payment, setPayment] = useState("");
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <section className="panel">
-        <h2 className="section-title">Categories</h2>
+        <h2 className="section-title">{t("manage.categories")}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder="New category" />
-          <button className="control justify-center bg-accent text-white" onClick={() => { store.addCategory(name, icon); setName(""); }}>Add</button>
+          <input className="input" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("manage.newCategory")} />
+          <button className="control justify-center bg-accent text-white" onClick={() => { store.addCategory(name, icon); setName(""); }}>{t("common.add")}</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">{categoryIconNames.map((item) => <button key={item} className={cx("icon-button", icon === item && "bg-text text-bg")} onClick={() => setIcon(item)}><CategoryIcon name={item} /></button>)}</div>
         <div className="mt-5 grid gap-2">{store.categories.filter((item) => !item.archivedAt).map((item) => <div key={item.id} className="flex min-h-12 items-center justify-between rounded-2xl bg-raised px-3"><span className="flex items-center gap-2"><CategoryIcon name={item.icon} />{item.name}</span>{item.kind === "custom" && <button className="icon-button" onClick={() => store.archiveCategory(item.id)}><Trash2 className="h-4 w-4" /></button>}</div>)}</div>
       </section>
       <section className="panel">
-        <h2 className="section-title">Payment methods and tags</h2>
+        <h2 className="section-title">{t("manage.paymentAndTags")}</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input className="input" value={payment} onChange={(event) => setPayment(event.target.value)} placeholder="New payment method" />
-          <button className="control justify-center bg-accent text-white" onClick={() => { store.ensurePaymentMethods([payment]); setPayment(""); }}>Add</button>
+          <input className="input" value={payment} onChange={(event) => setPayment(event.target.value)} placeholder={t("manage.newPayment")} />
+          <button className="control justify-center bg-accent text-white" onClick={() => { store.ensurePaymentMethods([payment]); setPayment(""); }}>{t("common.add")}</button>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">{store.paymentMethods.map((item) => <span key={item.id} className="chip">{item.name}</span>)}</div>
-        <h3 className="mt-8 font-semibold">Reusable tags</h3>
-        <div className="mt-3 flex flex-wrap gap-2">{store.tags.length ? store.tags.map((tag) => <span key={tag.id} className="chip"><Tags className="h-4 w-4" />{tag.name}</span>) : <p className="text-sm text-muted">Tags appear here as you add them to expenses.</p>}</div>
+        <h3 className="mt-8 font-semibold">{t("manage.reusableTags")}</h3>
+        <div className="mt-3 flex flex-wrap gap-2">{store.tags.length ? store.tags.map((tag) => <span key={tag.id} className="chip"><Tags className="h-4 w-4" />{tag.name}</span>) : <p className="text-sm text-muted">{t("manage.tagsEmpty")}</p>}</div>
       </section>
     </div>
   );
@@ -616,18 +638,19 @@ function ManageView() {
 
 function ProfileView() {
   const store = useAppStore();
+  const { t, language } = useI18n();
   const [name, setName] = useState(store.user?.name ?? "");
   const active = visibleExpenses(store.expenses);
   const monthTotal = active.filter((expense) => new Date(expense.spentAt) >= startOfMonth()).reduce((sum, expense) => sum + expense.amount, 0);
   const loggedDays = new Set(active.map((expense) => new Date(expense.spentAt).toDateString())).size;
-  const providerLabel = store.user?.isDemo ? "Demo workspace" : store.user?.provider === "google" ? "Google account" : "Email account";
+  const providerLabel = store.user?.isDemo ? t("profile.demoWorkspace") : store.user?.provider === "google" ? t("profile.googleAccount") : t("profile.emailAccount");
   return (
     <section className="grid max-w-2xl gap-6">
-      <div className="flex items-center justify-between"><div><p className="eyebrow">Account</p><h2 className="mt-1 text-2xl font-bold">Profile</h2></div><Link href="/settings" aria-label="Open settings" className="icon-button"><Settings className="h-5 w-5" /></Link></div>
-      <div className="flex items-center gap-4"><div className="grid h-[68px] w-[68px] place-items-center rounded-full bg-accent-soft text-xl font-bold text-accent">{store.user?.name?.slice(0, 2).toUpperCase() || "W"}</div><div className="min-w-0"><p className="truncate text-[17px] font-semibold">{store.user?.name ?? store.user?.email ?? "Your wallet"}</p><p className="truncate text-[13px] text-muted">{store.user?.email ?? "Local demo account"}</p><p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-success"><ShieldCheck className="h-3.5 w-3.5" />{providerLabel}</p></div></div>
-      <div className="grid grid-cols-3 gap-3 py-2"><ProfileStat value={String(active.length)} label="Expenses" /><ProfileStat value={formatMoney(monthTotal, store.profile?.currency ?? "USD")} label={`This month · ${store.profile?.currency ?? "USD"}`} compact /><ProfileStat value={String(loggedDays)} label="Logged days" /></div>
-      <section className="grid gap-4"><h3 className="section-title">Basic information</h3><label className="label" htmlFor="profile-name">Name<input id="profile-name" className="input mt-2" value={name} onChange={(event) => setName(event.target.value)} placeholder="Add your name" /></label><button className="control justify-center bg-surface text-text shadow-sm" onClick={() => void store.updateDisplayName(name)}><Pencil className="h-4 w-4" />Save changes</button></section>
-      <section className="grid gap-2"><h3 className="section-title mb-2">Your Walletly</h3><ProfileInfo icon={CalendarDays} label="Member since" detail={store.user?.createdAt ? new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" }).format(new Date(store.user.createdAt)) : "This device"} /><ProfileInfo icon={Cloud} label="Sync status" detail={!store.cloudEnabled ? "Stored on this device" : !store.isOnline ? "Offline, changes are safe" : "Cloud sync is on"} /><Link href="/settings" className="flex min-h-16 items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-accent"><Settings className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Preferences and privacy</span><span className="block text-[13px] text-muted">Themes, reminders, data and legal</span></span><ChevronRight className="h-4 w-4 text-muted" /></Link></section>
+      <div className="flex items-center justify-between"><div><p className="eyebrow">{t("profile.account")}</p><h2 className="mt-1 text-2xl font-bold">{t("nav.profile")}</h2></div><Link href="/settings" aria-label={t("nav.settings")} className="icon-button"><Settings className="h-5 w-5" /></Link></div>
+      <div className="flex items-center gap-4"><div className="grid h-[68px] w-[68px] place-items-center rounded-full bg-accent-soft text-xl font-bold text-accent">{store.user?.name?.slice(0, 2).toUpperCase() || "W"}</div><div className="min-w-0"><p className="truncate text-[17px] font-semibold">{store.user?.name ?? store.user?.email ?? t("profile.yourWallet")}</p><p className="truncate text-[13px] text-muted">{store.user?.email ?? t("profile.localDemoAccount")}</p><p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-success"><ShieldCheck className="h-3.5 w-3.5" />{providerLabel}</p></div></div>
+      <div className="grid grid-cols-3 gap-3 py-2"><ProfileStat value={String(active.length)} label={t("profile.expenses")} /><ProfileStat value={formatMoney(monthTotal, store.profile?.currency ?? "USD", languageLocale(language))} label={`${t("profile.thisMonth")} · ${store.profile?.currency ?? "USD"}`} compact /><ProfileStat value={String(loggedDays)} label={t("profile.loggedDays")} /></div>
+      <section className="grid gap-4"><h3 className="section-title">{t("profile.basicInfo")}</h3><label className="label" htmlFor="profile-name">{t("profile.name")}<input id="profile-name" className="input mt-2" value={name} onChange={(event) => setName(event.target.value)} placeholder={t("profile.namePlaceholder")} /></label><button className="control justify-center bg-surface text-text shadow-sm" onClick={() => void store.updateDisplayName(name)}><Pencil className="h-4 w-4" />{t("common.saveChanges")}</button></section>
+      <section className="grid gap-2"><h3 className="section-title mb-2">{t("profile.yourWallet")}</h3><ProfileInfo icon={CalendarDays} label={t("profile.memberSince")} detail={store.user?.createdAt ? new Intl.DateTimeFormat(languageLocale(language), { month: "short", year: "numeric" }).format(new Date(store.user.createdAt)) : t("profile.thisDevice")} /><ProfileInfo icon={Cloud} label={t("profile.syncStatus")} detail={!store.cloudEnabled ? t("profile.storedOnDevice") : !store.isOnline ? t("profile.offlineSafe") : t("profile.cloudSyncOn")} /><Link href="/settings" className="flex min-h-16 items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-accent"><Settings className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{t("profile.preferences")}</span><span className="block text-[13px] text-muted">{t("profile.preferencesDetail")}</span></span><ChevronRight className="h-4 w-4 text-muted" /></Link></section>
       <p className="pt-2 text-center text-[11px] font-semibold text-muted">WALLETLY / A QUIETER WAY TO TRACK MONEY</p>
     </section>
   );
@@ -643,7 +666,7 @@ function ProfileInfo({ icon: Icon, label, detail }: { icon: typeof CalendarDays;
 
 function SettingsView() {
   const store = useAppStore();
-  const { language, setLanguage } = useI18n();
+  const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useLedgerTheme();
   const [reminders, setReminders] = useState(false);
   useEffect(() => { void notificationsEnabled().then(setReminders); }, []);
@@ -668,40 +691,42 @@ function SettingsView() {
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <section className="panel">
-        <h2 className="section-title">Settings</h2>
+        <h2 className="section-title">{t("settings.title")}</h2>
         <div className="mt-5 grid gap-3">
-          <Segment label="Appearance" options={["system", "light", "dark"]} value={mode} onChange={(value) => setMode(value as typeof mode)} icons={[Settings, Sun, Moon]} />
-          <Segment label="Language" options={["en", "ru", "uz"]} value={language} onChange={(value) => setLanguage(value as typeof language)} />
+          <Segment label={t("settings.appearanceLabel")} options={["system", "light", "dark"]} labels={[t("settings.system"), t("settings.light"), t("settings.dark")]} value={mode} onChange={(value) => setMode(value as typeof mode)} icons={[Settings, Sun, Moon]} />
+          <Segment label={t("settings.language")} options={["en", "ru", "uz"]} labels={[t("settings.languageEnglish"), t("settings.languageRussian"), t("settings.languageUzbek")]} value={language} onChange={(value) => setLanguage(value as typeof language)} />
           <button className="control justify-between bg-raised" onClick={async () => { const enabled = await setDailyReminderEnabled(!reminders); setReminders(enabled); }}>
-            <span className="flex items-center gap-2"><Bell className="h-5 w-5" /> Daily reminder</span><span>{reminders ? "On" : "Off"}</span>
+            <span className="flex items-center gap-2"><Bell className="h-5 w-5" /> {t("settings.dailyCheckIn")}</span><span>{reminders ? t("settings.on") : t("settings.off")}</span>
           </button>
-          <p className="text-xs leading-5 text-muted">Reliable closed-app reminder delivery requires a backend schedule. This PWA requests permission only from this user action and uses service worker notifications; see deployment docs for the Supabase cron option.</p>
+          <p className="text-xs leading-5 text-muted">{t("settings.reminderHelp")}</p>
         </div>
       </section>
       <section className="panel">
-        <h2 className="section-title">Data and account</h2>
+        <h2 className="section-title">{t("settings.dataAccount")}</h2>
         <div className="mt-5 grid gap-3">
-          <button className="control justify-between bg-raised" onClick={() => exportData("json")}><span className="flex items-center gap-2"><Download className="h-5 w-5" /> Export JSON</span><ChevronRight className="h-5 w-5" /></button>
-          <button className="control justify-between bg-raised" onClick={() => exportData("csv")}><span className="flex items-center gap-2"><Download className="h-5 w-5" /> Export CSV</span><ChevronRight className="h-5 w-5" /></button>
-          <Link href="/privacy" className="control justify-between bg-raised"><span className="flex items-center gap-2"><Shield className="h-5 w-5" /> Privacy policy</span><ChevronRight className="h-5 w-5" /></Link>
-          <Link href="/terms" className="control justify-between bg-raised">Terms of service<ChevronRight className="h-5 w-5" /></Link>
-          <Link href="/cookies" className="control justify-between bg-raised">Cookie policy<ChevronRight className="h-5 w-5" /></Link>
-          <button className="control justify-between bg-raised" onClick={() => void store.signOut()}><span className="flex items-center gap-2"><LogOut className="h-5 w-5" /> Sign out</span></button>
-          <button className="control justify-between bg-danger/10 text-danger" onClick={() => { if (confirm("Delete your Walletly account and local data?")) void store.deleteAccount(); }}><span className="flex items-center gap-2"><Trash2 className="h-5 w-5" /> Delete account</span></button>
+          <button className="control justify-between bg-raised" onClick={() => exportData("json")}><span className="flex items-center gap-2"><Download className="h-5 w-5" /> {t("settings.exportJsonShort")}</span><ChevronRight className="h-5 w-5" /></button>
+          <button className="control justify-between bg-raised" onClick={() => exportData("csv")}><span className="flex items-center gap-2"><Download className="h-5 w-5" /> {t("settings.exportCsvShort")}</span><ChevronRight className="h-5 w-5" /></button>
+          <Link href="/privacy" className="control justify-between bg-raised"><span className="flex items-center gap-2"><Shield className="h-5 w-5" /> {t("settings.privacyPolicy")}</span><ChevronRight className="h-5 w-5" /></Link>
+          <Link href="/terms" className="control justify-between bg-raised">{t("settings.termsService")}<ChevronRight className="h-5 w-5" /></Link>
+          <Link href="/cookies" className="control justify-between bg-raised">{t("settings.cookiePolicy")}<ChevronRight className="h-5 w-5" /></Link>
+          <button className="control justify-between bg-raised" onClick={() => void store.signOut()}><span className="flex items-center gap-2"><LogOut className="h-5 w-5" /> {t("settings.signOut")}</span></button>
+          <button className="control justify-between bg-danger/10 text-danger" onClick={() => { if (confirm(t("settings.confirmDelete"))) void store.deleteAccount(); }}><span className="flex items-center gap-2"><Trash2 className="h-5 w-5" /> {t("settings.deleteAccount")}</span></button>
         </div>
       </section>
     </div>
   );
 }
 
-function Segment({ label, options, value, onChange, icons }: { label: string; options: string[]; value: string; onChange: (value: string) => void; icons?: Array<typeof Settings> }) {
+function Segment({ label, options, labels = options, value, onChange, icons }: { label: string; options: string[]; labels?: string[]; value: string; onChange: (value: string) => void; icons?: Array<typeof Settings> }) {
+  const activeIndex = Math.max(0, options.indexOf(value));
   return (
     <div>
       <p className="label mb-2">{label}</p>
-      <div className="grid grid-cols-3 rounded-2xl bg-raised p-1">
+      <div className="segmented-control grid-cols-3">
+        <ActivePill index={activeIndex} count={options.length} variant="segment" />
         {options.map((option, index) => {
           const Icon = icons?.[index];
-          return <button key={option} className={cx("control min-h-11 justify-center rounded-xl bg-transparent capitalize", value === option && "bg-surface shadow-soft")} onClick={() => onChange(option)}>{Icon && <Icon className="h-4 w-4" />}{option}</button>;
+          return <button key={option} className={cx("control min-h-11 justify-center rounded-xl bg-transparent", value === option && "text-text")} onClick={() => onChange(option)}>{Icon && <Icon className="h-4 w-4" />}{labels[index] ?? option}</button>;
         })}
       </div>
     </div>
@@ -709,21 +734,23 @@ function Segment({ label, options, value, onChange, icons }: { label: string; op
 }
 
 function ConsentBanner() {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   useEffect(() => setVisible(localStorage.getItem(CONSENT_KEY) !== "true" || localStorage.getItem(COOKIE_CONSENT_KEY) !== "true"), []);
   if (!visible) return null;
   return (
     <div className="fixed inset-x-3 bottom-24 z-40 mx-auto max-w-xl rounded-[24px] bg-text p-3 text-bg shadow-glass sm:p-4 lg:bottom-6">
-      <p className="text-xs leading-5 sm:text-sm">Walletly stores essential app data locally and uses Supabase for auth/sync when you sign in. Confirm age consent and cookie preferences to continue.</p>
+      <p className="text-xs leading-5 sm:text-sm">{t("consent.message")}</p>
       <div className="mt-2 flex gap-2 sm:mt-3">
-        <button className="control min-h-10 bg-bg px-4 py-1.5 text-text" onClick={() => { localStorage.setItem(CONSENT_KEY, "true"); localStorage.setItem(COOKIE_CONSENT_KEY, "true"); setVisible(false); }}>Accept</button>
-        <Link href="/privacy" className="control min-h-10 bg-bg/10 px-4 py-1.5">Review</Link>
+        <button className="control min-h-10 bg-bg px-4 py-1.5 text-text" onClick={() => { localStorage.setItem(CONSENT_KEY, "true"); localStorage.setItem(COOKIE_CONSENT_KEY, "true"); setVisible(false); }}>{t("common.accept")}</button>
+        <Link href="/privacy" className="control min-h-10 bg-bg/10 px-4 py-1.5">{t("common.review")}</Link>
       </div>
     </div>
   );
 }
 
 function InstallPrompt() {
+  const { t } = useI18n();
   const [event, setEvent] = useState<Event | null>(null);
   useEffect(() => {
     const listener = (installEvent: Event) => {
@@ -734,5 +761,5 @@ function InstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", listener);
   }, []);
   if (!event) return null;
-  return <button className="fixed right-4 top-4 z-40 hidden rounded-2xl bg-text px-4 py-3 text-sm font-semibold text-bg shadow-glass md:block" onClick={() => void (event as Event & { prompt?: () => Promise<void> }).prompt?.()}>Install Walletly</button>;
+  return <button className="fixed right-4 top-4 z-40 hidden rounded-2xl bg-text px-4 py-3 text-sm font-semibold text-bg shadow-glass md:block" onClick={() => void (event as Event & { prompt?: () => Promise<void> }).prompt?.()}>{t("install.walletly")}</button>;
 }

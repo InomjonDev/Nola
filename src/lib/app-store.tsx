@@ -154,6 +154,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     let cancelled = false;
     async function hydrate() {
       const demo = await secureStorage.getItem(DEMO_SESSION_KEY);
+      if (cancelled) return;
       if (demo) {
         // A local demo session is self-contained and should open without waiting for Supabase.
         await activateAccount(demoIdentity(demo));
@@ -163,16 +164,20 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
         setHydrated(true);
         return;
       }
-      // Render the auth shell immediately, then promote an existing Supabase session in the background.
-      setHydrated(true);
-      void Promise.race([
+      // Keep the loading shell visible until Supabase has resolved. Rendering auth first causes
+      // authenticated users to see a login flash while their existing session is restored.
+      const { data: sessionData } = await Promise.race([
         supabase.auth.getSession(),
         new Promise<{ data: { session: null } }>((resolve) => setTimeout(() => resolve({ data: { session: null } }), 3000)),
-      ]).then(({ data: sessionData }) => {
-        if (cancelled || !sessionData.session?.user) return;
-        const identity = toUserIdentity(sessionData.session.user);
-        void activateAccount(identity).then(() => pullRemote(identity.id));
-      }).catch(() => undefined);
+      ]).catch(() => ({ data: { session: null } }));
+      if (cancelled) return;
+      if (!sessionData.session?.user) {
+        setHydrated(true);
+        return;
+      }
+      const identity = toUserIdentity(sessionData.session.user);
+      if (ownerRef.current !== identity.id) await activateAccount(identity);
+      if (!cancelled) await pullRemote(identity.id);
     }
     void hydrate();
     return () => { cancelled = true; };
@@ -181,14 +186,18 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!supabase) return;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (_event === "INITIAL_SESSION") return;
       if (!session?.user) {
+        if (_event === "INITIAL_SESSION") {
+          setHydrated(true);
+          return;
+        }
         ownerRef.current = null;
         setUser(null);
         setData(createInitialData());
         return;
       }
       const identity = toUserIdentity(session.user);
+      if (ownerRef.current === identity.id) return;
       void activateAccount(identity).then(() => pullRemote(identity.id));
     });
     return () => listener.subscription.unsubscribe();

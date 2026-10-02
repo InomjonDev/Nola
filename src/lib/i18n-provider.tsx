@@ -2,7 +2,7 @@
 
 import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 
-import { createTranslator, detectLanguage, type TranslationKey } from "@/lib/i18n";
+import { createTranslator, detectLanguage, languageLocale, type TranslationKey } from "@/lib/i18n";
 import type { Language } from "@/lib/types";
 
 const LANGUAGE_KEY = "walletly.language";
@@ -22,6 +22,10 @@ export function I18nProvider({ children }: PropsWithChildren) {
     const saved = localStorage.getItem(LANGUAGE_KEY);
     setLanguageState(saved === "en" || saved === "ru" || saved === "uz" ? saved : detectLanguage(navigator.language));
   }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = languageLocale(language);
+  }, [language]);
 
   const setLanguage = (next: Language) => {
     setLanguageState(next);

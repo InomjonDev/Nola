@@ -2,17 +2,18 @@ import type { Expense } from "@/lib/types";
 
 const currencyFormatters = new Map<string, Intl.NumberFormat>();
 
-export function formatMoney(value: number, currency: string) {
-  let formatter = currencyFormatters.get(currency);
+export function formatMoney(value: number, currency: string, locale?: string) {
+  const key = `${locale ?? "default"}:${currency}`;
+  let formatter = currencyFormatters.get(key);
   if (!formatter) {
-    formatter = new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: currency === "UZS" || currency === "JPY" ? 0 : 2 });
-    currencyFormatters.set(currency, formatter);
+    formatter = new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: currency === "UZS" || currency === "JPY" ? 0 : 2 });
+    currencyFormatters.set(key, formatter);
   }
   return formatter.format(value);
 }
 
-export function formatExpenseDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date(value));
+export function formatExpenseDate(value: string, locale?: string) {
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(new Date(value));
 }
 
 export function isThisMonth(value: string) {
