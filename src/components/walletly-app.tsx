@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, ChevronRight, Clock3, Cloud, Download, Eye, EyeOff, Home, LineChart, ListFilter, LogOut, MailCheck, Moon, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Sun, Tags, Trash2, User, WalletCards, X } from "lucide-react";
+import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, ChevronRight, Clock3, Cloud, Download, Eye, EyeOff, Home, LineChart, ListFilter, LogOut, Moon, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Sun, Tags, Trash2, User, WalletCards, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { CategoryIcon, categoryIconNames } from "@/components/category-icon";
 import { GoogleLogo } from "@/components/google-logo";
-import { consumeRollingWindow, formatShortCountdown, parseStoredDeadline, secondsUntil } from "@/lib/action-rate-limit";
+import { consumeRollingWindow, formatShortCountdown } from "@/lib/action-rate-limit";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, WALLETLY_CURRENCIES } from "@/lib/constants";
 import { formatExpenseDate, formatMoney } from "@/lib/format";
 import { activeBudget, activeExpenses, activeIncome, monthKey, remainingBudget, sumAmounts } from "@/lib/budgeting";
@@ -26,9 +26,6 @@ const navItems = [
   { href: "/insights", view: "insights", labelKey: "nav.insights", icon: LineChart },
   { href: "/profile", view: "profile", labelKey: "nav.profile", icon: User },
 ] as const;
-
-const MAGIC_LINK_COOLDOWN_KEY = "walletly.auth.magicLinkNextAllowedAt";
-const MAGIC_LINK_COOLDOWN_MS = 60_000;
 
 function visibleExpenses(expenses: Expense[]) {
   return expenses.filter((expense) => !expense.deletedAt).sort((a, b) => new Date(b.spentAt).getTime() - new Date(a.spentAt).getTime());
@@ -51,19 +48,6 @@ function startOfWeek() {
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
-}
-
-function magicLinkErrorKey(error: unknown, isOnline: boolean): TranslationKey {
-  if (!isOnline) return "auth.offline";
-  const code = error && typeof error === "object" && "code" in error ? String(error.code).toLowerCase() : "";
-  const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 0;
-  const details = error && typeof error === "object"
-    ? `${code} ${"message" in error ? String(error.message) : ""}`.toLowerCase()
-    : String(error).toLowerCase();
-  if (code === "over_email_send_rate_limit" || details.includes("email rate limit") || details.includes("email send rate")) return "auth.emailTemporarilyLimited";
-  if (code === "over_request_rate_limit" || status === 429 || details.includes("too many requests")) return "auth.tooManyRequests";
-  if (details.includes("not authorized") || details.includes("unauthorized") || details.includes("email_address_invalid")) return "auth.unauthorizedEmail";
-  return "auth.sendLinkError";
 }
 
 function ActivePill({ index, count, variant = "default" }: { index: number; count: number; variant?: "default" | "segment" | "vertical" }) {
@@ -124,144 +108,40 @@ export function WalletlyApp({ view, overlay }: { view: View; overlay?: "add" }) 
 function AuthScreen() {
   const store = useAppStore();
   const { t } = useI18n();
-  const [email, setEmail] = useState("");
-  const [sentEmail, setSentEmail] = useState<string | null>(null);
-  const [messageKey, setMessageKey] = useState<TranslationKey | null>(null);
-  const [busy, setBusy] = useState<"google" | "send" | "resend" | null>(null);
-  const [cooldownReady, setCooldownReady] = useState(false);
-  const [nextAllowedAt, setNextAllowedAt] = useState(0);
-  const [now, setNow] = useState(() => Date.now());
-  const canSend = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const cooldownSeconds = secondsUntil(nextAllowedAt, now);
-
-  useEffect(() => {
-    const current = Date.now();
-    const restored = parseStoredDeadline(localStorage.getItem(MAGIC_LINK_COOLDOWN_KEY), current);
-    if (!restored) localStorage.removeItem(MAGIC_LINK_COOLDOWN_KEY);
-    setNow(current);
-    setNextAllowedAt(restored);
-    setCooldownReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!nextAllowedAt) return;
-    const tick = () => {
-      const current = Date.now();
-      setNow(current);
-      if (current >= nextAllowedAt) {
-        localStorage.removeItem(MAGIC_LINK_COOLDOWN_KEY);
-        setNextAllowedAt(0);
-      }
-    };
-    const timer = window.setInterval(tick, 1_000);
-    return () => window.clearInterval(timer);
-  }, [nextAllowedAt]);
-
-  function startMagicLinkCooldown() {
-    const current = Date.now();
-    const deadline = current + MAGIC_LINK_COOLDOWN_MS;
-    localStorage.setItem(MAGIC_LINK_COOLDOWN_KEY, String(deadline));
-    setNow(current);
-    setNextAllowedAt(deadline);
-  }
-
-  function changeEmail() {
-    setSentEmail(null);
-    setMessageKey(null);
-  }
+  const [message, setMessage] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function submitGoogle() {
-    setBusy("google");
-    setMessageKey(null);
+    setBusy(true);
+    setMessage(false);
     try {
       await store.signInSocial("google");
     } catch {
-      setMessageKey("auth.googleError");
+      setMessage(true);
     } finally {
-      setBusy(null);
-    }
-  }
-
-  async function submitEmail() {
-    if (!canSend || busy || !cooldownReady || cooldownSeconds > 0) return;
-    setBusy("send");
-    setMessageKey(null);
-    try {
-      const normalizedEmail = await store.sendMagicLink(email);
-      setEmail(normalizedEmail);
-      setSentEmail(normalizedEmail);
-      startMagicLinkCooldown();
-    } catch (error) {
-      setMessageKey(magicLinkErrorKey(error, store.isOnline));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function resendLink() {
-    if (!sentEmail || busy || !cooldownReady || cooldownSeconds > 0) return;
-    setBusy("resend");
-    setMessageKey(null);
-    try {
-      const normalizedEmail = await store.sendMagicLink(sentEmail);
-      setSentEmail(normalizedEmail);
-      startMagicLinkCooldown();
-    } catch (error) {
-      setMessageKey(magicLinkErrorKey(error, store.isOnline));
-    } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
   async function submitDemo() {
-    setSentEmail(null);
     await store.signInDemo();
   }
 
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-4 py-3 text-text sm:py-8">
       <section className="w-full max-w-md rounded-[28px] bg-surface p-4 shadow-soft sm:p-8">
-        <div className={sentEmail ? "mb-5 sm:mb-7" : "mb-6 sm:mb-8"}>
-          <img src="/branding/walletly-mascot.png" alt="Walletly" className={cx("h-auto rounded-2xl bg-white p-2 shadow-sm", sentEmail ? "w-32 sm:w-40" : "w-44 sm:w-52")} />
+        <div className="mb-6 sm:mb-8">
+          <img src="/branding/walletly-mascot.png" alt="Walletly" className="h-auto w-44 rounded-2xl bg-white p-2 shadow-sm sm:w-52" />
           <h1 className="sr-only">Walletly</h1>
           <p className="mt-3 text-sm text-muted">{t("auth.description")}</p>
         </div>
-        {!sentEmail ? (
-          <>
-            <button className="control w-full justify-center bg-text text-bg" disabled={Boolean(busy)} onClick={() => void submitGoogle()}>
-              <GoogleLogo /> {t("auth.continueGoogle")}
-            </button>
-            <div className="my-5 h-px bg-line" />
-            <form onSubmit={(event) => { event.preventDefault(); void submitEmail(); }}>
-              <label className="label" htmlFor="email">{t("auth.email")}</label>
-              <input id="email" className="input mt-2" type="email" inputMode="email" autoCapitalize="none" autoComplete="email" required value={email} onChange={(event) => { setEmail(event.target.value); setMessageKey(null); }} placeholder={t("auth.emailPlaceholder")} />
-              <button className="control mt-3 w-full justify-center bg-accent text-white" type="submit" disabled={Boolean(busy) || !canSend || !cooldownReady || cooldownSeconds > 0}>
-                {busy === "send" ? t("auth.sending") : cooldownSeconds > 0 ? t("auth.sendLinkIn").replace("{time}", formatShortCountdown(cooldownSeconds)) : t("auth.sendLink")}
-              </button>
-            </form>
-          </>
-        ) : (
-          <div>
-            <button className="inline-flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-semibold text-accent-strong" type="button" disabled={Boolean(busy)} onClick={changeEmail}>
-              <ChevronLeft className="h-4 w-4" /> {t("auth.changeEmail")}
-            </button>
-            <div className="mt-2 rounded-2xl bg-raised px-5 py-6 text-center">
-              <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent-soft text-accent-strong">
-                <MailCheck className="h-6 w-6" />
-              </span>
-              <h2 className="mt-4 text-xl font-semibold">{t("auth.checkInbox")}</h2>
-              <p className="mt-2 text-sm leading-6 text-muted">{t("auth.linkSent").replace("{email}", sentEmail)}</p>
-              <p className="mt-2 text-xs leading-5 text-muted">{t("auth.openLink")}</p>
-            </div>
-            <button className="control mt-3 w-full justify-center bg-raised text-text" type="button" disabled={Boolean(busy) || !cooldownReady || cooldownSeconds > 0} onClick={() => void resendLink()}>
-              {busy === "resend" ? t("auth.sending") : cooldownSeconds > 0 ? t("auth.sendLinkIn").replace("{time}", formatShortCountdown(cooldownSeconds)) : t("auth.resendLink")}
-            </button>
-          </div>
-        )}
-        <button className="control mt-3 w-full justify-center bg-raised text-text" disabled={Boolean(busy)} onClick={() => void submitDemo()}>
+        <button className="control w-full justify-center bg-text text-bg" disabled={busy} onClick={() => void submitGoogle()}>
+          <GoogleLogo /> {t("auth.continueGoogle")}
+        </button>
+        <button className="control mt-3 w-full justify-center bg-raised text-text" disabled={busy} onClick={() => void submitDemo()}>
           {t("auth.tryDemo")}
         </button>
-        {messageKey && <p className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{t(messageKey)}</p>}
+        {message && <p className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{t("auth.googleError")}</p>}
         <p className="mt-6 text-xs leading-5 text-muted">{t("auth.consent")}</p>
       </section>
     </main>
