@@ -29,6 +29,12 @@ export function getAuthRedirectUri() {
   return "http://localhost:3000/auth/callback";
 }
 
+export function getEmailConfirmUri() {
+  if (typeof window !== "undefined") return `${window.location.origin}/auth/confirm`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  return `${siteUrl || "http://localhost:3000"}/auth/confirm`;
+}
+
 export async function finishAuthCallback(url: string): Promise<Session | null> {
   if (!supabase) throw new Error("Add Supabase credentials to .env.local before using authentication.");
   const parsed = new URL(url);
@@ -54,11 +60,31 @@ export async function signInWithProvider(provider: "google") {
   return null;
 }
 
-export async function signInWithEmail(email: string) {
+export async function sendMagicLink(email: string) {
   if (!supabase) throw new Error("Add Supabase credentials to .env.local before using email authentication.");
+  const normalizedEmail = email.trim().toLowerCase();
   const result = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: getAuthRedirectUri(), shouldCreateUser: true },
+    email: normalizedEmail,
+    options: {
+      emailRedirectTo: getEmailConfirmUri(),
+      shouldCreateUser: true,
+    },
   });
   if (result.error) throw result.error;
+  return normalizedEmail;
+}
+
+export async function finishEmailConfirmation(url: string): Promise<Session> {
+  if (!supabase) throw new Error("Add Supabase credentials to .env.local before using email authentication.");
+  const parsed = new URL(url);
+  const tokenHash = parsed.searchParams.get("token_hash")?.trim();
+  const type = parsed.searchParams.get("type");
+  if (!tokenHash || type !== "email") throw new Error("This sign-in link is invalid or incomplete.");
+  const result = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: "email",
+  });
+  if (result.error) throw result.error;
+  if (!result.data.session) throw new Error("Email confirmation completed without a session.");
+  return result.data.session;
 }

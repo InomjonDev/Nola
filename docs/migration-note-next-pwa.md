@@ -5,7 +5,7 @@
 - Supabase migrations and RLS tests in `supabase/`.
 - Domain types, constants, mappers, currency parsing, formatting, localization dictionaries, and offline queue semantics in `src/lib/`.
 - Local-first expense mutations with sync recovery.
-- Google OAuth and email magic links through Supabase Auth.
+- Google OAuth and cross-browser passwordless email links through Supabase Auth.
 
 ## Rebuilt for Web
 

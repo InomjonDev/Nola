@@ -5,15 +5,15 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 
 import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, appStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
-import { categoryRow, expenseRow, paymentMethodRow, profileRow, tagRow, toCategory, toExpense, toPaymentMethod, toProfile, toTag } from "@/lib/mappers";
+import { budgetRow, categoryRow, expenseRow, incomeEntryRow, paymentMethodRow, profileRow, tagRow, toBudget, toCategory, toExpense, toIncomeEntry, toPaymentMethod, toProfile, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
 import { scheduleNextReminder, setDailyReminderEnabled } from "@/lib/notifications";
 import { accountStorage, secureStorage } from "@/lib/secure-storage";
-import { isSupabaseConfigured, signInWithEmail, signInWithProvider, supabase } from "@/lib/supabase";
-import type { Category, CategoryIconName, Expense, ExpenseDraft, PaymentMethod, PersistedAppData, Profile, SyncOperation, Tag, UserIdentity } from "@/lib/types";
+import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase } from "@/lib/supabase";
+import type { Budget, BudgetDraft, Category, CategoryIconName, Expense, ExpenseDraft, IncomeEntry, IncomeEntryDraft, PaymentMethod, PersistedAppData, Profile, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
-  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], syncQueue: [] };
+  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], incomeEntries: [], budgets: [], syncQueue: [] };
 }
 
 type StoreValue = PersistedAppData & {
@@ -24,7 +24,7 @@ type StoreValue = PersistedAppData & {
   syncError: string | null;
   cloudEnabled: boolean;
   signInSocial: (provider: "google") => Promise<boolean>;
-  signInEmail: (email: string) => Promise<void>;
+  sendMagicLink: (email: string) => Promise<string>;
   updateDisplayName: (name: string) => Promise<void>;
   signInDemo: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,6 +32,10 @@ type StoreValue = PersistedAppData & {
   saveExpense: (draft: ExpenseDraft, id?: string) => string;
   deleteExpense: (id: string) => void;
   restoreExpense: (id: string) => void;
+  saveIncome: (draft: IncomeEntryDraft, id?: string) => string;
+  deleteIncome: (id: string) => void;
+  saveBudget: (draft: BudgetDraft, id?: string) => string;
+  deleteBudget: (id: string) => void;
   ensureTags: (names: string[]) => string[];
   ensurePaymentMethods: (names: string[]) => void;
   addCategory: (name: string, icon?: CategoryIconName) => string | undefined;
@@ -69,6 +73,8 @@ function scopeDataToUser(source: Partial<PersistedAppData>, userId: string): Per
     paymentMethods: (source.paymentMethods ?? []).filter((item) => item.userId === userId),
     tags: (source.tags ?? []).filter((item) => item.userId === userId),
     expenses: (source.expenses ?? []).filter((item) => item.userId === userId),
+    incomeEntries: (source.incomeEntries ?? []).filter((item) => item.userId === userId),
+    budgets: (source.budgets ?? []).filter((item) => item.userId === userId),
     syncQueue: (source.syncQueue ?? []).filter((operation) => operation.recordId === userId || operation.payload?.user_id === userId),
   };
 }
@@ -114,6 +120,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const syncLock = useRef(false);
+  const deleteAccountRequest = useRef<Promise<void> | null>(null);
   const ownerRef = useRef<string | null>(null);
   const cloudEnabled = isSupabaseConfigured && Boolean(user && !user.isDemo);
 
@@ -128,14 +135,16 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const pullRemote = useCallback(async (userId: string) => {
     if (!supabase) return;
-    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult] = await Promise.all([
+    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("categories").select("*").or(`kind.eq.global,user_id.eq.${userId}`),
       supabase.from("payment_methods").select("*").eq("user_id", userId),
       supabase.from("tags").select("*").eq("user_id", userId),
       supabase.from("expenses").select("*").eq("user_id", userId),
+      supabase.from("income_entries").select("*").eq("user_id", userId),
+      supabase.from("budgets").select("*").eq("user_id", userId),
     ]);
-    const firstError = [profileResult, categoryResult, paymentResult, tagResult, expenseResult].find((result) => result.error)?.error;
+    const firstError = [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult].find((result) => result.error)?.error;
     if (firstError) {
       setSyncError(firstError.message);
       return;
@@ -147,6 +156,8 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       paymentMethods: mergeLatest(current.paymentMethods, (paymentResult.data ?? []).map(toPaymentMethod)),
       tags: mergeLatest(current.tags, (tagResult.data ?? []).map(toTag)),
       expenses: mergeLatest(current.expenses, (expenseResult.data ?? []).map(toExpense)),
+      incomeEntries: mergeLatest(current.incomeEntries, (incomeResult.data ?? []).map(toIncomeEntry)),
+      budgets: mergeLatest(current.budgets, (budgetResult.data ?? []).map(toBudget)),
     }));
   }, []);
 
@@ -187,7 +198,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (!supabase) return;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
-        if (_event === "INITIAL_SESSION") {
+        if (_event === "INITIAL_SESSION" || ownerRef.current === "demo-user") {
           setHydrated(true);
           return;
         }
@@ -247,7 +258,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     return false;
   };
 
-  const signInEmail = async (email: string) => signInWithEmail(email);
+  const sendMagicLink = async (email: string) => requestMagicLink(email);
 
   const updateDisplayName = async (name: string) => {
     const clean = name.trim().slice(0, 80);
@@ -270,7 +281,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const signOut = async () => {
     if (user) await writeAccountData(user.id, data);
-    await setDailyReminderEnabled(false);
+    await setDailyReminderEnabled(false, user?.isDemo ? undefined : user?.id);
     if (supabase && user && !user.isDemo) await supabase.auth.signOut();
     await secureStorage.removeItem(DEMO_SESSION_KEY);
     ownerRef.current = null;
@@ -358,6 +369,51 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     });
   };
 
+  const saveIncome = (draft: IncomeEntryDraft, id?: string) => {
+    if (!user) return "";
+    const now = new Date().toISOString();
+    const income: IncomeEntry = { ...draft, id: id ?? createId(), userId: user.id, deletedAt: null, updatedAt: now };
+    setData((current) => ({
+      ...current,
+      incomeEntries: id ? current.incomeEntries.map((item) => item.id === id ? income : item) : [income, ...current.incomeEntries],
+      syncQueue: queue(current, { table: "income_entries", action: "upsert", recordId: income.id, payload: incomeEntryRow(income) }, cloudEnabled),
+    }));
+    return income.id;
+  };
+
+  const deleteIncome = (id: string) => {
+    const now = new Date().toISOString();
+    setData((current) => {
+      const target = current.incomeEntries.find((item) => item.id === id);
+      if (!target) return current;
+      const deleted = { ...target, deletedAt: now, updatedAt: now };
+      return { ...current, incomeEntries: current.incomeEntries.map((item) => item.id === id ? deleted : item), syncQueue: queue(current, { table: "income_entries", action: "upsert", recordId: id, payload: incomeEntryRow(deleted) }, cloudEnabled) };
+    });
+  };
+
+  const saveBudget = (draft: BudgetDraft, id?: string) => {
+    if (!user) return "";
+    const now = new Date().toISOString();
+    const existing = !id ? data.budgets.find((item) => !item.deletedAt && item.month === draft.month && item.currency === draft.currency) : undefined;
+    const budget: Budget = { ...draft, id: id ?? existing?.id ?? createId(), userId: user.id, deletedAt: null, updatedAt: now };
+    setData((current) => ({
+      ...current,
+      budgets: current.budgets.some((item) => item.id === budget.id) ? current.budgets.map((item) => item.id === budget.id ? budget : item) : [budget, ...current.budgets],
+      syncQueue: queue(current, { table: "budgets", action: "upsert", recordId: budget.id, payload: budgetRow(budget) }, cloudEnabled),
+    }));
+    return budget.id;
+  };
+
+  const deleteBudget = (id: string) => {
+    const now = new Date().toISOString();
+    setData((current) => {
+      const target = current.budgets.find((item) => item.id === id);
+      if (!target) return current;
+      const deleted = { ...target, deletedAt: now, updatedAt: now };
+      return { ...current, budgets: current.budgets.map((item) => item.id === id ? deleted : item), syncQueue: queue(current, { table: "budgets", action: "upsert", recordId: id, payload: budgetRow(deleted) }, cloudEnabled) };
+    });
+  };
+
   const addCategory = (name: string, icon?: CategoryIconName) => {
     if (!user || !name.trim()) return undefined;
     const item: Category = { id: createId(), userId: user.id, name: name.trim(), color: "#4F7F6D", icon: icon ?? "more-horizontal", kind: "custom", archivedAt: null, updatedAt: new Date().toISOString() };
@@ -385,13 +441,22 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   };
 
   const deleteAccount = async () => {
-    const deletedUserId = user?.id;
-    if (supabase && user && !user.isDemo) {
-      const { error } = await supabase.rpc("delete_own_account");
-      if (error) throw error;
+    if (deleteAccountRequest.current) return deleteAccountRequest.current;
+    const request = (async () => {
+      const deletedUserId = user?.id;
+      if (supabase && user && !user.isDemo) {
+        const { error } = await supabase.rpc("delete_own_account");
+        if (error) throw error;
+      }
+      await signOut();
+      if (deletedUserId) await accountStorage.removeItem(appStorageKey(deletedUserId));
+    })();
+    deleteAccountRequest.current = request;
+    try {
+      await request;
+    } finally {
+      if (deleteAccountRequest.current === request) deleteAccountRequest.current = null;
     }
-    await signOut();
-    if (deletedUserId) await accountStorage.removeItem(appStorageKey(deletedUserId));
   };
 
   return (
@@ -404,7 +469,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       syncError,
       cloudEnabled,
       signInSocial,
-      signInEmail,
+      sendMagicLink,
       updateDisplayName,
       signInDemo,
       signOut,
@@ -412,6 +477,10 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       saveExpense,
       deleteExpense,
       restoreExpense,
+      saveIncome,
+      deleteIncome,
+      saveBudget,
+      deleteBudget,
       ensureTags,
       ensurePaymentMethods,
       addCategory,

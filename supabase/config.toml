@@ -1,0 +1,27 @@
+project_id = "walletly"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback", "http://localhost:3000/auth/confirm"]
+
+[auth.email]
+max_frequency = "1m"
+otp_length = 6
+otp_expiry = 1800
+
+[auth.rate_limit]
+email_sent = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[auth.email.template.confirmation]
+subject = "Confirm your Walletly account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.magic_link]
+subject = "Your Walletly sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[functions.daily-reminders]
+verify_jwt = false

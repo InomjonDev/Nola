@@ -84,9 +84,34 @@ export type ExpenseDraft = Omit<Expense, "id" | "userId" | "currency" | "deleted
   currency?: string;
 };
 
+export type IncomeEntry = {
+  id: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  receivedAt: string;
+  note: string;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type IncomeEntryDraft = Omit<IncomeEntry, "id" | "userId" | "deletedAt" | "updatedAt">;
+
+export type Budget = {
+  id: string;
+  userId: string;
+  month: string;
+  amount: number;
+  currency: string;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type BudgetDraft = Omit<Budget, "id" | "userId" | "deletedAt" | "updatedAt">;
+
 export type SyncOperation = {
   id: string;
-  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses";
+  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses" | "income_entries" | "budgets";
   action: "upsert" | "delete";
   recordId: string;
   payload?: Record<string, unknown>;
@@ -99,5 +124,7 @@ export type PersistedAppData = {
   paymentMethods: PaymentMethod[];
   tags: Tag[];
   expenses: Expense[];
+  incomeEntries: IncomeEntry[];
+  budgets: Budget[];
   syncQueue: SyncOperation[];
 };

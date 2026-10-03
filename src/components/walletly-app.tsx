@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, ChevronRight, Clock3, Cloud, Download, Eye, EyeOff, Home, LineChart, ListFilter, LogOut, Moon, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Sun, Tags, Trash2, User, WalletCards, X } from "lucide-react";
+import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, ChevronRight, Clock3, Cloud, Download, Eye, EyeOff, Home, LineChart, ListFilter, LogOut, MailCheck, Moon, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Sun, Tags, Trash2, User, WalletCards, X } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { CategoryIcon, categoryIconNames } from "@/components/category-icon";
 import { GoogleLogo } from "@/components/google-logo";
+import { consumeRollingWindow, formatShortCountdown, parseStoredDeadline, secondsUntil } from "@/lib/action-rate-limit";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, WALLETLY_CURRENCIES } from "@/lib/constants";
 import { formatExpenseDate, formatMoney } from "@/lib/format";
+import { activeBudget, activeExpenses, activeIncome, monthKey, remainingBudget, sumAmounts } from "@/lib/budgeting";
 import { languageLocale, type TranslationKey } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notifications";
@@ -24,6 +26,9 @@ const navItems = [
   { href: "/insights", view: "insights", labelKey: "nav.insights", icon: LineChart },
   { href: "/profile", view: "profile", labelKey: "nav.profile", icon: User },
 ] as const;
+
+const MAGIC_LINK_COOLDOWN_KEY = "walletly.auth.magicLinkNextAllowedAt";
+const MAGIC_LINK_COOLDOWN_MS = 60_000;
 
 function visibleExpenses(expenses: Expense[]) {
   return expenses.filter((expense) => !expense.deletedAt).sort((a, b) => new Date(b.spentAt).getTime() - new Date(a.spentAt).getTime());
@@ -46,6 +51,19 @@ function startOfWeek() {
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
+}
+
+function magicLinkErrorKey(error: unknown, isOnline: boolean): TranslationKey {
+  if (!isOnline) return "auth.offline";
+  const code = error && typeof error === "object" && "code" in error ? String(error.code).toLowerCase() : "";
+  const status = error && typeof error === "object" && "status" in error ? Number(error.status) : 0;
+  const details = error && typeof error === "object"
+    ? `${code} ${"message" in error ? String(error.message) : ""}`.toLowerCase()
+    : String(error).toLowerCase();
+  if (code === "over_email_send_rate_limit" || details.includes("email rate limit") || details.includes("email send rate")) return "auth.emailTemporarilyLimited";
+  if (code === "over_request_rate_limit" || status === 429 || details.includes("too many requests")) return "auth.tooManyRequests";
+  if (details.includes("not authorized") || details.includes("unauthorized") || details.includes("email_address_invalid")) return "auth.unauthorizedEmail";
+  return "auth.sendLinkError";
 }
 
 function ActivePill({ index, count, variant = "default" }: { index: number; count: number; variant?: "default" | "segment" | "vertical" }) {
@@ -107,55 +125,143 @@ function AuthScreen() {
   const store = useAppStore();
   const { t } = useI18n();
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [sentEmail, setSentEmail] = useState<string | null>(null);
+  const [messageKey, setMessageKey] = useState<TranslationKey | null>(null);
+  const [busy, setBusy] = useState<"google" | "send" | "resend" | null>(null);
+  const [cooldownReady, setCooldownReady] = useState(false);
+  const [nextAllowedAt, setNextAllowedAt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const canSend = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const cooldownSeconds = secondsUntil(nextAllowedAt, now);
+
+  useEffect(() => {
+    const current = Date.now();
+    const restored = parseStoredDeadline(localStorage.getItem(MAGIC_LINK_COOLDOWN_KEY), current);
+    if (!restored) localStorage.removeItem(MAGIC_LINK_COOLDOWN_KEY);
+    setNow(current);
+    setNextAllowedAt(restored);
+    setCooldownReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!nextAllowedAt) return;
+    const tick = () => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= nextAllowedAt) {
+        localStorage.removeItem(MAGIC_LINK_COOLDOWN_KEY);
+        setNextAllowedAt(0);
+      }
+    };
+    const timer = window.setInterval(tick, 1_000);
+    return () => window.clearInterval(timer);
+  }, [nextAllowedAt]);
+
+  function startMagicLinkCooldown() {
+    const current = Date.now();
+    const deadline = current + MAGIC_LINK_COOLDOWN_MS;
+    localStorage.setItem(MAGIC_LINK_COOLDOWN_KEY, String(deadline));
+    setNow(current);
+    setNextAllowedAt(deadline);
+  }
+
+  function changeEmail() {
+    setSentEmail(null);
+    setMessageKey(null);
+  }
 
   async function submitGoogle() {
-    setBusy(true);
-    setMessage("");
+    setBusy("google");
+    setMessageKey(null);
     try {
       await store.signInSocial("google");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("auth.googleError"));
+    } catch {
+      setMessageKey("auth.googleError");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
   async function submitEmail() {
-    setBusy(true);
-    setMessage("");
+    if (!canSend || busy || !cooldownReady || cooldownSeconds > 0) return;
+    setBusy("send");
+    setMessageKey(null);
     try {
-      await store.signInEmail(email);
-      setMessage(t("auth.magicLinkSent"));
+      const normalizedEmail = await store.sendMagicLink(email);
+      setEmail(normalizedEmail);
+      setSentEmail(normalizedEmail);
+      startMagicLinkCooldown();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t("auth.emailError"));
+      setMessageKey(magicLinkErrorKey(error, store.isOnline));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
+  async function resendLink() {
+    if (!sentEmail || busy || !cooldownReady || cooldownSeconds > 0) return;
+    setBusy("resend");
+    setMessageKey(null);
+    try {
+      const normalizedEmail = await store.sendMagicLink(sentEmail);
+      setSentEmail(normalizedEmail);
+      startMagicLinkCooldown();
+    } catch (error) {
+      setMessageKey(magicLinkErrorKey(error, store.isOnline));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function submitDemo() {
+    setSentEmail(null);
+    await store.signInDemo();
+  }
+
   return (
-    <main className="grid min-h-dvh place-items-center bg-bg px-4 py-8 text-text">
-      <section className="w-full max-w-md rounded-[28px] bg-surface p-6 shadow-soft sm:p-8">
-        <div className="mb-8">
-          <img src="/branding/walletly-mascot.png" alt="Walletly" className="h-auto w-52 rounded-2xl bg-white p-2 shadow-sm" />
+    <main className="grid min-h-dvh place-items-center bg-bg px-4 py-3 text-text sm:py-8">
+      <section className="w-full max-w-md rounded-[28px] bg-surface p-4 shadow-soft sm:p-8">
+        <div className={sentEmail ? "mb-5 sm:mb-7" : "mb-6 sm:mb-8"}>
+          <img src="/branding/walletly-mascot.png" alt="Walletly" className={cx("h-auto rounded-2xl bg-white p-2 shadow-sm", sentEmail ? "w-32 sm:w-40" : "w-44 sm:w-52")} />
           <h1 className="sr-only">Walletly</h1>
           <p className="mt-3 text-sm text-muted">{t("auth.description")}</p>
         </div>
-        <button className="control w-full justify-center bg-text text-bg" disabled={busy} onClick={() => void submitGoogle()}>
-          <GoogleLogo /> {t("auth.continueGoogle")}
-        </button>
-        <div className="my-5 h-px bg-line" />
-        <label className="label" htmlFor="email">{t("auth.emailMagicLink")}</label>
-        <input id="email" className="input mt-2" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t("auth.emailPlaceholder")} />
-        <button className="control mt-3 w-full justify-center bg-accent text-white" disabled={busy || !email.includes("@")} onClick={() => void submitEmail()}>
-          {busy ? t("auth.sending") : t("auth.sendMagicLink")}
-        </button>
-        <button className="control mt-3 w-full justify-center bg-raised text-text" onClick={() => void store.signInDemo()}>
+        {!sentEmail ? (
+          <>
+            <button className="control w-full justify-center bg-text text-bg" disabled={Boolean(busy)} onClick={() => void submitGoogle()}>
+              <GoogleLogo /> {t("auth.continueGoogle")}
+            </button>
+            <div className="my-5 h-px bg-line" />
+            <form onSubmit={(event) => { event.preventDefault(); void submitEmail(); }}>
+              <label className="label" htmlFor="email">{t("auth.email")}</label>
+              <input id="email" className="input mt-2" type="email" inputMode="email" autoCapitalize="none" autoComplete="email" required value={email} onChange={(event) => { setEmail(event.target.value); setMessageKey(null); }} placeholder={t("auth.emailPlaceholder")} />
+              <button className="control mt-3 w-full justify-center bg-accent text-white" type="submit" disabled={Boolean(busy) || !canSend || !cooldownReady || cooldownSeconds > 0}>
+                {busy === "send" ? t("auth.sending") : cooldownSeconds > 0 ? t("auth.sendLinkIn").replace("{time}", formatShortCountdown(cooldownSeconds)) : t("auth.sendLink")}
+              </button>
+            </form>
+          </>
+        ) : (
+          <div>
+            <button className="inline-flex min-h-11 items-center gap-1 rounded-full pr-3 text-sm font-semibold text-accent-strong" type="button" disabled={Boolean(busy)} onClick={changeEmail}>
+              <ChevronLeft className="h-4 w-4" /> {t("auth.changeEmail")}
+            </button>
+            <div className="mt-2 rounded-2xl bg-raised px-5 py-6 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-accent-soft text-accent-strong">
+                <MailCheck className="h-6 w-6" />
+              </span>
+              <h2 className="mt-4 text-xl font-semibold">{t("auth.checkInbox")}</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">{t("auth.linkSent").replace("{email}", sentEmail)}</p>
+              <p className="mt-2 text-xs leading-5 text-muted">{t("auth.openLink")}</p>
+            </div>
+            <button className="control mt-3 w-full justify-center bg-raised text-text" type="button" disabled={Boolean(busy) || !cooldownReady || cooldownSeconds > 0} onClick={() => void resendLink()}>
+              {busy === "resend" ? t("auth.sending") : cooldownSeconds > 0 ? t("auth.sendLinkIn").replace("{time}", formatShortCountdown(cooldownSeconds)) : t("auth.resendLink")}
+            </button>
+          </div>
+        )}
+        <button className="control mt-3 w-full justify-center bg-raised text-text" disabled={Boolean(busy)} onClick={() => void submitDemo()}>
           {t("auth.tryDemo")}
         </button>
-        {message && <p className="mt-4 text-sm text-muted">{message}</p>}
+        {messageKey && <p className="mt-4 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" role="alert">{t(messageKey)}</p>}
         <p className="mt-6 text-xs leading-5 text-muted">{t("auth.consent")}</p>
       </section>
     </main>
@@ -567,7 +673,12 @@ function InsightsView() {
   const expenses = visibleExpenses(store.expenses);
   const [period, setPeriod] = useState<"week" | "month">("week");
   const [mode, setMode] = useState<"expenses" | "income">("expenses");
+  const [incomeAmount, setIncomeAmount] = useState("");
+  const [incomeNote, setIncomeNote] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState("");
   const currency = store.profile?.currency ?? "USD";
+  const currentMonth = monthKey(new Date());
+  const currentBudget = activeBudget(store.budgets, currency, currentMonth);
   const periodExpenses = expenses.filter((expense) => period === "week" ? new Date(expense.spentAt) >= startOfWeek() : new Date(expense.spentAt) >= startOfMonth());
   const total = periodExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const bars = period === "week"
@@ -592,7 +703,32 @@ function InsightsView() {
         <ActivePill index={mode === "expenses" ? 0 : 1} count={2} variant="segment" />
         {(["expenses", "income"] as const).map((item) => <button key={item} className={cx("control min-h-10 justify-center rounded-full bg-transparent text-sm", mode === item && "text-text")} onClick={() => setMode(item)}>{item === "expenses" ? t("insights.expenses") : t("insights.income")}</button>)}
       </div>
-      {mode === "income" ? <div className="rounded-xl bg-raised p-6 text-center text-sm text-muted">{t("insights.incomeDisabled")}</div> : <>
+      {mode === "income" ? <section className="grid gap-5">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.incomeTotal")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)), currency, languageLocale(language))}</p></div>
+          <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.expenses")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeExpenses(store.expenses, currency, currentMonth)), currency, languageLocale(language))}</p></div>
+          <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.remaining")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)) - sumAmounts(activeExpenses(store.expenses, currency, currentMonth)), currency, languageLocale(language))}</p></div>
+        </div>
+        <div className="grid gap-4 rounded-xl bg-raised p-4 sm:grid-cols-2">
+          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(incomeAmount); if (!Number.isFinite(amount) || amount <= 0) return; store.saveIncome({ amount, currency, receivedAt: new Date().toISOString(), note: incomeNote.trim() }); setIncomeAmount(""); setIncomeNote(""); }}>
+            <div><p className="font-semibold">{t("insights.addIncome")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.monthlyOverview")}</p></div>
+            <input className="input" inputMode="decimal" value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} placeholder={t("insights.incomePlaceholder")} aria-label={t("insights.addIncome")} />
+            <input className="input" value={incomeNote} onChange={(event) => setIncomeNote(event.target.value)} placeholder={t("expense.notePlaceholder")} aria-label={t("expense.noteOptional")} />
+            <button className="control justify-center bg-text text-bg" type="submit">{t("common.add")}</button>
+          </form>
+          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(budgetAmount); if (!Number.isFinite(amount) || amount <= 0) return; store.saveBudget({ amount, currency, month: currentMonth }); setBudgetAmount(""); }}>
+            <div><p className="font-semibold">{t("insights.addBudget")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.budget")}: {currentMonth}</p></div>
+            <input className="input" inputMode="decimal" value={budgetAmount} onChange={(event) => setBudgetAmount(event.target.value)} placeholder={t("insights.budgetPlaceholder")} aria-label={t("insights.addBudget")} />
+            <div className="flex min-h-11 items-center text-sm text-muted">{(() => { const remaining = remainingBudget(store.budgets, store.expenses, currency, currentMonth); return remaining === null ? t("insights.noBudget") : `${t("insights.remaining")}: ${formatMoney(remaining, currency, languageLocale(language))}`; })()}</div>
+            <button className="control justify-center bg-accent text-white" type="submit">{t("common.saveChanges")}</button>
+          </form>
+        </div>
+        {currentBudget && <div className="flex min-h-12 items-center justify-between gap-3 border-b border-line py-2"><div><p className="text-sm font-semibold">{t("insights.budget")} · {currentBudget.month}</p><p className="text-[11px] text-muted">{formatMoney(currentBudget.amount, currency, languageLocale(language))}</p></div><button className="icon-button" aria-label={t("insights.removeBudget")} onClick={() => store.deleteBudget(currentBudget.id)}><Trash2 className="h-4 w-4" /></button></div>}
+        <div className="grid gap-2">
+          {activeIncome(store.incomeEntries, currency, currentMonth).map((entry) => <div key={entry.id} className="flex min-h-12 items-center justify-between gap-3 border-b border-line py-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{entry.note || t("insights.income")}</p><p className="text-[11px] text-muted">{formatExpenseDate(entry.receivedAt, languageLocale(language))}</p></div><div className="flex items-center gap-2"><span className="text-sm font-semibold tabular-nums">{formatMoney(entry.amount, currency, languageLocale(language))}</span><button className="icon-button" aria-label={t("insights.removeIncome")} onClick={() => store.deleteIncome(entry.id)}><Trash2 className="h-4 w-4" /></button></div></div>)}
+          {activeIncome(store.incomeEntries, currency, currentMonth).length === 0 && <p className="text-[13px] text-muted">{t("insights.noIncome")}</p>}
+        </div>
+      </section> : <>
         <section className="grid gap-6">
           <div className="flex items-start justify-between gap-4"><div><p className="text-[13px] text-muted">{period === "week" ? t("history.thisWeek") : t("history.thisMonth")} · {currency}</p><p className="mt-1 text-4xl font-bold tabular-nums">{formatMoney(total, currency, languageLocale(language))}</p></div><div className="flex gap-1">{(["week", "month"] as const).map((item) => <button key={item} className={cx("chip", period === item && "chip-active")} onClick={() => setPeriod(item)}>{item === "week" ? t("insights.week") : t("insights.month")}</button>)}</div></div>
           <div className="flex min-h-[190px] items-end gap-2 sm:gap-4">
@@ -669,16 +805,28 @@ function SettingsView() {
   const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useLedgerTheme();
   const [reminders, setReminders] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const exportEvents = useRef<number[]>([]);
   useEffect(() => { void notificationsEnabled().then(setReminders); }, []);
 
   function exportData(type: "json" | "csv") {
+    const decision = consumeRollingWindow(exportEvents.current, Date.now(), 5, 60_000);
+    exportEvents.current = decision.events;
+    if (!decision.allowed) {
+      setExportMessage(t("settings.exportRateLimited").replace("{time}", formatShortCountdown(decision.retryAfterSeconds)));
+      return;
+    }
+    setExportMessage(null);
     const rows = visibleExpenses(store.expenses);
     const content = type === "json"
-      ? JSON.stringify({ profile: store.profile, categories: store.categories, paymentMethods: store.paymentMethods, tags: store.tags, expenses: rows }, null, 2)
-      : ["id,amount,currency,spent_at,category,note", ...rows.map((expense) => {
+      ? JSON.stringify({ profile: store.profile, categories: store.categories, paymentMethods: store.paymentMethods, tags: store.tags, expenses: rows, incomeEntries: store.incomeEntries.filter((entry) => !entry.deletedAt), budgets: store.budgets.filter((budget) => !budget.deletedAt) }, null, 2)
+      : ["type,id,amount,currency,date,category,note,month", ...rows.map((expense) => {
           const category = store.categories.find((item) => item.id === expense.categoryId)?.name ?? "";
-          return [expense.id, expense.amount, expense.currency, expense.spentAt, category, expense.note].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",");
-        })].join("\n");
+          return ["expense", expense.id, expense.amount, expense.currency, expense.spentAt, category, expense.note, ""].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",");
+        }), ...store.incomeEntries.filter((entry) => !entry.deletedAt).map((entry) => ["income", entry.id, entry.amount, entry.currency, entry.receivedAt, "", entry.note, ""].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")), ...store.budgets.filter((budget) => !budget.deletedAt).map((budget) => ["budget", budget.id, budget.amount, budget.currency, "", "", "", budget.month].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(","))].join("\n");
     const blob = new Blob([content], { type: type === "json" ? "application/json" : "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -688,6 +836,19 @@ function SettingsView() {
     URL.revokeObjectURL(url);
   }
 
+  async function deleteAccount() {
+    if (deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await store.deleteAccount();
+      setDeleteConfirmOpen(false);
+    } catch {
+      setDeleteError(t("settings.deleteFailed"));
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-2">
       <section className="panel">
@@ -695,7 +856,7 @@ function SettingsView() {
         <div className="mt-5 grid gap-3">
           <Segment label={t("settings.appearanceLabel")} options={["system", "light", "dark"]} labels={[t("settings.system"), t("settings.light"), t("settings.dark")]} value={mode} onChange={(value) => setMode(value as typeof mode)} icons={[Settings, Sun, Moon]} />
           <Segment label={t("settings.language")} options={["en", "ru", "uz"]} labels={[t("settings.languageEnglish"), t("settings.languageRussian"), t("settings.languageUzbek")]} value={language} onChange={(value) => setLanguage(value as typeof language)} />
-          <button className="control justify-between bg-raised" onClick={async () => { const enabled = await setDailyReminderEnabled(!reminders); setReminders(enabled); }}>
+          <button className="control justify-between bg-raised" onClick={async () => { const enabled = await setDailyReminderEnabled(!reminders, store.user?.isDemo ? undefined : store.user?.id); setReminders(enabled); }}>
             <span className="flex items-center gap-2"><Bell className="h-5 w-5" /> {t("settings.dailyCheckIn")}</span><span>{reminders ? t("settings.on") : t("settings.off")}</span>
           </button>
           <p className="text-xs leading-5 text-muted">{t("settings.reminderHelp")}</p>
@@ -710,9 +871,28 @@ function SettingsView() {
           <Link href="/terms" className="control justify-between bg-raised">{t("settings.termsService")}<ChevronRight className="h-5 w-5" /></Link>
           <Link href="/cookies" className="control justify-between bg-raised">{t("settings.cookiePolicy")}<ChevronRight className="h-5 w-5" /></Link>
           <button className="control justify-between bg-raised" onClick={() => void store.signOut()}><span className="flex items-center gap-2"><LogOut className="h-5 w-5" /> {t("settings.signOut")}</span></button>
-          <button className="control justify-between bg-danger/10 text-danger" onClick={() => { if (confirm(t("settings.confirmDelete"))) void store.deleteAccount(); }}><span className="flex items-center gap-2"><Trash2 className="h-5 w-5" /> {t("settings.deleteAccount")}</span></button>
+          <button className="control justify-between bg-danger/10 text-danger" onClick={() => { setDeleteError(null); setDeleteConfirmOpen(true); }}><span className="flex items-center gap-2"><Trash2 className="h-5 w-5" /> {t("settings.deleteAccount")}</span></button>
+          {exportMessage && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-semibold text-danger" role="alert">{exportMessage}</p>}
         </div>
       </section>
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/45 p-3 backdrop-blur-sm sm:items-center sm:justify-center" role="presentation" onClick={() => { if (!deleting) setDeleteConfirmOpen(false); }}>
+          <section className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-soft sm:p-6" role="dialog" aria-modal="true" aria-labelledby="delete-account-title" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 id="delete-account-title" className="text-lg font-bold">{t("settings.deleteDialogTitle")}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted">{t("settings.deleteDialogDetail")}</p>
+                {deleteError && <p className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="alert">{deleteError}</p>}
+              </div>
+              <button className="icon-button shrink-0" type="button" aria-label={t("common.close")} disabled={deleting} onClick={() => setDeleteConfirmOpen(false)}><X className="h-5 w-5" /></button>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <button className="control justify-center bg-raised" type="button" disabled={deleting} onClick={() => setDeleteConfirmOpen(false)}>{t("common.cancel")}</button>
+              <button className="control justify-center bg-danger text-white disabled:opacity-60" type="button" disabled={deleting} onClick={() => void deleteAccount()}>{deleting ? t("settings.deleting") : t("settings.confirmDeleteAction")}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ export function reportError(error: unknown, context: ErrorContext) {
     event: "walletly_error",
     message: sanitize(source.message),
     name: sanitize(source.name),
+    stack: source.stack ? sanitize(source.stack) : undefined,
     surface: context.surface,
     platform: "web",
     release: process.env.NEXT_PUBLIC_APP_VERSION ?? "development",
@@ -31,5 +32,6 @@ export function reportError(error: unknown, context: ErrorContext) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    keepalive: true,
   }).catch(() => undefined);
 }

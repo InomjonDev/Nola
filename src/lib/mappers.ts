@@ -1,4 +1,4 @@
-import type { Category, Expense, PaymentMethod, Profile, Tag } from "@/lib/types";
+import type { Budget, Category, Expense, IncomeEntry, PaymentMethod, Profile, Tag } from "@/lib/types";
 
 type Row = Record<string, unknown>;
 
@@ -60,6 +60,50 @@ export const expenseRow = (item: Expense) => ({
   payment_method_id: item.paymentMethodId,
   note: item.note || null,
   tag_ids: item.tagIds,
+  deleted_at: item.deletedAt,
+  client_updated_at: item.updatedAt,
+  updated_at: item.updatedAt,
+});
+
+export const toIncomeEntry = (row: Row): IncomeEntry => ({
+  id: row.id as string,
+  userId: row.user_id as string,
+  amount: Number(row.amount),
+  currency: row.currency as string,
+  receivedAt: row.received_at as string,
+  note: (row.note as string | null) ?? "",
+  deletedAt: (row.deleted_at as string | null) ?? null,
+  updatedAt: (row.client_updated_at as string) ?? (row.updated_at as string),
+});
+
+export const incomeEntryRow = (item: IncomeEntry) => ({
+  id: item.id,
+  user_id: item.userId,
+  amount: item.amount,
+  currency: item.currency,
+  received_at: item.receivedAt,
+  note: item.note || null,
+  deleted_at: item.deletedAt,
+  client_updated_at: item.updatedAt,
+  updated_at: item.updatedAt,
+});
+
+export const toBudget = (row: Row): Budget => ({
+  id: row.id as string,
+  userId: row.user_id as string,
+  month: row.month as string,
+  amount: Number(row.amount),
+  currency: row.currency as string,
+  deletedAt: (row.deleted_at as string | null) ?? null,
+  updatedAt: (row.client_updated_at as string) ?? (row.updated_at as string),
+});
+
+export const budgetRow = (item: Budget) => ({
+  id: item.id,
+  user_id: item.userId,
+  month: item.month,
+  amount: item.amount,
+  currency: item.currency,
   deleted_at: item.deletedAt,
   client_updated_at: item.updatedAt,
   updated_at: item.updatedAt,
