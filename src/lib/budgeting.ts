@@ -22,6 +22,12 @@ export function sumAmounts(items: Array<{ amount: number }>) {
 }
 
 export function remainingBudget(budgets: Budget[], expenses: Expense[], currency: string, month: string) {
+  return budgetStatus(budgets, expenses, currency, month)?.remaining ?? null;
+}
+
+export function budgetStatus(budgets: Budget[], expenses: Expense[], currency: string, month: string) {
   const budget = activeBudget(budgets, currency, month);
-  return budget ? budget.amount - sumAmounts(activeExpenses(expenses, currency, month)) : null;
+  if (!budget) return null;
+  const spent = sumAmounts(activeExpenses(expenses, currency, month));
+  return { budget, spent, remaining: budget.amount - spent, percentage: (spent / budget.amount) * 100 };
 }

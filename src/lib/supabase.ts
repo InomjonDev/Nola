@@ -11,12 +11,16 @@ export const isSupabaseConfigured = Boolean(
     && !supabaseKey.includes("copy-from"),
 );
 
+export const supabaseAuthStorageKey = isSupabaseConfigured ? `sb-${new URL(supabaseUrl!).hostname.split(".")[0]}-auth-token` : undefined;
+
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseKey!, {
       auth: {
+        storageKey: supabaseAuthStorageKey,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true,
+        // Callback routes perform the one-time exchange; automatic detection would race them.
+        detectSessionInUrl: false,
         flowType: "pkce",
       },
     })
@@ -35,18 +39,21 @@ export function getEmailConfirmUri() {
   return `${siteUrl || "http://localhost:3000"}/auth/confirm`;
 }
 
-export async function finishAuthCallback(url: string): Promise<Session | null> {
+export async function finishAuthCallback(url: string): Promise<Session> {
   if (!supabase) throw new Error("Add Supabase credentials to .env.local before using authentication.");
   const parsed = new URL(url);
-  const code = parsed.searchParams.get("code");
-  const error = parsed.searchParams.get("error") ?? parsed.hash.match(/error=([^&]+)/)?.[1];
-  if (error) throw new Error(decodeURIComponent(error));
+  const code = parsed.searchParams.get("code")?.trim();
+  const error = parsed.searchParams.get("error") ?? new URLSearchParams(parsed.hash.slice(1)).get("error");
+  if (error) throw new Error(error);
   if (!code) {
-    const { data } = await supabase.auth.getSession();
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+    if (!data.session) throw new Error("No sign-in code or existing session was found.");
     return data.session;
   }
   const result = await supabase.auth.exchangeCodeForSession(code);
   if (result.error) throw result.error;
+  if (!result.data.session) throw new Error("Sign-in completed without a session.");
   return result.data.session;
 }
 

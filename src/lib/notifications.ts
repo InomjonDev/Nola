@@ -15,9 +15,18 @@ function isSupported() {
   return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
-export async function notificationsEnabled() {
-  if (!isSupported()) return false;
-  return (await secureStorage.getItem(ENABLED_KEY)) === "true" && Notification.permission === "granted";
+export async function notificationsEnabled(userId?: string) {
+  if (!isSupported() || !userId || !supabase || Notification.permission !== "granted") return false;
+  if ((await secureStorage.getItem(ENABLED_KEY)) !== "true") return false;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return false;
+    const { data, error } = await supabase.from("reminder_preferences").select("enabled").eq("user_id", userId).maybeSingle();
+    return !error && data?.enabled === true;
+  } catch {
+    return false;
+  }
 }
 
 async function saveSubscription(userId: string) {
@@ -48,11 +57,25 @@ async function saveSubscription(userId: string) {
 
 async function removeSubscription(userId?: string) {
   if (!supabase || !isSupported()) return;
-  const registration = await navigator.serviceWorker.ready;
-  const subscription = await registration.pushManager.getSubscription();
-  if (subscription && userId) await supabase.from("push_subscriptions").delete().eq("user_id", userId).eq("endpoint", subscription.endpoint);
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  if (subscription && userId) {
+    const { error } = await supabase.from("push_subscriptions").delete().eq("user_id", userId).eq("endpoint", subscription.endpoint);
+    if (error) throw error;
+  }
   if (subscription) await subscription.unsubscribe();
-  if (userId) await supabase.from("reminder_preferences").upsert({ user_id: userId, enabled: false, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (userId) {
+    const { error } = await supabase.from("reminder_preferences").upsert({ user_id: userId, enabled: false, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (error) throw error;
+  }
+}
+
+export async function clearLocalReminders() {
+  await secureStorage.setItem(ENABLED_KEY, "false");
+  if (!isSupported()) return;
+  const registration = await navigator.serviceWorker.getRegistration();
+  const subscription = await registration?.pushManager.getSubscription();
+  if (subscription) await subscription.unsubscribe();
 }
 
 export async function setDailyReminderEnabled(enabled: boolean, userId?: string) {
@@ -61,23 +84,14 @@ export async function setDailyReminderEnabled(enabled: boolean, userId?: string)
     await removeSubscription(userId);
     return false;
   }
-  if (!isSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return false;
+  if (!userId || !supabase || !isSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return false;
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
     await secureStorage.setItem(ENABLED_KEY, "false");
     return false;
   }
-  if (userId && supabase) await saveSubscription(userId);
+  const registered = await saveSubscription(userId);
+  if (!registered) return false;
   await secureStorage.setItem(ENABLED_KEY, "true");
-  return true;
-}
-
-export async function scheduleNextReminder(hasLoggedToday = false) {
-  if (!(await notificationsEnabled())) return false;
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return false;
-  const registration = await navigator.serviceWorker.ready;
-  const title = hasLoggedToday ? "Walletly is up to date" : "A small check-in";
-  const body = hasLoggedToday ? "You logged today. Your next check-in will arrive tomorrow." : "Nothing logged today yet. Add an expense when you are ready.";
-  await registration.showNotification(title, { body, tag: DAILY_REMINDER_CHANNEL, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: "/add-expense", kind: "daily_check_in" } });
   return true;
 }

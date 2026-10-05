@@ -3,13 +3,13 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, appStorageKey } from "@/lib/constants";
+import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
 import { budgetRow, categoryRow, expenseRow, incomeEntryRow, paymentMethodRow, profileRow, tagRow, toBudget, toCategory, toExpense, toIncomeEntry, toPaymentMethod, toProfile, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
-import { scheduleNextReminder, setDailyReminderEnabled } from "@/lib/notifications";
+import { clearLocalReminders, setDailyReminderEnabled } from "@/lib/notifications";
 import { accountStorage, secureStorage } from "@/lib/secure-storage";
-import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase, supabaseAuthStorageKey } from "@/lib/supabase";
 import type { Budget, BudgetDraft, Category, CategoryIconName, Expense, ExpenseDraft, IncomeEntry, IncomeEntryDraft, PaymentMethod, PersistedAppData, Profile, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
@@ -144,6 +144,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       supabase.from("income_entries").select("*").eq("user_id", userId),
       supabase.from("budgets").select("*").eq("user_id", userId),
     ]);
+    if (ownerRef.current !== userId) return;
     const firstError = [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult].find((result) => result.error)?.error;
     if (firstError) {
       setSyncError(firstError.message);
@@ -345,7 +346,6 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       expenses: id ? current.expenses.map((item) => item.id === id ? expense : item) : [expense, ...current.expenses],
       syncQueue: queue(current, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled),
     }));
-    void scheduleNextReminder(new Date(expense.spentAt).toDateString() === new Date().toDateString());
     return expense.id;
   };
 
@@ -448,8 +448,29 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
         const { error } = await supabase.rpc("delete_own_account");
         if (error) throw error;
       }
-      await signOut();
-      if (deletedUserId) await accountStorage.removeItem(appStorageKey(deletedUserId));
+      // Cloud rows are gone. Normal sign-out would write preferences for a deleted user.
+      ownerRef.current = null;
+      setUser(null);
+      setData(createInitialData());
+      setSyncError(null);
+      await Promise.allSettled([
+        clearLocalReminders(),
+        secureStorage.removeItem(DEMO_SESSION_KEY),
+        ...(deletedUserId ? [accountStorage.removeItem(appStorageKey(deletedUserId)), accountStorage.removeItem(legacyAppStorageKey(deletedUserId))] : []),
+        (async () => {
+          if (!supabase || !user || user.isDemo) return;
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } finally {
+            // Deletion already revoked refresh tokens; clear this device even if logout is offline.
+            if (supabaseAuthStorageKey) {
+              await secureStorage.removeItem(supabaseAuthStorageKey);
+              await secureStorage.removeItem(`${supabaseAuthStorageKey}-user`);
+              await secureStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`);
+            }
+          }
+        })(),
+      ]);
     })();
     deleteAccountRequest.current = request;
     try {

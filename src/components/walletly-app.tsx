@@ -10,7 +10,7 @@ import { GoogleLogo } from "@/components/google-logo";
 import { consumeRollingWindow, formatShortCountdown } from "@/lib/action-rate-limit";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, WALLETLY_CURRENCIES } from "@/lib/constants";
 import { formatExpenseDate, formatMoney } from "@/lib/format";
-import { activeBudget, activeExpenses, activeIncome, monthKey, remainingBudget, sumAmounts } from "@/lib/budgeting";
+import { activeExpenses, activeIncome, budgetStatus, monthKey, sumAmounts } from "@/lib/budgeting";
 import { languageLocale, type TranslationKey } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notifications";
@@ -455,7 +455,7 @@ function formatDateLabel(value: string) {
   return [date.getDate(), date.getMonth() + 1, date.getFullYear()].map((part, index) => index < 2 ? String(part).padStart(2, "0") : String(part)).join("/");
 }
 
-function DatePicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function DatePicker({ value, onChange, label }: { value: string; onChange: (value: string) => void; label?: string }) {
   const { t, language } = useI18n();
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => { const date = dateFromInput(value); return new Date(date.getFullYear(), date.getMonth(), 1); });
@@ -469,8 +469,8 @@ function DatePicker({ value, onChange }: { value: string; onChange: (value: stri
 
   return (
     <div className="relative">
-      <p className="label">{t("expense.date")}</p>
-      <button type="button" className="input mt-2 flex w-full items-center justify-between text-left" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+      <p className="label">{label ?? t("expense.date")}</p>
+      <button type="button" className="input mt-2 flex w-full items-center justify-between text-left" aria-label={t("expense.chooseDate")} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
         <span>{formatDateLabel(value)}</span>
         <CalendarDays className="h-5 w-5 text-text" />
       </button>
@@ -555,10 +555,12 @@ function InsightsView() {
   const [mode, setMode] = useState<"expenses" | "income">("expenses");
   const [incomeAmount, setIncomeAmount] = useState("");
   const [incomeNote, setIncomeNote] = useState("");
+  const [incomeDate, setIncomeDate] = useState(() => dateInputValue(new Date()));
   const [budgetAmount, setBudgetAmount] = useState("");
+  const [insightMonth, setInsightMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const currency = store.profile?.currency ?? "USD";
-  const currentMonth = monthKey(new Date());
-  const currentBudget = activeBudget(store.budgets, currency, currentMonth);
+  const currentMonth = monthKey(insightMonth);
+  const currentBudgetStatus = budgetStatus(store.budgets, store.expenses, currency, currentMonth);
   const periodExpenses = expenses.filter((expense) => period === "week" ? new Date(expense.spentAt) >= startOfWeek() : new Date(expense.spentAt) >= startOfMonth());
   const total = periodExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const bars = period === "week"
@@ -584,26 +586,28 @@ function InsightsView() {
         {(["expenses", "income"] as const).map((item) => <button key={item} className={cx("control min-h-10 justify-center rounded-full bg-transparent text-sm", mode === item && "text-text")} onClick={() => setMode(item)}>{item === "expenses" ? t("insights.expenses") : t("insights.income")}</button>)}
       </div>
       {mode === "income" ? <section className="grid gap-5">
+        <div className="flex items-center justify-between rounded-xl bg-raised px-3 py-2"><button type="button" className="icon-button" aria-label={t("expense.previousMonth")} onClick={() => setInsightMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft className="h-5 w-5" /></button><p className="text-sm font-semibold">{insightMonth.toLocaleDateString(languageLocale(language), { month: "long", year: "numeric" })}</p><button type="button" className="icon-button" aria-label={t("expense.nextMonth")} onClick={() => setInsightMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight className="h-5 w-5" /></button></div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.incomeTotal")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)), currency, languageLocale(language))}</p></div>
           <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.expenses")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeExpenses(store.expenses, currency, currentMonth)), currency, languageLocale(language))}</p></div>
           <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.remaining")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)) - sumAmounts(activeExpenses(store.expenses, currency, currentMonth)), currency, languageLocale(language))}</p></div>
         </div>
         <div className="grid gap-4 rounded-xl bg-raised p-4 sm:grid-cols-2">
-          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(incomeAmount); if (!Number.isFinite(amount) || amount <= 0) return; store.saveIncome({ amount, currency, receivedAt: new Date().toISOString(), note: incomeNote.trim() }); setIncomeAmount(""); setIncomeNote(""); }}>
+          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(incomeAmount); if (!Number.isFinite(amount) || amount <= 0) return; const receivedAt = dateFromInput(incomeDate); receivedAt.setHours(12, 0, 0, 0); store.saveIncome({ amount, currency, receivedAt: receivedAt.toISOString(), note: incomeNote.trim() }); setInsightMonth(new Date(receivedAt.getFullYear(), receivedAt.getMonth(), 1)); setIncomeAmount(""); setIncomeNote(""); }}>
             <div><p className="font-semibold">{t("insights.addIncome")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.monthlyOverview")}</p></div>
-            <input className="input" inputMode="decimal" value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} placeholder={t("insights.incomePlaceholder")} aria-label={t("insights.addIncome")} />
+            <input className="input" inputMode="decimal" required value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} placeholder={t("insights.incomePlaceholder")} aria-label={t("insights.addIncome")} />
+            <DatePicker value={incomeDate} onChange={setIncomeDate} label={t("insights.receivedDate")} />
             <input className="input" value={incomeNote} onChange={(event) => setIncomeNote(event.target.value)} placeholder={t("expense.notePlaceholder")} aria-label={t("expense.noteOptional")} />
             <button className="control justify-center bg-text text-bg" type="submit">{t("common.add")}</button>
           </form>
           <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(budgetAmount); if (!Number.isFinite(amount) || amount <= 0) return; store.saveBudget({ amount, currency, month: currentMonth }); setBudgetAmount(""); }}>
             <div><p className="font-semibold">{t("insights.addBudget")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.budget")}: {currentMonth}</p></div>
-            <input className="input" inputMode="decimal" value={budgetAmount} onChange={(event) => setBudgetAmount(event.target.value)} placeholder={t("insights.budgetPlaceholder")} aria-label={t("insights.addBudget")} />
-            <div className="flex min-h-11 items-center text-sm text-muted">{(() => { const remaining = remainingBudget(store.budgets, store.expenses, currency, currentMonth); return remaining === null ? t("insights.noBudget") : `${t("insights.remaining")}: ${formatMoney(remaining, currency, languageLocale(language))}`; })()}</div>
+            <input className="input" inputMode="decimal" required value={budgetAmount} onChange={(event) => setBudgetAmount(event.target.value)} placeholder={t("insights.budgetPlaceholder")} aria-label={t("insights.addBudget")} />
+            <div className="flex min-h-11 items-center text-sm text-muted">{currentBudgetStatus ? `${formatMoney(currentBudgetStatus.spent, currency, languageLocale(language))} ${t("insights.spentOf")} ${formatMoney(currentBudgetStatus.budget.amount, currency, languageLocale(language))}` : t("insights.noBudget")}</div>
             <button className="control justify-center bg-accent text-white" type="submit">{t("common.saveChanges")}</button>
           </form>
         </div>
-        {currentBudget && <div className="flex min-h-12 items-center justify-between gap-3 border-b border-line py-2"><div><p className="text-sm font-semibold">{t("insights.budget")} · {currentBudget.month}</p><p className="text-[11px] text-muted">{formatMoney(currentBudget.amount, currency, languageLocale(language))}</p></div><button className="icon-button" aria-label={t("insights.removeBudget")} onClick={() => store.deleteBudget(currentBudget.id)}><Trash2 className="h-4 w-4" /></button></div>}
+        {currentBudgetStatus && <div className="grid gap-2 rounded-xl bg-raised p-4"><div className="flex min-h-12 items-center justify-between gap-3"><div><p className="text-sm font-semibold">{t("insights.budget")} · {currentBudgetStatus.budget.month}</p><p className="text-[11px] text-muted">{currentBudgetStatus.remaining >= 0 ? `${t("insights.remaining")}: ${formatMoney(currentBudgetStatus.remaining, currency, languageLocale(language))}` : t("insights.overBudget").replace("{amount}", formatMoney(Math.abs(currentBudgetStatus.remaining), currency, languageLocale(language)))}</p></div><button className="icon-button" aria-label={t("insights.removeBudget")} onClick={() => store.deleteBudget(currentBudgetStatus.budget.id)}><Trash2 className="h-4 w-4" /></button></div><div className="h-2 overflow-hidden rounded-full bg-surface" role="progressbar" aria-label={t("insights.budget")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(currentBudgetStatus.percentage))}><div className={cx("h-full rounded-full transition-[width] duration-500", currentBudgetStatus.remaining < 0 ? "bg-danger" : "bg-accent")} style={{ width: `${Math.min(100, Math.max(0, currentBudgetStatus.percentage))}%` }} /></div></div>}
         <div className="grid gap-2">
           {activeIncome(store.incomeEntries, currency, currentMonth).map((entry) => <div key={entry.id} className="flex min-h-12 items-center justify-between gap-3 border-b border-line py-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{entry.note || t("insights.income")}</p><p className="text-[11px] text-muted">{formatExpenseDate(entry.receivedAt, languageLocale(language))}</p></div><div className="flex items-center gap-2"><span className="text-sm font-semibold tabular-nums">{formatMoney(entry.amount, currency, languageLocale(language))}</span><button className="icon-button" aria-label={t("insights.removeIncome")} onClick={() => store.deleteIncome(entry.id)}><Trash2 className="h-4 w-4" /></button></div></div>)}
           {activeIncome(store.incomeEntries, currency, currentMonth).length === 0 && <p className="text-[13px] text-muted">{t("insights.noIncome")}</p>}
@@ -685,12 +689,13 @@ function SettingsView() {
   const { language, setLanguage, t } = useI18n();
   const { mode, setMode } = useLedgerTheme();
   const [reminders, setReminders] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const exportEvents = useRef<number[]>([]);
-  useEffect(() => { void notificationsEnabled().then(setReminders); }, []);
+  useEffect(() => { void notificationsEnabled(store.user?.isDemo ? undefined : store.user?.id).then(setReminders); }, [store.user?.id, store.user?.isDemo]);
 
   function exportData(type: "json" | "csv") {
     const decision = consumeRollingWindow(exportEvents.current, Date.now(), 5, 60_000);
@@ -736,10 +741,11 @@ function SettingsView() {
         <div className="mt-5 grid gap-3">
           <Segment label={t("settings.appearanceLabel")} options={["system", "light", "dark"]} labels={[t("settings.system"), t("settings.light"), t("settings.dark")]} value={mode} onChange={(value) => setMode(value as typeof mode)} icons={[Settings, Sun, Moon]} />
           <Segment label={t("settings.language")} options={["en", "ru", "uz"]} labels={[t("settings.languageEnglish"), t("settings.languageRussian"), t("settings.languageUzbek")]} value={language} onChange={(value) => setLanguage(value as typeof language)} />
-          <button className="control justify-between bg-raised" onClick={async () => { const enabled = await setDailyReminderEnabled(!reminders, store.user?.isDemo ? undefined : store.user?.id); setReminders(enabled); }}>
+          <button className="control justify-between bg-raised" onClick={async () => { setReminderMessage(null); try { if (reminders) { await setDailyReminderEnabled(false, store.user?.isDemo ? undefined : store.user?.id); setReminders(false); return; } const enabled = await setDailyReminderEnabled(true, store.user?.isDemo ? undefined : store.user?.id); setReminders(enabled); if (!enabled) setReminderMessage(t("settings.reminderUnavailable")); } catch { setReminderMessage(t("settings.reminderUnavailable")); } }}>
             <span className="flex items-center gap-2"><Bell className="h-5 w-5" /> {t("settings.dailyCheckIn")}</span><span>{reminders ? t("settings.on") : t("settings.off")}</span>
           </button>
           <p className="text-xs leading-5 text-muted">{t("settings.reminderHelp")}</p>
+          {reminderMessage && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">{reminderMessage}</p>}
         </div>
       </section>
       <section className="panel">

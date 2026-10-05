@@ -22,13 +22,21 @@ test("expense sheet closes by clicking outside and keeps the app shell mounted",
 
 test("income mode records income and a monthly budget", async ({ page }) => {
   await enterDemo(page);
+  await saveExpense(page, "650", "Budget test expense");
   await page.goto("/insights");
   await page.getByRole("button", { name: "Income" }).click();
   await page.getByRole("textbox", { name: "Add income" }).fill("3000");
   await page.getByRole("textbox", { name: "Note (optional)" }).fill("Salary");
+  await page.getByRole("button", { name: "Choose date" }).click();
+  const calendar = page.getByRole("dialog", { name: "Choose date" });
+  await calendar.getByRole("button", { name: "Previous month" }).click();
+  await calendar.getByRole("button", { name: "15", exact: true }).click();
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("textbox", { name: "Set monthly budget" }).fill("2000");
+  await expect(page.getByText("Salary")).toBeVisible();
+  await page.getByRole("button", { name: "Next month" }).click();
+  await page.getByRole("textbox", { name: "Set monthly budget" }).fill("500");
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Income this month")).toBeVisible();
-  await expect(page.getByText("Salary")).toBeVisible();
+  await expect(page.getByText(/Over budget by/)).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Budget" })).toHaveAttribute("aria-valuenow", "100");
 });

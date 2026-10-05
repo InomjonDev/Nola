@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.0.0";
 
-type ReminderPreference = { user_id: string; timezone: string; local_time: string };
+type ReminderPreference = { user_id: string; timezone: string; local_time: string; last_notified_on: string | null };
 type PushSubscription = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -18,22 +18,36 @@ Deno.serve(async (request) => {
   if (request.headers.get("x-walletly-cron-secret") !== cronSecret) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
-  const { data: preferences, error: preferenceError } = await supabase.from("reminder_preferences").select("user_id, timezone, local_time").eq("enabled", true);
+  const { data: preferences, error: preferenceError } = await supabase.from("reminder_preferences").select("user_id, timezone, local_time, last_notified_on").eq("enabled", true);
   if (preferenceError) return Response.json({ error: preferenceError.message }, { status: 500 });
 
   let checked = 0;
   let sent = 0;
   let removed = 0;
   for (const preference of (preferences ?? []) as ReminderPreference[]) {
-    if (!isDue(preference)) continue;
-    checked += 1;
+    const now = new Date();
+    const reminderDate = localDate(now, preference.timezone);
+    if (!reminderDate || !isDue(preference, now, reminderDate)) continue;
     const { data: subscriptions, error: subscriptionError } = await supabase.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth").eq("user_id", preference.user_id);
     if (subscriptionError) return Response.json({ error: subscriptionError.message }, { status: 500 });
     if (!subscriptions?.length || await loggedToday(supabase, preference.user_id, preference.timezone)) continue;
+
+    const { data: claimed, error: claimError } = await supabase
+      .from("reminder_preferences")
+      .update({ last_notified_on: reminderDate, updated_at: now.toISOString() })
+      .eq("user_id", preference.user_id)
+      .eq("enabled", true)
+      .or(`last_notified_on.is.null,last_notified_on.neq.${reminderDate}`)
+      .select("user_id");
+    if (claimError) return Response.json({ error: claimError.message }, { status: 500 });
+    if (!claimed?.length) continue;
+    checked += 1;
+    let deliveredForUser = 0;
     for (const subscription of subscriptions as PushSubscription[]) {
       try {
         await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify({ title: "A small Walletly check-in", body: "Nothing logged today yet. Add an expense when you are ready.", tag: "daily-check-in", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", url: "/add-expense" }));
         sent += 1;
+        deliveredForUser += 1;
       } catch (error) {
         const statusCode = typeof error === "object" && error !== null && "statusCode" in error ? Number((error as { statusCode?: number }).statusCode) : 0;
         if (statusCode === 404 || statusCode === 410) {
@@ -43,6 +57,10 @@ Deno.serve(async (request) => {
           console.error("Walletly push delivery failed", { userId: subscription.user_id, statusCode });
         }
       }
+    }
+    if (deliveredForUser === 0) {
+      const { error: releaseError } = await supabase.from("reminder_preferences").update({ last_notified_on: preference.last_notified_on, updated_at: new Date().toISOString() }).eq("user_id", preference.user_id).eq("last_notified_on", reminderDate);
+      if (releaseError) console.error("Walletly reminder claim release failed", { userId: preference.user_id });
     }
   }
   return Response.json({ checkedAt: new Date().toISOString(), checked, sent, removed });
@@ -57,17 +75,33 @@ function readSecretKey() {
   }
 }
 
-function isDue(preference: ReminderPreference) {
-  const now = new Date();
-  const local = new Intl.DateTimeFormat("en-GB", { timeZone: preference.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+function isDue(preference: ReminderPreference, now: Date, reminderDate: string) {
+  if (preference.last_notified_on === reminderDate) return false;
+  let local: string;
+  try {
+    local = new Intl.DateTimeFormat("en-GB", { timeZone: preference.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(now);
+  } catch {
+    return false;
+  }
   const [hour, minute] = preference.local_time.slice(0, 5).split(":").map(Number);
   const [localHour, localMinute] = local.split(":").map(Number);
-  return hour === localHour && minute === localMinute;
+  return localHour * 60 + localMinute >= hour * 60 + minute;
+}
+
+function localDate(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  } catch {
+    return null;
+  }
 }
 
 async function loggedToday(supabase: ReturnType<typeof createClient>, userId: string, timezone: string) {
-  const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const today = localDate(new Date(), timezone);
+  if (!today) return false;
   const { data, error } = await supabase.from("expenses").select("spent_at").eq("user_id", userId).is("deleted_at", null).gte("spent_at", new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString());
   if (error) throw error;
-  return (data ?? []).some((row: { spent_at: string }) => new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(row.spent_at)) === localDate);
+  return (data ?? []).some((row: { spent_at: string }) => localDate(new Date(row.spent_at), timezone) === today);
 }

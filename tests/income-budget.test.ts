@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { activeBudget, activeExpenses, activeIncome, monthKey, remainingBudget, sumAmounts } from "../src/lib/budgeting.ts";
+import { activeBudget, activeExpenses, activeIncome, budgetStatus, monthKey, remainingBudget, sumAmounts } from "../src/lib/budgeting.ts";
 import type { Budget, Expense, IncomeEntry } from "../src/lib/types.ts";
 
 const income: IncomeEntry[] = [
@@ -18,5 +18,17 @@ test("income and budget calculations stay within the selected currency and month
   assert.equal(sumAmounts(activeExpenses(expenses, "USD", "2026-10")), 750);
   assert.equal(activeBudget(budgets, "USD", "2026-10")?.amount, 2000);
   assert.equal(remainingBudget(budgets, expenses, "USD", "2026-10"), 1250);
+  assert.deepEqual(budgetStatus(budgets, expenses, "USD", "2026-10"), {
+    budget: budgets[0],
+    spent: 750,
+    remaining: 1250,
+    percentage: 37.5,
+  });
   assert.equal(activeIncome(income, "EUR", "2026-10").length, 1);
+});
+
+test("budget progress reports overspending without exceeding the visual range", () => {
+  const status = budgetStatus(budgets, [{ ...expenses[0], amount: 2500 }], "USD", "2026-10");
+  assert.equal(status?.remaining, -500);
+  assert.equal(status?.percentage, 125);
 });
