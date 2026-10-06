@@ -9,6 +9,8 @@ Nola should open onto recent spending. The user finds the current elements too l
 
 The user approved a restrained forest-green accent, then explicitly required a white light theme and a black dark theme with clear contrast. The earlier suggestion of warm-white or charcoal page backgrounds is superseded by this requirement.
 
+The user subsequently authorized bright colors for icons and small elements, specifying that the app should stay minimal without becoming boring. Forest green remains the action accent; a limited secondary palette brings personality to category/goal glyphs and chart details. This supersedes the earlier restriction to a single color throughout the UI.
+
 The primary user is someone checking their own recent expenses. Expense entry remains readily available. English, Russian, and Uzbek are required throughout the interface. Existing Uzbek uses Latin script; retain it.
 
 Scope includes every current application screen and interaction surface: authentication, onboarding, home, expense entry/editing, activity/history, insights, budgets, savings goals, category/tag management, profile, settings, legal pages, consent/install notices, and loading/error/empty states.
@@ -25,9 +27,9 @@ Current home puts a large summary, chart, and three quick-action boxes before re
 
 ## Chosen approach
 
-Use a compact ledger: neutral surfaces, aligned amounts, clear date grouping, short headings, and a modest accent. Hierarchy comes from placement, typography, and spacing.
+Use a compact ledger: neutral surfaces, aligned amounts, clear date grouping, short headings, and a modest action accent. Small bright glyphs and chart details add personality. Hierarchy comes from placement, typography, and spacing.
 
-An almost-monochrome version was considered, but the user approved one restrained accent. A warm notebook treatment was considered, but pure white and pure black are now explicit requirements. A large summary dashboard conflicts with the user's recent-spending priority.
+An almost-monochrome version was considered, but the user approved a restrained action accent and subsequently permitted brighter small elements. A warm notebook treatment was considered, but pure white and pure black are now explicit requirements. A large summary dashboard conflicts with the user's recent-spending priority.
 
 ## Color and contrast
 
@@ -58,6 +60,21 @@ Calculated candidate pairs using relative luminance:
 | Control border / raised surface | 3.81:1 | 4.00:1 |
 
 Reserve green for primary actions, selection, links, and progress. Transaction amounts remain neutral. Semantic warning and destructive colors accompany readable labels. Charts use restrained solid fills plus labels; color alone must not identify a category.
+
+### Small bright accents
+
+| Accent family | Light glyph/mark | Dark glyph/mark | Contrast on raised surface, light/dark |
+| --- | --- | --- | --- |
+| Tangerine | `#BF4F00` | `#FF9947` | 4.06:1 / 7.77:1 |
+| Cobalt | `#0969DA` | `#69A7FF` | 4.36:1 / 6.73:1 |
+| Teal | `#087F8C` | `#44D3DD` | 3.98:1 / 9.11:1 |
+| Rose | `#B72A6B` | `#F777AC` | 4.95:1 / 6.43:1 |
+
+Use these semantic tokens for 18–20px category icons, small goal glyphs, chart bars/legend marks, and occasional tiny status accents. Assign a stable family to each category so it remains recognizable across themes; change its shade for theme contrast. Keep named labels beside these marks and accessible text descriptions for charts. User-defined colors can inform the chosen family, but must not bypass contrast checks.
+
+Apply the palette to glyphs on neutral surfaces. The screen canvas, transaction rows, navigation background, and grouped surfaces remain white/black or neutral gray. Avoid large saturated fills, colored card borders, full-color navigation, glowing marks, and colored icon-box grids. Amounts and ordinary labels use the main text tokens. These accent shades are checked for graphical elements at 3:1; any accent-colored small text must separately meet the stricter 4.5:1 text target.
+
+The contrast criteria follow the [W3C guidance for non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html). Contrast values above were calculated against the proposed raised surfaces, not claimed as verified in the running app.
 
 Preserve Light, Dark, and System preferences and their persistence. Resolve the stored/system theme before first paint to avoid a white flash in dark mode. Browser/PWA theme colors should follow the actual resolved mode. Existing storage keys remain compatible.
 
@@ -100,7 +117,7 @@ Charts belong primarily in Insights. Remove the three quick-action icon boxes fr
 
 **Savings goals:** compact goal rows or small neutral groups, name and saved/target amount, a thin labeled progress indicator, and a clear detail action. Apply the shared sheet and form patterns to creation, deposits, withdrawals, archive/delete confirmation, and history. Completion uses a brief success message; remove decorative confetti.
 
-**Categories and tags:** dense named rows with inline edit/archive controls; neutral text-led selectors. User-defined category names and colors remain stored unchanged, but existing colors must not turn every row into a colored card. Selected items have a clear non-color cue.
+**Categories and tags:** dense named rows with inline edit/archive controls; neutral text-led selectors with small bright category glyphs. User-defined category names and colors remain stored unchanged, but existing colors must not turn every row into a colored card. Selected items have a clear non-color cue.
 
 **Profile and settings:** compact headers, neutral grouped rows, and short supporting descriptions. Light/Dark/System and English/Русский/O‘zbekcha choices use readable segmented or radio-style controls with explicit selection. Avoid three decorative icon tiles. Preserve reminders, export, sync, sign-out, and account-deletion flows. Destructive actions are clearly labeled and visually distinct.
 
@@ -110,7 +127,9 @@ Charts belong primarily in Insights. Remove the three quick-action icon boxes fr
 
 ## Icons, copy, and interaction
 
-Replace ubiquitous Lucide decoration with a small shared local SVG set for navigation and essential actions, using consistent 18–20px geometry and stroke weight. Category and goal pickers are text-led; preserve stored icon identifiers through a compatible renderer. Keep third-party brand logos intact. No additional icon-library dependency is needed.
+Use one shared Phosphor SVG family, following the explicitly invoked ui-ux-pro-max skill. Navigation and essential actions use regular-weight 18–20px icons; category and goal glyphs use a consistent duotone treatment with a small bright accent. Keep the same treatment within each visual layer. A bright outer glyph must remain legible independently of its softer duotone interior.
+
+Replace the existing widespread Lucide usage through a shared icon adapter and retain compatibility with stored category/goal icon identifiers. Category and goal pickers remain text-led. Keep third-party brand logos intact. The [official Phosphor React documentation](https://github.com/phosphor-icons/react) supports the active PWA stack, regular/duotone weights, and importing only required icons. Add `@phosphor-icons/react` during implementation; avoid importing the entire catalog. Remove the Lucide dependency only after confirming no active app imports remain.
 
 Visible labels explain actions. Icon-only controls have translated accessible names. Avoid generic filler and large eyebrow labels above headings. Use ordinary punctuation and no decorative emoji headings. User-entered notes are not rewritten.
 
@@ -172,5 +191,13 @@ Verify:
 - Expense create/edit/delete, filtering, budget display, savings contributions, export, and existing offline behavior still work.
 - Dialog keyboard/focus behavior, mobile touch targets, and reduced-motion behavior.
 - All nineteen prohibited patterns are absent.
+- Bright category/goal icons and chart details add personality without turning surfaces into saturated panels; graphical contrast is verified independently in both themes.
+- Test a 375px phone, landscape orientation, reduced motion, and 200% text scaling in addition to the main responsive matrix.
 
 The current change is a design document only. App lint/typecheck and visual verification will be run after implementation; no redesigned UI has been claimed as tested yet.
+
+## ui-ux-pro-max research
+
+Applied the skill's required design-system generation, style search, UX validation search (`animation accessibility z-index loading`), and stack guidance for the verified Next.js app. Adopted its consistent vector icons, theme-based contrast, touch-target sizing, spacing rhythm, safe-area handling, stable interaction states, loading feedback, and reduced-motion principles.
+
+Generated style suggestions are supporting material, not requirements. Discard recommendations for Inter, oversized editorial type, marketing/app-store landing layouts, dark-only support, glows, or avoiding white backgrounds because they conflict with this app and the user's explicit decisions. Retain the established system font, recent-spending-first layout, and pure-white/pure-black themes.
