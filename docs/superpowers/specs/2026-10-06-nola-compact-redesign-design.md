@@ -1,7 +1,7 @@
 # Nola compact redesign
 
 Date: 2026-10-06
-Status: Visual direction approved; complete specification awaiting user review.
+Status: Superseded after implementation review. The user rejected the appearance and requested an entirely flat Apple-inspired direction. See `2026-10-06-nola-flat-apple-design.md`; implementation is paused pending that visual review.
 
 ## Intent and decisions
 
