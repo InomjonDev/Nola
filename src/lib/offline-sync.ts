@@ -31,7 +31,26 @@ export async function flushOperations(queue: SyncOperation[], options: FlushOpti
   const sleep = options.sleep ?? wait;
   const maxOperations = Math.max(1, Math.floor(options.maxOperations ?? MAX_SYNC_OPERATIONS_PER_FLUSH));
   const paceMs = Math.max(0, options.paceMs ?? SYNC_PACE_MS);
-  const batch = queue.slice(0, maxOperations);
+  const dependencyOrder: Record<SyncOperation["table"], number> = {
+    profiles: 0,
+    categories: 0,
+    payment_methods: 0,
+    tags: 0,
+    budgets: 1,
+    category_budgets: 1,
+    savings_goals: 1,
+    recurring_rules: 1,
+    accounts: 1,
+    expenses: 2,
+    income_entries: 2,
+    goal_contributions: 2,
+    account_adjustments: 2,
+  };
+  // Sort parents first without changing the order of operations on the same level.
+  const ordered = queue.map((operation, index) => ({ operation, index }))
+    .sort((left, right) => dependencyOrder[left.operation.table] - dependencyOrder[right.operation.table] || left.index - right.index)
+    .map(({ operation }) => operation);
+  const batch = ordered.slice(0, maxOperations);
   const completedIds: string[] = [];
 
   for (const [index, operation] of batch.entries()) {

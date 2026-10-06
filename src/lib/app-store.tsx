@@ -3,17 +3,21 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
+import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, WALLETLY_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
-import { budgetRow, categoryRow, expenseRow, incomeEntryRow, paymentMethodRow, profileRow, tagRow, toBudget, toCategory, toExpense, toIncomeEntry, toPaymentMethod, toProfile, toTag } from "@/lib/mappers";
+import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
 import { clearLocalReminders, setDailyReminderEnabled } from "@/lib/notifications";
 import { accountStorage, secureStorage } from "@/lib/secure-storage";
 import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase, supabaseAuthStorageKey } from "@/lib/supabase";
-import type { Budget, BudgetDraft, Category, CategoryIconName, Expense, ExpenseDraft, IncomeEntry, IncomeEntryDraft, PaymentMethod, PersistedAppData, Profile, SyncOperation, Tag, UserIdentity } from "@/lib/types";
+import { calendarDate, normalizeGoalData, validateContribution, validateGoal, type GoalActionResult } from "@/lib/savings-goals";
+import { validateCategoryBudget } from "@/lib/category-budgets";
+import { materializeDueRecurringRules, validateRecurringRule } from "@/lib/recurring";
+import { createDemoData } from "@/lib/demo-data";
+import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
-  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], incomeEntries: [], budgets: [], syncQueue: [] };
+  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], savingsGoals: [], goalContributions: [], syncQueue: [] };
 }
 
 type StoreValue = PersistedAppData & {
@@ -36,6 +40,20 @@ type StoreValue = PersistedAppData & {
   deleteIncome: (id: string) => void;
   saveBudget: (draft: BudgetDraft, id?: string) => string;
   deleteBudget: (id: string) => void;
+  saveCategoryBudget: (draft: CategoryBudgetDraft, id?: string) => string | undefined;
+  deleteCategoryBudget: (id: string) => void;
+  saveRecurringRule: (draft: RecurringRuleDraft, id?: string) => string | undefined;
+  archiveRecurringRule: (id: string, archived: boolean) => void;
+  deleteRecurringRule: (id: string) => void;
+  applyDueRecurringRules: () => Promise<void>;
+  saveAccount: (draft: AccountDraft) => string | undefined;
+  archiveAccount: (id: string, archived: boolean) => void;
+  addAccountAdjustment: (draft: AccountAdjustmentDraft) => string | undefined;
+  deleteAccountAdjustment: (id: string) => void;
+  saveGoal: (draft: SavingsGoalDraft, id?: string) => GoalActionResult;
+  archiveGoal: (id: string, archived: boolean) => void;
+  deleteGoal: (id: string) => void;
+  addGoalContribution: (draft: GoalContributionDraft) => GoalActionResult;
   ensureTags: (names: string[]) => string[];
   ensurePaymentMethods: (names: string[]) => void;
   addCategory: (name: string, icon?: CategoryIconName) => string | undefined;
@@ -73,8 +91,13 @@ function scopeDataToUser(source: Partial<PersistedAppData>, userId: string): Per
     paymentMethods: (source.paymentMethods ?? []).filter((item) => item.userId === userId),
     tags: (source.tags ?? []).filter((item) => item.userId === userId),
     expenses: (source.expenses ?? []).filter((item) => item.userId === userId),
-    incomeEntries: (source.incomeEntries ?? []).filter((item) => item.userId === userId),
+    incomeEntries: (source.incomeEntries ?? []).filter((item) => item.userId === userId).map((item) => ({ ...item, accountId: item.accountId ?? null })),
     budgets: (source.budgets ?? []).filter((item) => item.userId === userId),
+    categoryBudgets: (source.categoryBudgets ?? []).filter((item) => item.userId === userId),
+    recurringRules: (source.recurringRules ?? []).filter((item) => item.userId === userId),
+    accounts: (source.accounts ?? []).filter((item) => item.userId === userId),
+    accountAdjustments: (source.accountAdjustments ?? []).filter((item) => item.userId === userId),
+    ...normalizeGoalData(source, userId),
     syncQueue: (source.syncQueue ?? []).filter((operation) => operation.recordId === userId || operation.payload?.user_id === userId),
   };
 }
@@ -114,6 +137,8 @@ function demoIdentity(saved?: string | null): UserIdentity {
 
 export function AppStoreProvider({ children }: PropsWithChildren) {
   const [data, setData] = useState<PersistedAppData>(createInitialData);
+  const currentDataRef = useRef(data);
+  currentDataRef.current = data;
   const [user, setUser] = useState<UserIdentity | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -122,10 +147,20 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const syncLock = useRef(false);
   const deleteAccountRequest = useRef<Promise<void> | null>(null);
   const ownerRef = useRef<string | null>(null);
+  const goalStateRef = useRef({ savingsGoals: data.savingsGoals, goalContributions: data.goalContributions });
+  goalStateRef.current = { savingsGoals: data.savingsGoals, goalContributions: data.goalContributions };
+  const recurringOwnerRef = useRef<string | null>(null);
+  const recurringInFlightRef = useRef(false);
+  const recurringCursorsRef = useRef(new Map<string, string>());
   const cloudEnabled = isSupabaseConfigured && Boolean(user && !user.isDemo);
 
   const activateAccount = useCallback(async (identity: UserIdentity) => {
     setHydrated(false);
+    if (recurringOwnerRef.current !== identity.id) {
+      recurringOwnerRef.current = identity.id;
+      recurringInFlightRef.current = false;
+      recurringCursorsRef.current.clear();
+    }
     ownerRef.current = identity.id;
     setUser(identity);
     setData(await readAccountData(identity.id));
@@ -135,7 +170,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const pullRemote = useCallback(async (userId: string) => {
     if (!supabase) return;
-    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult] = await Promise.all([
+    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult, goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("categories").select("*").or(`kind.eq.global,user_id.eq.${userId}`),
       supabase.from("payment_methods").select("*").eq("user_id", userId),
@@ -143,6 +178,12 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       supabase.from("expenses").select("*").eq("user_id", userId),
       supabase.from("income_entries").select("*").eq("user_id", userId),
       supabase.from("budgets").select("*").eq("user_id", userId),
+      supabase.from("savings_goals").select("*").eq("user_id", userId),
+      supabase.from("goal_contributions").select("*").eq("user_id", userId),
+      supabase.from("category_budgets").select("*").eq("user_id", userId),
+      supabase.from("recurring_rules").select("*").eq("user_id", userId),
+      supabase.from("accounts").select("*").eq("user_id", userId),
+      supabase.from("account_adjustments").select("*").eq("user_id", userId),
     ]);
     if (ownerRef.current !== userId) return;
     const firstError = [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult].find((result) => result.error)?.error;
@@ -150,6 +191,9 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       setSyncError(firstError.message);
       return;
     }
+    // A pending goals migration must not prevent older Walletly data from loading.
+    const addedFeatureError = [goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult].find((result) => result.error)?.error;
+    setSyncError(addedFeatureError?.message ?? null);
     setData((current) => ({
       ...current,
       profile: profileResult.data ? toProfile(profileResult.data) : current.profile,
@@ -159,6 +203,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       expenses: mergeLatest(current.expenses, (expenseResult.data ?? []).map(toExpense)),
       incomeEntries: mergeLatest(current.incomeEntries, (incomeResult.data ?? []).map(toIncomeEntry)),
       budgets: mergeLatest(current.budgets, (budgetResult.data ?? []).map(toBudget)),
+      categoryBudgets: mergeLatest(current.categoryBudgets, (categoryBudgetResult.data ?? []).map(toCategoryBudget)),
+      recurringRules: mergeLatest(current.recurringRules, (recurringRuleResult.data ?? []).map(toRecurringRule)),
+      accounts: mergeLatest(current.accounts, (accountResult.data ?? []).map(toAccount)),
+      accountAdjustments: mergeLatest(current.accountAdjustments, (accountAdjustmentResult.data ?? []).map(toAccountAdjustment)),
+      ...(!goalResult.error && !contributionResult.error ? normalizeGoalData({
+        savingsGoals: mergeLatest(current.savingsGoals, (goalResult.data ?? []).map(toSavingsGoal)),
+        goalContributions: mergeLatest(current.goalContributions, (contributionResult.data ?? []).map(toGoalContribution)),
+      }, userId) : {}),
     }));
   }, []);
 
@@ -238,6 +290,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     setIsSyncing(true);
     try {
       const result = await flushOperations(data.syncQueue);
+      if (ownerRef.current !== user.id) return;
       if (result.completedIds.length) {
         const done = new Set(result.completedIds);
         setData((current) => ({ ...current, syncQueue: current.syncQueue.filter((item) => !done.has(item.id)) }));
@@ -260,6 +313,81 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   };
 
   const sendMagicLink = async (email: string) => requestMagicLink(email);
+
+  const applyDueRecurringRules = useCallback(async () => {
+    if (!user || ownerRef.current !== user.id || recurringInFlightRef.current) return;
+    const today = calendarDate();
+    const snapshot = currentDataRef.current;
+    const dueRules = snapshot.recurringRules.filter((rule) => !rule.deletedAt && !rule.archivedAt && rule.nextRunDate <= today && recurringCursorsRef.current.get(rule.id) !== rule.nextRunDate);
+    if (!dueRules.length) return;
+
+    recurringInFlightRef.current = true;
+    for (const rule of dueRules) recurringCursorsRef.current.set(rule.id, rule.nextRunDate);
+    try {
+      const result = await materializeDueRecurringRules(dueRules, today);
+      if (ownerRef.current !== user.id) return;
+      const latest = currentDataRef.current;
+      const unchangedIds = new Set(dueRules.filter((rule) => {
+        const current = latest.recurringRules.find((item) => item.id === rule.id);
+        return current && current.userId === user.id && current.updatedAt === rule.updatedAt && current.nextRunDate === rule.nextRunDate && !current.deletedAt && !current.archivedAt;
+      }).map((rule) => rule.id));
+      for (const rule of dueRules) if (!unchangedIds.has(rule.id)) recurringCursorsRef.current.delete(rule.id);
+      const rules = result.rules.filter((rule) => unchangedIds.has(rule.id));
+      const transactions = result.transactions.filter((item) => unchangedIds.has(item.ruleId));
+      if (!rules.length && !transactions.length) return;
+
+      const createdAt = new Date().toISOString();
+      const generatedExpenses = transactions.flatMap((item) => item.expense ? [{
+        ...item.expense,
+        id: item.id,
+        userId: user.id,
+        currency: item.expense.currency ?? latest.profile?.currency ?? "USD",
+        recurringRuleId: item.ruleId,
+        deletedAt: null,
+        updatedAt: createdAt,
+      } satisfies Expense] : []);
+      const generatedIncome = transactions.flatMap((item) => item.income ? [{
+        ...item.income,
+        id: item.id,
+        userId: user.id,
+        accountId: item.income.accountId ?? null,
+        recurringRuleId: item.ruleId,
+        deletedAt: null,
+        updatedAt: createdAt,
+      } satisfies IncomeEntry] : []);
+
+      setData((current) => {
+        const recurringRules = mergeLatest(current.recurringRules, rules);
+        const expenses = mergeLatest(current.expenses, generatedExpenses);
+        const incomeEntries = mergeLatest(current.incomeEntries, generatedIncome);
+        let syncQueue = current.syncQueue;
+        for (const rule of rules) syncQueue = queue({ ...current, syncQueue }, { table: "recurring_rules", action: "upsert", recordId: rule.id, payload: recurringRuleRow(rule) }, cloudEnabled);
+        for (const expense of generatedExpenses) syncQueue = queue({ ...current, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+        for (const income of generatedIncome) syncQueue = queue({ ...current, syncQueue }, { table: "income_entries", action: "upsert", recordId: income.id, payload: incomeEntryRow(income) }, cloudEnabled);
+        return { ...current, recurringRules, expenses, incomeEntries, syncQueue };
+      });
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : "Recurring entries could not be applied.");
+    } finally {
+      recurringInFlightRef.current = false;
+    }
+  }, [cloudEnabled, user]);
+
+  useEffect(() => {
+    if (!hydrated || !user || ownerRef.current !== user.id) return;
+    const active = data.recurringRules.filter((rule) => !rule.deletedAt && !rule.archivedAt);
+    const today = calendarDate();
+    if (active.some((rule) => rule.nextRunDate <= today && recurringCursorsRef.current.get(rule.id) !== rule.nextRunDate)) {
+      const timer = window.setTimeout(() => void applyDueRecurringRules(), 0);
+      return () => window.clearTimeout(timer);
+    }
+    const nextRunDate = active.map((rule) => rule.nextRunDate).filter((date) => date > today).sort()[0];
+    if (!nextRunDate) return;
+    const dueAt = new Date(`${nextRunDate}T00:01:00`).getTime();
+    const delay = Math.max(1000, Math.min(2_000_000_000, dueAt - Date.now()));
+    const timer = window.setTimeout(() => void applyDueRecurringRules(), delay);
+    return () => window.clearTimeout(timer);
+  }, [applyDueRecurringRules, data.recurringRules, hydrated, user]);
 
   const updateDisplayName = async (name: string) => {
     const clean = name.trim().slice(0, 80);
@@ -286,12 +414,20 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (supabase && user && !user.isDemo) await supabase.auth.signOut();
     await secureStorage.removeItem(DEMO_SESSION_KEY);
     ownerRef.current = null;
+    recurringOwnerRef.current = null;
+    recurringInFlightRef.current = false;
+    recurringCursorsRef.current.clear();
     setUser(null);
     setData(createInitialData());
   };
 
   const completeOnboarding = (currency: string, paymentMethodName: string) => {
     if (!user) return;
+    if (user.isDemo) {
+      if (data.expenses.length) return;
+      setData(createDemoData(user.id, currency, paymentMethodName));
+      return;
+    }
     const now = new Date().toISOString();
     const paymentMethods = DEFAULT_PAYMENT_METHODS.map((name) => ({ id: createId(), userId: user.id, name, archivedAt: null, updatedAt: now }));
     const payment = paymentMethods.find((item) => item.name === paymentMethodName) ?? paymentMethods[0];
@@ -371,8 +507,10 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const saveIncome = (draft: IncomeEntryDraft, id?: string) => {
     if (!user) return "";
+    const account = draft.accountId ? data.accounts.find((item) => item.id === draft.accountId && item.userId === user.id && !item.archivedAt && !item.deletedAt && item.currency === draft.currency) : undefined;
+    if (draft.accountId && !account) return "";
     const now = new Date().toISOString();
-    const income: IncomeEntry = { ...draft, id: id ?? createId(), userId: user.id, deletedAt: null, updatedAt: now };
+    const income: IncomeEntry = { ...draft, accountId: account?.id ?? null, id: id ?? createId(), userId: user.id, deletedAt: null, updatedAt: now };
     setData((current) => ({
       ...current,
       incomeEntries: id ? current.incomeEntries.map((item) => item.id === id ? income : item) : [income, ...current.incomeEntries],
@@ -414,6 +552,158 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     });
   };
 
+  const saveCategoryBudget = (draft: CategoryBudgetDraft, id?: string) => {
+    if (!user || validateCategoryBudget(draft, data.categories)) return undefined;
+    const existing = data.categoryBudgets.find((item) => !item.deletedAt && item.categoryId === draft.categoryId && item.currency === draft.currency && item.cadence === draft.cadence);
+    const budget: CategoryBudget = { ...draft, id: id ?? existing?.id ?? createId(), userId: user.id, deletedAt: null, updatedAt: new Date().toISOString() };
+    setData((current) => ({
+      ...current,
+      categoryBudgets: current.categoryBudgets.some((item) => item.id === budget.id) ? current.categoryBudgets.map((item) => item.id === budget.id ? budget : item) : [budget, ...current.categoryBudgets],
+      syncQueue: queue(current, { table: "category_budgets", action: "upsert", recordId: budget.id, payload: categoryBudgetRow(budget) }, cloudEnabled),
+    }));
+    return budget.id;
+  };
+
+  const deleteCategoryBudget = (id: string) => {
+    const target = data.categoryBudgets.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+    if (!target) return;
+    const deleted = { ...target, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    setData((current) => ({ ...current, categoryBudgets: current.categoryBudgets.map((item) => item.id === id ? deleted : item), syncQueue: queue(current, { table: "category_budgets", action: "upsert", recordId: id, payload: categoryBudgetRow(deleted) }, cloudEnabled) }));
+  };
+
+  const saveRecurringRule = (draft: RecurringRuleDraft, id?: string) => {
+    if (!user || validateRecurringRule(draft, data.categories, data.paymentMethods, data.accounts, data.tags)) return undefined;
+    const existing = id ? data.recurringRules.find((item) => item.id === id && item.userId === user.id && !item.deletedAt) : undefined;
+    if (id && !existing) return undefined;
+    const rule: RecurringRule = { ...draft, id: id ?? createId(), userId: user.id, nextRunDate: existing?.nextRunDate ?? draft.startDate, archivedAt: existing?.archivedAt ?? null, deletedAt: null, updatedAt: new Date().toISOString() };
+    setData((current) => ({
+      ...current,
+      recurringRules: current.recurringRules.some((item) => item.id === rule.id) ? current.recurringRules.map((item) => item.id === rule.id ? rule : item) : [rule, ...current.recurringRules],
+      syncQueue: queue(current, { table: "recurring_rules", action: "upsert", recordId: rule.id, payload: recurringRuleRow(rule) }, cloudEnabled),
+    }));
+    return rule.id;
+  };
+
+  const deleteRecurringRule = (id: string) => {
+    const target = data.recurringRules.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+    if (!target) return;
+    const deleted = { ...target, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    setData((current) => ({ ...current, recurringRules: current.recurringRules.map((item) => item.id === id ? deleted : item), syncQueue: queue(current, { table: "recurring_rules", action: "upsert", recordId: id, payload: recurringRuleRow(deleted) }, cloudEnabled) }));
+  };
+
+  const archiveRecurringRule = (id: string, archived: boolean) => {
+    const target = data.recurringRules.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+    if (!target) return;
+    const updated = { ...target, archivedAt: archived ? new Date().toISOString() : null, updatedAt: new Date().toISOString() };
+    setData((current) => ({ ...current, recurringRules: current.recurringRules.map((item) => item.id === id ? updated : item), syncQueue: queue(current, { table: "recurring_rules", action: "upsert", recordId: id, payload: recurringRuleRow(updated) }, cloudEnabled) }));
+  };
+
+  const saveAccount = (draft: AccountDraft) => {
+    if (!user || !draft.name.trim() || draft.name.trim().length > 60 || !(WALLETLY_CURRENCIES as readonly string[]).includes(draft.currency) || !["cash", "bank", "card"].includes(draft.kind)) return undefined;
+    if (!Number.isFinite(draft.startingBalance) || draft.startingBalance < 0 || draft.startingBalance >= 1e12 || Math.abs(draft.startingBalance * 100 - Math.round(draft.startingBalance * 100)) > 0.0001) return undefined;
+    const name = draft.name.trim();
+    const linkedMethod = data.paymentMethods.find((method) => method.userId === user.id && !method.archivedAt && method.name.toLocaleLowerCase() === name.toLocaleLowerCase() && !data.accounts.some((account) => account.id === method.id && !account.deletedAt));
+    const method: PaymentMethod = linkedMethod ?? { id: createId(), userId: user.id, name, archivedAt: null, updatedAt: new Date().toISOString() };
+    const account: Account = { id: method.id, userId: user.id, name, kind: draft.kind, currency: draft.currency, startingBalance: draft.startingBalance, archivedAt: null, deletedAt: null, updatedAt: new Date().toISOString() };
+    setData((current) => {
+      let syncQueue = current.syncQueue;
+      if (!linkedMethod) syncQueue = queue({ ...current, syncQueue }, { table: "payment_methods", action: "upsert", recordId: method.id, payload: paymentMethodRow(method) }, cloudEnabled);
+      syncQueue = queue({ ...current, syncQueue }, { table: "accounts", action: "upsert", recordId: account.id, payload: accountRow(account) }, cloudEnabled);
+      return {
+        ...current,
+        paymentMethods: linkedMethod ? current.paymentMethods : [method, ...current.paymentMethods],
+        accounts: current.accounts.some((item) => item.id === account.id) ? current.accounts.map((item) => item.id === account.id ? account : item) : [account, ...current.accounts],
+        syncQueue,
+      };
+    });
+    return account.id;
+  };
+
+  const archiveAccount = (id: string, archived: boolean) => {
+    const now = new Date().toISOString();
+    setData((current) => {
+      const account = current.accounts.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+      if (!account) return current;
+      const nextAccount = { ...account, archivedAt: archived ? now : null, updatedAt: now };
+      const method = current.paymentMethods.find((item) => item.id === id);
+      const nextMethod = method ? { ...method, archivedAt: archived ? now : null, updatedAt: now } : null;
+      let syncQueue = queue(current, { table: "accounts", action: "upsert", recordId: id, payload: accountRow(nextAccount) }, cloudEnabled);
+      if (nextMethod) syncQueue = queue({ ...current, syncQueue }, { table: "payment_methods", action: "upsert", recordId: id, payload: paymentMethodRow(nextMethod) }, cloudEnabled);
+      let recurringRules = current.recurringRules;
+      if (archived) {
+        recurringRules = current.recurringRules.map((rule) => {
+          if (rule.accountId !== id || rule.archivedAt || rule.deletedAt) return rule;
+          const nextRule = { ...rule, archivedAt: now, updatedAt: now };
+          syncQueue = queue({ ...current, syncQueue }, { table: "recurring_rules", action: "upsert", recordId: rule.id, payload: recurringRuleRow(nextRule) }, cloudEnabled);
+          return nextRule;
+        });
+      }
+      return {
+        ...current,
+        accounts: current.accounts.map((item) => item.id === id ? nextAccount : item),
+        paymentMethods: nextMethod ? current.paymentMethods.map((item) => item.id === id ? nextMethod : item) : current.paymentMethods,
+        recurringRules,
+        syncQueue,
+      };
+    });
+  };
+
+  const addAccountAdjustment = (draft: AccountAdjustmentDraft) => {
+    if (!user || !draft.amount || !Number.isFinite(draft.amount) || Math.abs(draft.amount) >= 1e12 || Math.abs(draft.amount * 100 - Math.round(draft.amount * 100)) > 0.0001) return undefined;
+    const account = data.accounts.find((item) => item.id === draft.accountId && item.userId === user.id && !item.archivedAt && !item.deletedAt && item.currency === draft.currency);
+    if (!account || !/^\d{4}-\d{2}-\d{2}$/.test(draft.occurredOn)) return undefined;
+    const occurred = new Date(`${draft.occurredOn}T12:00:00.000Z`);
+    if (!Number.isFinite(occurred.getTime()) || occurred.toISOString().slice(0, 10) !== draft.occurredOn || draft.note.length > 160) return undefined;
+    const adjustment: AccountAdjustment = { ...draft, note: draft.note.trim(), id: createId(), userId: user.id, deletedAt: null, updatedAt: new Date().toISOString() };
+    setData((current) => ({ ...current, accountAdjustments: [adjustment, ...current.accountAdjustments], syncQueue: queue(current, { table: "account_adjustments", action: "upsert", recordId: adjustment.id, payload: accountAdjustmentRow(adjustment) }, cloudEnabled) }));
+    return adjustment.id;
+  };
+
+  const deleteAccountAdjustment = (id: string) => {
+    const target = data.accountAdjustments.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+    if (!target) return;
+    const deleted = { ...target, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    setData((current) => ({ ...current, accountAdjustments: current.accountAdjustments.map((item) => item.id === id ? deleted : item), syncQueue: queue(current, { table: "account_adjustments", action: "upsert", recordId: id, payload: accountAdjustmentRow(deleted) }, cloudEnabled) }));
+  };
+
+  const saveGoal = (draft: SavingsGoalDraft, id?: string): GoalActionResult => {
+    if (!user || ownerRef.current !== user.id) return { error: "goals.inactiveError" };
+    const current = goalStateRef.current;
+    const existing = id ? current.savingsGoals.find((item) => item.id === id && item.userId === user.id) : undefined;
+    if (id && !existing) return { error: "goals.inactiveError" };
+    const error = validateGoal(draft, existing, current.goalContributions);
+    if (error) return { error };
+    const goal: SavingsGoal = { ...draft, name: draft.name.trim(), id: id ?? createId(), userId: user.id, archivedAt: existing?.archivedAt ?? null, deletedAt: null, updatedAt: new Date().toISOString() };
+    const savingsGoals = existing ? current.savingsGoals.map((item) => item.id === goal.id ? goal : item) : [goal, ...current.savingsGoals];
+    goalStateRef.current = { ...current, savingsGoals };
+    setData((state) => ({ ...state, savingsGoals, syncQueue: queue(state, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled) }));
+    return { id: goal.id, error: null };
+  };
+
+  const updateGoalStatus = (id: string, change: Partial<Pick<SavingsGoal, "archivedAt" | "deletedAt">>) => {
+    const current = goalStateRef.current;
+    const existing = current.savingsGoals.find((item) => item.id === id && item.userId === user?.id && !item.deletedAt);
+    if (!existing) return;
+    const goal = { ...existing, ...change, updatedAt: new Date().toISOString() };
+    const savingsGoals = current.savingsGoals.map((item) => item.id === id ? goal : item);
+    goalStateRef.current = { ...current, savingsGoals };
+    setData((state) => ({ ...state, savingsGoals, syncQueue: queue(state, { table: "savings_goals", action: "upsert", recordId: id, payload: savingsGoalRow(goal) }, cloudEnabled) }));
+  };
+
+  const addGoalContribution = (draft: GoalContributionDraft): GoalActionResult => {
+    if (!user || ownerRef.current !== user.id) return { error: "goals.inactiveError" };
+    const current = goalStateRef.current;
+    const goal = current.savingsGoals.find((item) => item.id === draft.goalId && item.userId === user.id);
+    const error = validateContribution(goal, current.goalContributions, { ...draft, currency: goal?.currency ?? "" });
+    if (error || !goal) return { error: error ?? "goals.inactiveError" };
+    const entry: GoalContribution = { ...draft, note: draft.note.trim(), id: createId(), userId: user.id, currency: goal.currency, deletedAt: null, updatedAt: new Date().toISOString() };
+    const goalContributions = [entry, ...current.goalContributions];
+    // Update the ledger immediately so two submissions in one render cannot overdraw it.
+    goalStateRef.current = { ...current, goalContributions };
+    setData((state) => ({ ...state, goalContributions, syncQueue: queue(state, { table: "goal_contributions", action: "upsert", recordId: entry.id, payload: goalContributionRow(entry) }, cloudEnabled) }));
+    return { id: entry.id, error: null };
+  };
+
   const addCategory = (name: string, icon?: CategoryIconName) => {
     if (!user || !name.trim()) return undefined;
     const item: Category = { id: createId(), userId: user.id, name: name.trim(), color: "#4F7F6D", icon: icon ?? "more-horizontal", kind: "custom", archivedAt: null, updatedAt: new Date().toISOString() };
@@ -450,13 +740,21 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       }
       // Cloud rows are gone. Normal sign-out would write preferences for a deleted user.
       ownerRef.current = null;
+      // Do not expose the login screen until this device cannot restore the deleted session.
+      await Promise.allSettled([
+        secureStorage.removeItem(DEMO_SESSION_KEY),
+        ...(deletedUserId ? [accountStorage.removeItem(appStorageKey(deletedUserId)), accountStorage.removeItem(legacyAppStorageKey(deletedUserId))] : []),
+        ...(supabaseAuthStorageKey && user && !user.isDemo ? [
+          secureStorage.removeItem(supabaseAuthStorageKey),
+          secureStorage.removeItem(`${supabaseAuthStorageKey}-user`),
+          secureStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`),
+        ] : []),
+      ]);
       setUser(null);
       setData(createInitialData());
       setSyncError(null);
       await Promise.allSettled([
         clearLocalReminders(),
-        secureStorage.removeItem(DEMO_SESSION_KEY),
-        ...(deletedUserId ? [accountStorage.removeItem(appStorageKey(deletedUserId)), accountStorage.removeItem(legacyAppStorageKey(deletedUserId))] : []),
         (async () => {
           if (!supabase || !user || user.isDemo) return;
           try {
@@ -502,6 +800,20 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       deleteIncome,
       saveBudget,
       deleteBudget,
+      saveCategoryBudget,
+      deleteCategoryBudget,
+      saveRecurringRule,
+      archiveRecurringRule,
+      deleteRecurringRule,
+      applyDueRecurringRules,
+      saveAccount,
+      archiveAccount,
+      addAccountAdjustment,
+      deleteAccountAdjustment,
+      saveGoal,
+      archiveGoal: (id, archived) => updateGoalStatus(id, { archivedAt: archived ? new Date().toISOString() : null }),
+      deleteGoal: (id) => updateGoalStatus(id, { deletedAt: new Date().toISOString() }),
+      addGoalContribution,
       ensureTags,
       ensurePaymentMethods,
       addCategory,

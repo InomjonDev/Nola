@@ -6,10 +6,14 @@ import { Bell, CalendarDays, ChartNoAxesColumnIncreasing, Check, ChevronLeft, Ch
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { CategoryIcon, categoryIconNames } from "@/components/category-icon";
+import { CurrencyAmountInput } from "@/components/currency-amount-input";
 import { GoogleLogo } from "@/components/google-logo";
+import { SavingsGoalsPreview, SavingsGoalsView } from "@/components/savings-goals";
 import { consumeRollingWindow, formatShortCountdown } from "@/lib/action-rate-limit";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, WALLETLY_CURRENCIES } from "@/lib/constants";
 import { formatExpenseDate, formatMoney } from "@/lib/format";
+import { parseAmountValue } from "@/lib/currency-input";
+import { exportWalletlyData } from "@/lib/export-data";
 import { activeExpenses, activeIncome, budgetStatus, monthKey, sumAmounts } from "@/lib/budgeting";
 import { languageLocale, type TranslationKey } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
@@ -280,6 +284,7 @@ function HomeView({ onAddExpense, onEditExpense }: { onAddExpense: () => void; o
         <QuickAction icon={ChartNoAxesColumnIncreasing} label={t("nav.insights")} href="/insights" />
         <QuickAction icon={SlidersHorizontal} label={t("home.manage")} href="/manage" />
       </div>
+      <SavingsGoalsPreview />
       <section className="xl:col-span-2">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="section-title">{t("home.recent")}</h2>
@@ -343,7 +348,7 @@ function ExpenseSheet({ editId, onClose }: { editId?: string; onClose: () => voi
 
 function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { compact?: boolean; editId?: string; onSaved?: () => void }) {
   const store = useAppStore();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const params = useSearchParams();
   const editId = explicitEditId ?? params.get("edit") ?? undefined;
   const editing = store.expenses.find((expense) => expense.id === editId);
@@ -365,8 +370,8 @@ function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { com
   }, [categoryId, firstCategory, paymentMethodId, store.paymentMethods]);
 
   function save() {
-    const parsed = Number(amount);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    const parsed = parseAmountValue(amount);
+    if (parsed === null) {
       setError(t("expense.amountError"));
       return;
     }
@@ -402,7 +407,7 @@ function ExpenseForm({ compact = false, editId: explicitEditId, onSaved }: { com
       {!compact && <h2 className="section-title">{editing ? t("expense.editTitle") : t("expense.addTitle")}</h2>}
       <div className="grid gap-2">
         <label className="label" htmlFor="expense-amount">{t("expense.amount")}</label>
-        <input id="expense-amount" className="amount-input" inputMode="decimal" value={amount} onChange={(event) => { setAmount(event.target.value); setError(""); }} placeholder="0.00" />
+        <CurrencyAmountInput locale={languageLocale(language)} id="expense-amount" className="amount-input" value={amount} onValueChange={(value) => { setAmount(value); setError(""); }} />
       </div>
       <div className="grid gap-2">
         <p className="label">{t("expense.category")}</p>
@@ -552,11 +557,15 @@ function InsightsView() {
   const { t, language } = useI18n();
   const expenses = visibleExpenses(store.expenses);
   const [period, setPeriod] = useState<"week" | "month">("week");
-  const [mode, setMode] = useState<"expenses" | "income">("expenses");
+  const params = useSearchParams();
+  const [mode, setMode] = useState<"expenses" | "income" | "goals">(() => params.get("tab") === "goals" ? "goals" : "expenses");
+  useEffect(() => { if (params.get("tab") === "goals") setMode("goals"); }, [params]);
   const [incomeAmount, setIncomeAmount] = useState("");
   const [incomeNote, setIncomeNote] = useState("");
   const [incomeDate, setIncomeDate] = useState(() => dateInputValue(new Date()));
   const [budgetAmount, setBudgetAmount] = useState("");
+  const [incomeAmountError, setIncomeAmountError] = useState(false);
+  const [budgetAmountError, setBudgetAmountError] = useState(false);
   const [insightMonth, setInsightMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const currency = store.profile?.currency ?? "USD";
   const currentMonth = monthKey(insightMonth);
@@ -581,11 +590,11 @@ function InsightsView() {
   return (
     <section className="grid gap-6">
       <div className="flex items-center justify-between"><div><p className="eyebrow">{t("insights.context")}</p><h2 className="mt-1 text-2xl font-bold">{t("nav.insights")}</h2></div><ChartNoAxesColumnIncreasing className="h-6 w-6 text-accent" /></div>
-      <div className="segmented-control grid-cols-2">
-        <ActivePill index={mode === "expenses" ? 0 : 1} count={2} variant="segment" />
-        {(["expenses", "income"] as const).map((item) => <button key={item} className={cx("control min-h-10 justify-center rounded-full bg-transparent text-sm", mode === item && "text-text")} onClick={() => setMode(item)}>{item === "expenses" ? t("insights.expenses") : t("insights.income")}</button>)}
+      <div className="segmented-control grid-cols-3">
+        <ActivePill index={mode === "expenses" ? 0 : mode === "income" ? 1 : 2} count={3} variant="segment" />
+        {(["expenses", "income", "goals"] as const).map((item) => <button key={item} aria-pressed={mode === item} className={cx("control min-h-11 justify-center rounded-full bg-transparent px-2 text-sm", mode === item && "text-text")} onClick={() => setMode(item)}>{item === "expenses" ? t("insights.expenses") : item === "income" ? t("insights.income") : t("goals.title")}</button>)}
       </div>
-      {mode === "income" ? <section className="grid gap-5">
+      {mode === "goals" ? <SavingsGoalsView /> : mode === "income" ? <section className="grid gap-5">
         <div className="flex items-center justify-between rounded-xl bg-raised px-3 py-2"><button type="button" className="icon-button" aria-label={t("expense.previousMonth")} onClick={() => setInsightMonth((month) => new Date(month.getFullYear(), month.getMonth() - 1, 1))}><ChevronLeft className="h-5 w-5" /></button><p className="text-sm font-semibold">{insightMonth.toLocaleDateString(languageLocale(language), { month: "long", year: "numeric" })}</p><button type="button" className="icon-button" aria-label={t("expense.nextMonth")} onClick={() => setInsightMonth((month) => new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight className="h-5 w-5" /></button></div>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.incomeTotal")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)), currency, languageLocale(language))}</p></div>
@@ -593,16 +602,18 @@ function InsightsView() {
           <div className="rounded-xl bg-raised p-4"><p className="text-[13px] text-muted">{t("insights.remaining")}</p><p className="mt-1 text-2xl font-bold tabular-nums">{formatMoney(sumAmounts(activeIncome(store.incomeEntries, currency, currentMonth)) - sumAmounts(activeExpenses(store.expenses, currency, currentMonth)), currency, languageLocale(language))}</p></div>
         </div>
         <div className="grid gap-4 rounded-xl bg-raised p-4 sm:grid-cols-2">
-          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(incomeAmount); if (!Number.isFinite(amount) || amount <= 0) return; const receivedAt = dateFromInput(incomeDate); receivedAt.setHours(12, 0, 0, 0); store.saveIncome({ amount, currency, receivedAt: receivedAt.toISOString(), note: incomeNote.trim() }); setInsightMonth(new Date(receivedAt.getFullYear(), receivedAt.getMonth(), 1)); setIncomeAmount(""); setIncomeNote(""); }}>
+          <form noValidate className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = parseAmountValue(incomeAmount); if (amount === null) { setIncomeAmountError(true); return; } setIncomeAmountError(false); const receivedAt = dateFromInput(incomeDate); receivedAt.setHours(12, 0, 0, 0); store.saveIncome({ amount, currency, receivedAt: receivedAt.toISOString(), note: incomeNote.trim() }); setInsightMonth(new Date(receivedAt.getFullYear(), receivedAt.getMonth(), 1)); setIncomeAmount(""); setIncomeNote(""); }}>
             <div><p className="font-semibold">{t("insights.addIncome")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.monthlyOverview")}</p></div>
-            <input className="input" inputMode="decimal" required value={incomeAmount} onChange={(event) => setIncomeAmount(event.target.value)} placeholder={t("insights.incomePlaceholder")} aria-label={t("insights.addIncome")} />
+            <CurrencyAmountInput locale={languageLocale(language)} className="input" required value={incomeAmount} onValueChange={(value) => { setIncomeAmount(value); setIncomeAmountError(false); }} placeholder={t("insights.incomePlaceholder")} aria-label={t("insights.addIncome")} aria-invalid={incomeAmountError} />
+            {incomeAmountError && <p role="alert" className="text-sm text-danger">{t("expense.amountError")}</p>}
             <DatePicker value={incomeDate} onChange={setIncomeDate} label={t("insights.receivedDate")} />
             <input className="input" value={incomeNote} onChange={(event) => setIncomeNote(event.target.value)} placeholder={t("expense.notePlaceholder")} aria-label={t("expense.noteOptional")} />
             <button className="control justify-center bg-text text-bg" type="submit">{t("common.add")}</button>
           </form>
-          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = Number(budgetAmount); if (!Number.isFinite(amount) || amount <= 0) return; store.saveBudget({ amount, currency, month: currentMonth }); setBudgetAmount(""); }}>
+          <form noValidate className="grid gap-3" onSubmit={(event) => { event.preventDefault(); const amount = parseAmountValue(budgetAmount); if (amount === null) { setBudgetAmountError(true); return; } setBudgetAmountError(false); store.saveBudget({ amount, currency, month: currentMonth }); setBudgetAmount(""); }}>
             <div><p className="font-semibold">{t("insights.addBudget")}</p><p className="mt-1 text-[13px] text-muted">{t("insights.budget")}: {currentMonth}</p></div>
-            <input className="input" inputMode="decimal" required value={budgetAmount} onChange={(event) => setBudgetAmount(event.target.value)} placeholder={t("insights.budgetPlaceholder")} aria-label={t("insights.addBudget")} />
+            <CurrencyAmountInput locale={languageLocale(language)} className="input" required value={budgetAmount} onValueChange={(value) => { setBudgetAmount(value); setBudgetAmountError(false); }} placeholder={t("insights.budgetPlaceholder")} aria-label={t("insights.addBudget")} aria-invalid={budgetAmountError} />
+            {budgetAmountError && <p role="alert" className="text-sm text-danger">{t("expense.amountError")}</p>}
             <div className="flex min-h-11 items-center text-sm text-muted">{currentBudgetStatus ? `${formatMoney(currentBudgetStatus.spent, currency, languageLocale(language))} ${t("insights.spentOf")} ${formatMoney(currentBudgetStatus.budget.amount, currency, languageLocale(language))}` : t("insights.noBudget")}</div>
             <button className="control justify-center bg-accent text-white" type="submit">{t("common.saveChanges")}</button>
           </form>
@@ -705,13 +716,7 @@ function SettingsView() {
       return;
     }
     setExportMessage(null);
-    const rows = visibleExpenses(store.expenses);
-    const content = type === "json"
-      ? JSON.stringify({ profile: store.profile, categories: store.categories, paymentMethods: store.paymentMethods, tags: store.tags, expenses: rows, incomeEntries: store.incomeEntries.filter((entry) => !entry.deletedAt), budgets: store.budgets.filter((budget) => !budget.deletedAt) }, null, 2)
-      : ["type,id,amount,currency,date,category,note,month", ...rows.map((expense) => {
-          const category = store.categories.find((item) => item.id === expense.categoryId)?.name ?? "";
-          return ["expense", expense.id, expense.amount, expense.currency, expense.spentAt, category, expense.note, ""].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",");
-        }), ...store.incomeEntries.filter((entry) => !entry.deletedAt).map((entry) => ["income", entry.id, entry.amount, entry.currency, entry.receivedAt, "", entry.note, ""].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(",")), ...store.budgets.filter((budget) => !budget.deletedAt).map((budget) => ["budget", budget.id, budget.amount, budget.currency, "", "", "", budget.month].map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`).join(","))].join("\n");
+    const content = exportWalletlyData(store, type);
     const blob = new Blob([content], { type: type === "json" ? "application/json" : "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

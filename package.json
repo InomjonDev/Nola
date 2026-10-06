@@ -9,6 +9,7 @@
     "lint": "eslint src tests --max-warnings=0",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/**/*.test.ts",
     "test:rls": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/rls.integration.test.ts",
+    "test:goals:db": "node scripts/test-goals-db.mjs",
     "auth:validate": "node scripts/validate-auth-config.mjs",
     "auth:verify": "node scripts/verify-auth-routes.mjs",
     "e2e": "playwright test",

@@ -70,6 +70,34 @@ test("Supabase RLS isolates two authenticated users", async (t) => {
 
     const forgedCategory = await clientB.from("categories").insert({ id: randomUUID(), user_id: userAId, name: "forged", color: "#000000", kind: "custom" });
     assert.ok(forgedCategory.error, "user B cannot insert a category owned by user A");
+
+    const goalId = randomUUID();
+    const goal = await clientA.from("savings_goals").insert({ id: goalId, user_id: userAId, name: "RLS savings goal", target_amount: 100, currency: "USD", icon: "wallet" });
+    assert.equal(goal.error, null);
+    const contributionId = randomUUID();
+    const contribution = { id: contributionId, goal_id: goalId, user_id: userAId, amount: 20, currency: "USD", kind: "deposit", occurred_on: "2026-10-05" };
+    const deposit = await clientA.from("goal_contributions").upsert(contribution, { onConflict: "id" });
+    assert.equal(deposit.error, null);
+    assert.equal((await clientA.from("goal_contributions").upsert(contribution, { onConflict: "id" })).error, null);
+    const ownDeposits = await clientA.from("goal_contributions").select("id").eq("goal_id", goalId);
+    assert.equal(ownDeposits.error, null);
+    assert.equal(ownDeposits.data?.length, 1);
+    for (const table of ["savings_goals", "goal_contributions"]) {
+      const id = table === "savings_goals" ? goalId : contributionId;
+      const read = await clientB.from(table).select("id").eq("id", id);
+      assert.equal(read.error, null);
+      assert.deepEqual(read.data, []);
+      const update = await clientB.from(table).update({ deleted_at: new Date().toISOString() }).eq("id", id).select("id");
+      assert.equal(update.error, null);
+      assert.deepEqual(update.data, []);
+      const removed = await clientB.from(table).delete().eq("id", id).select("id");
+      assert.equal(removed.error, null);
+      assert.deepEqual(removed.data, []);
+    }
+    assert.ok((await clientB.from("savings_goals").insert({ id: randomUUID(), user_id: userAId, name: "Forged goal", target_amount: 100, currency: "USD" })).error);
+    assert.ok((await clientB.from("goal_contributions").insert({ ...contribution, id: randomUUID(), user_id: userBId })).error, "cannot contribute to another user's goal even with own user ID");
+    assert.ok((await clientA.from("savings_goals").update({ currency: "EUR" }).eq("id", goalId)).error, "currency is locked after first contribution");
+    assert.ok((await clientA.from("goal_contributions").update({ amount: 200 }).eq("id", contributionId)).error, "financial entries cannot be overwritten");
   } finally {
     if (userAId) await admin.auth.admin.deleteUser(userAId);
     if (userBId) await admin.auth.admin.deleteUser(userBId);

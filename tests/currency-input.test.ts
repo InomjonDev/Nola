@@ -34,6 +34,14 @@ test("accepts spaces and a comma decimal", () => {
   assert.equal(parseAmountValue(draft.canonical), 1234.5);
 });
 
+test("formats Uzbek Latin amounts consistently when runtime Intl data falls back by region", () => {
+  assert.deepEqual(formatAmountDraft("1234567.89", "uz-Latn-UZ"), {
+    canonical: "1234567.89",
+    display: "1\u00a0234\u00a0567,89",
+    complete: true,
+  });
+});
+
 test("caps fractions at two digits", () => {
   assert.deepEqual(formatAmountDraft("12.345", "en-US"), {
     canonical: "12.34",

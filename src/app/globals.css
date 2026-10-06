@@ -278,6 +278,59 @@ textarea:focus-visible {
   border: 1px solid rgb(var(--color-line));
 }
 
+.goal-sheet-backdrop {
+  padding: 0.5rem;
+}
+
+.goal-sheet {
+  width: min(100%, 560px);
+  border-radius: 1.5rem;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.goal-progress {
+  transition: width 360ms cubic-bezier(0.4, 0, 0.2, 1), background-color 220ms ease;
+}
+
+.goal-destructive {
+  background-color: rgb(var(--color-danger));
+  color: white;
+}
+
+.goal-confetti-layer {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.goal-confetti-piece {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--confetti-color);
+  opacity: 0;
+  animation: goal-confetti 1250ms cubic-bezier(0.2, 0.7, 0.25, 1) var(--confetti-delay) both;
+}
+
+@keyframes goal-confetti {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(0.5); }
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--confetti-x)), calc(-50% + var(--confetti-y))) rotate(var(--confetti-turn)) scale(0.85); }
+}
+
+:root[data-theme="dark"] .goal-destructive {
+  color: rgb(var(--color-bg));
+}
+
+@media (max-width: 360px) {
+  .goal-sheet-content { padding-inline: 0.5rem; }
+}
+
 @media (max-width: 639px) {
   .expense-sheet {
     border-radius: 1.5rem 1.5rem 1rem 1rem;
@@ -331,6 +384,14 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .goal-confetti-piece {
+    display: none;
+    animation: none;
+  }
+
+  .goal-progress {
+    transition: none;
+  }
   .active-pill {
     transition: none;
   }

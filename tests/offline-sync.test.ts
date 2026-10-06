@@ -68,3 +68,25 @@ test("sync flush stops after a permanently failed operation", async () => {
   assert.deepEqual(result.completedIds, []);
   assert.equal(result.error, "still failing");
 });
+
+test("new goals sync before contributions even if later edits reordered the queue", async () => {
+  const contribution = { ...operation(1), table: "goal_contributions" as const, action: "upsert" as const, payload: { goal_id: "goal" } };
+  const goal = { ...operation(2), table: "savings_goals" as const, action: "upsert" as const, recordId: "goal" };
+  const sent: string[] = [];
+  await flushOperations([contribution, goal], { send: async (item) => { sent.push(item.table); return null; }, maxOperations: 1, paceMs: 0 });
+  assert.deepEqual(sent, ["savings_goals"]);
+});
+
+test("new offline entities flush parent records before their dependent rows", async () => {
+  const queue = [
+    { ...operation(1), table: "expenses" as const },
+    { ...operation(2), table: "account_adjustments" as const },
+    { ...operation(3), table: "recurring_rules" as const },
+    { ...operation(4), table: "accounts" as const },
+    { ...operation(5), table: "category_budgets" as const },
+    { ...operation(6), table: "categories" as const },
+  ];
+  const sent: string[] = [];
+  await flushOperations(queue, { send: async (item) => { sent.push(item.table); return null; }, paceMs: 0 });
+  assert.deepEqual(sent, ["categories", "recurring_rules", "accounts", "category_budgets", "expenses", "account_adjustments"]);
+});

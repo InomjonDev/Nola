@@ -1,0 +1,1347 @@
+{
+  ".claude/settings.json": {
+    "mtime": 1790845446.4411337,
+    "ast_hash": "dc580fca35a0e98ed20777ede5e545a1",
+    "semantic_hash": ""
+  },
+  "app.json": {
+    "mtime": 1790942021.7329316,
+    "ast_hash": "0448f1c87c318c601fd3270a889ce81e",
+    "semantic_hash": ""
+  },
+  "eas.json": {
+    "mtime": 1790942021.7339036,
+    "ast_hash": "cf795edec1d4847c12504bac654d481c",
+    "semantic_hash": ""
+  },
+  "eslint.config.mjs": {
+    "mtime": 1790946771.7295866,
+    "ast_hash": "63f8f7c59b2380bbf02ce365347fd461",
+    "semantic_hash": ""
+  },
+  "expo-retired/app.json": {
+    "mtime": 1790946117.0801175,
+    "ast_hash": "0448f1c87c318c601fd3270a889ce81e",
+    "semantic_hash": ""
+  },
+  "expo-retired/eas.json": {
+    "mtime": 1790946117.0806205,
+    "ast_hash": "cf795edec1d4847c12504bac654d481c",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/_layout.tsx": {
+    "mtime": 1790848911.8739023,
+    "ast_hash": "ffafbd4dbbe410d07477e40e5446c35f",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/analytics.tsx": {
+    "mtime": 1790940636.7277389,
+    "ast_hash": "9cf53ca3a54718e260e17cc34f1d5d06",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/history.tsx": {
+    "mtime": 1790940757.514989,
+    "ast_hash": "638722f3b8482d8c9aa94f54d4bec9d9",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/index.tsx": {
+    "mtime": 1790940636.7285824,
+    "ast_hash": "5fc28d07e5d7754c121d62b2b610c013",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/manage.tsx": {
+    "mtime": 1790941191.0387785,
+    "ast_hash": "c05ed1c5847d0aa90aafadbb3d554f38",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/profile.tsx": {
+    "mtime": 1790913523.032813,
+    "ast_hash": "76e54a14c608faf64a500e7117f12032",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/(tabs)/settings.tsx": {
+    "mtime": 1790942330.8188095,
+    "ast_hash": "03c8098fbb5fe220cce1546099541b5c",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/_layout.tsx": {
+    "mtime": 1790942267.8195329,
+    "ast_hash": "2065365f3b47ec55630fa2f0b1944be1",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/add-expense.tsx": {
+    "mtime": 1790941221.0817685,
+    "ast_hash": "456c6fffeb520159a0cdee8eeba19bf5",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/auth.tsx": {
+    "mtime": 1790936736.0357895,
+    "ast_hash": "f56fa9ff30bad787960a59979698ed01",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/auth/callback.tsx": {
+    "mtime": 1790853476.0283904,
+    "ast_hash": "d60520df498d0d0473dc132daa79e1f4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/cookies.tsx": {
+    "mtime": 1790849339.4575772,
+    "ast_hash": "19ff782004545c5ec0ffc18bd631a393",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/data-deletion.tsx": {
+    "mtime": 1790849620.677853,
+    "ast_hash": "da4c2f59a5b7598aaf9bb5628211e2dc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/index.tsx": {
+    "mtime": 1790876869.0704815,
+    "ast_hash": "e172f56d59e8d148e918f9804c18e2dc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/onboarding.tsx": {
+    "mtime": 1790849478.23477,
+    "ast_hash": "9dfb52b7d4180c89df670ebbe6e5dbc5",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/privacy.tsx": {
+    "mtime": 1790849339.4565508,
+    "ast_hash": "a5e73b33698d73b7d4cfdf953ee53afb",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/app/terms.tsx": {
+    "mtime": 1790849339.457062,
+    "ast_hash": "870db35006c005d0aacc618c775dd875",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/auth-panel.tsx": {
+    "mtime": 1790937652.3534825,
+    "ast_hash": "95548fb5c3bedfcd114428deb317423c",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/auth-tour.tsx": {
+    "mtime": 1790939060.9771433,
+    "ast_hash": "ed04a8482919e951c15668491009effc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/boot-screen.tsx": {
+    "mtime": 1790912795.4664285,
+    "ast_hash": "9943611303bf2f12b94f33ed04673e02",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/button.tsx": {
+    "mtime": 1790913583.6444044,
+    "ast_hash": "e59828f644757fc69145f1e569b6538a",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/category-choice.tsx": {
+    "mtime": 1790941384.4633312,
+    "ast_hash": "579d7bb252cc2ff2a3f5333283d0f6fb",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/category-icon-picker.tsx": {
+    "mtime": 1790941501.7773538,
+    "ast_hash": "7f9b4da22b38bf86d1cb8d7bf4441e2e",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/category-icon.tsx": {
+    "mtime": 1790940597.2284667,
+    "ast_hash": "98c102d53bd8052347dcf91209d07e4f",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/chip.tsx": {
+    "mtime": 1790876482.2404308,
+    "ast_hash": "14ba996298e52b4d034245d557e8ed83",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/consent-banner.tsx": {
+    "mtime": 1790912940.349726,
+    "ast_hash": "646d2ef3bf45bacfb449cecf2d5c5686",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/currency-carousel.tsx": {
+    "mtime": 1790913583.6438136,
+    "ast_hash": "a03a7d07b49a396841807932fdf508e4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/date-picker.tsx": {
+    "mtime": 1790913583.6433694,
+    "ast_hash": "d732784d32530e5ac2234817b4b53d4a",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/empty-state.tsx": {
+    "mtime": 1790913210.8592472,
+    "ast_hash": "0ba6fbef24a476e4212dbe71f5519a7b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/expense-row.tsx": {
+    "mtime": 1790940597.229517,
+    "ast_hash": "590f1a445a484bcdb2d5fa76ecfcb3c3",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/floating-tab-bar.tsx": {
+    "mtime": 1790940597.2303283,
+    "ast_hash": "54b079ef8a8624cfd96ef818e3c738b7",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/google-logo.tsx": {
+    "mtime": 1790858798.656094,
+    "ast_hash": "1a9095e17f848333707ba65392335c80",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/icon-button.tsx": {
+    "mtime": 1790912795.4671924,
+    "ast_hash": "dda9fe8f657054372264576df7a14098",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/legal-screen.tsx": {
+    "mtime": 1790849339.4561844,
+    "ast_hash": "9155de08e2aa7c8e93fbd5574ee38993",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/screen.tsx": {
+    "mtime": 1790848930.6789975,
+    "ast_hash": "d5e64eb41e8542ff2d3c14ec3075f473",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/tag-picker.tsx": {
+    "mtime": 1790941191.0378158,
+    "ast_hash": "7f3c7c2a6371d824e9e2a5c399dab464",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/text-field.tsx": {
+    "mtime": 1790938456.8025842,
+    "ast_hash": "b491f062674e676bb12823f4d3c06584",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/themed-text.tsx": {
+    "mtime": 1790845849.202643,
+    "ast_hash": "738c2b9fc25a6d8c9e5bf1937c636b38",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/components/wallet-card.tsx": {
+    "mtime": 1790913523.032179,
+    "ast_hash": "33556ae3c945b2b8db2c51a500de82c6",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/analytics.ts": {
+    "mtime": 1790940597.2311444,
+    "ast_hash": "68e08b1e96d7a0fe4cd97abcb76bb4a1",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/app-store.tsx": {
+    "mtime": 1790943056.8729694,
+    "ast_hash": "f6177ab405f6b12024a175f9140a0cde",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/constants.ts": {
+    "mtime": 1790943046.2034178,
+    "ast_hash": "4cffce23cafee0f4288ba563f91f5dad",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/currency-input.ts": {
+    "mtime": 1790938552.5848641,
+    "ast_hash": "0e4863cdcdc3dc6ac016288a4ae127ea",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/error-reporting.ts": {
+    "mtime": 1790942169.5783663,
+    "ast_hash": "9256fdca0be11c62a171e2592faead8b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/format.ts": {
+    "mtime": 1790913672.7433383,
+    "ast_hash": "7db59012a7dc643dfdb5ad8b408cac56",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/i18n-provider.tsx": {
+    "mtime": 1790940260.9180808,
+    "ast_hash": "568620012565c0c24247ee3078029a19",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/i18n.ts": {
+    "mtime": 1790942294.3033602,
+    "ast_hash": "2e1ecd8a2e3c580eb0268f36ee0fa1d0",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/id.ts": {
+    "mtime": 1790845770.936374,
+    "ast_hash": "9d85e4d087bbe9d3128a334fd2fcb6c4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/mappers.ts": {
+    "mtime": 1790940311.826841,
+    "ast_hash": "a969e8031ca07b888a4d5857d2d3cc72",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/notifications.ts": {
+    "mtime": 1790943318.2944043,
+    "ast_hash": "9d24ea333c47d2d55292f0b764c2e774",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/offline-sync.ts": {
+    "mtime": 1790942123.3194084,
+    "ast_hash": "0887dcdfa8e55f49c2d83d761745959b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/secure-storage.ts": {
+    "mtime": 1790942840.5875645,
+    "ast_hash": "1793bcb6e45c31ff45132a56a883fbf3",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/supabase.ts": {
+    "mtime": 1790856101.6539915,
+    "ast_hash": "fb5e2bfc74b8b460025b7566d87f86ef",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/lib/types.ts": {
+    "mtime": 1790940260.9170132,
+    "ast_hash": "26a409bf6f2b32e9d67bd40c58dca323",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/theme/index.ts": {
+    "mtime": 1790940513.3594077,
+    "ast_hash": "05181c9d5300715b5c2d6b41cac70e52",
+    "semantic_hash": ""
+  },
+  "expo-retired/src-before-next/theme/theme-provider.tsx": {
+    "mtime": 1790940597.23365,
+    "ast_hash": "cab84c92c17d7a72a29038b08053c494",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/_layout.tsx": {
+    "mtime": 1790946117.060918,
+    "ast_hash": "ffafbd4dbbe410d07477e40e5446c35f",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/analytics.tsx": {
+    "mtime": 1790946117.0578806,
+    "ast_hash": "9cf53ca3a54718e260e17cc34f1d5d06",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/history.tsx": {
+    "mtime": 1790946117.0587945,
+    "ast_hash": "638722f3b8482d8c9aa94f54d4bec9d9",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/index.tsx": {
+    "mtime": 1790946117.0573838,
+    "ast_hash": "5fc28d07e5d7754c121d62b2b610c013",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/manage.tsx": {
+    "mtime": 1790946117.0593176,
+    "ast_hash": "c05ed1c5847d0aa90aafadbb3d554f38",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/profile.tsx": {
+    "mtime": 1790946117.0582757,
+    "ast_hash": "76e54a14c608faf64a500e7117f12032",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/(tabs)/settings.tsx": {
+    "mtime": 1790946117.0567381,
+    "ast_hash": "03c8098fbb5fe220cce1546099541b5c",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/_layout.tsx": {
+    "mtime": 1790946117.0634193,
+    "ast_hash": "2065365f3b47ec55630fa2f0b1944be1",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/add-expense.tsx": {
+    "mtime": 1790946117.061524,
+    "ast_hash": "456c6fffeb520159a0cdee8eeba19bf5",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/auth.tsx": {
+    "mtime": 1790946117.0540273,
+    "ast_hash": "f56fa9ff30bad787960a59979698ed01",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/auth/callback.tsx": {
+    "mtime": 1790946117.0554585,
+    "ast_hash": "d60520df498d0d0473dc132daa79e1f4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/cookies.tsx": {
+    "mtime": 1790946117.0544167,
+    "ast_hash": "19ff782004545c5ec0ffc18bd631a393",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/data-deletion.tsx": {
+    "mtime": 1790946117.0558176,
+    "ast_hash": "da4c2f59a5b7598aaf9bb5628211e2dc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/index.tsx": {
+    "mtime": 1790946117.0534348,
+    "ast_hash": "e172f56d59e8d148e918f9804c18e2dc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/onboarding.tsx": {
+    "mtime": 1790946117.0629354,
+    "ast_hash": "9dfb52b7d4180c89df670ebbe6e5dbc5",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/privacy.tsx": {
+    "mtime": 1790946117.06198,
+    "ast_hash": "a5e73b33698d73b7d4cfdf953ee53afb",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/app/terms.tsx": {
+    "mtime": 1790946117.0548465,
+    "ast_hash": "870db35006c005d0aacc618c775dd875",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/auth-panel.tsx": {
+    "mtime": 1790946117.0722334,
+    "ast_hash": "95548fb5c3bedfcd114428deb317423c",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/auth-tour.tsx": {
+    "mtime": 1790946117.0692205,
+    "ast_hash": "ed04a8482919e951c15668491009effc",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/boot-screen.tsx": {
+    "mtime": 1790946117.0706005,
+    "ast_hash": "9943611303bf2f12b94f33ed04673e02",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/button.tsx": {
+    "mtime": 1790946117.072898,
+    "ast_hash": "e59828f644757fc69145f1e569b6538a",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/category-choice.tsx": {
+    "mtime": 1790946117.071425,
+    "ast_hash": "579d7bb252cc2ff2a3f5333283d0f6fb",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/category-icon-picker.tsx": {
+    "mtime": 1790946117.0725513,
+    "ast_hash": "7f9b4da22b38bf86d1cb8d7bf4441e2e",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/category-icon.tsx": {
+    "mtime": 1790946117.071014,
+    "ast_hash": "98c102d53bd8052347dcf91209d07e4f",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/chip.tsx": {
+    "mtime": 1790946117.0696673,
+    "ast_hash": "14ba996298e52b4d034245d557e8ed83",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/consent-banner.tsx": {
+    "mtime": 1790946117.0733283,
+    "ast_hash": "646d2ef3bf45bacfb449cecf2d5c5686",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/currency-carousel.tsx": {
+    "mtime": 1790946117.0648541,
+    "ast_hash": "a03a7d07b49a396841807932fdf508e4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/date-picker.tsx": {
+    "mtime": 1790946117.066831,
+    "ast_hash": "d732784d32530e5ac2234817b4b53d4a",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/empty-state.tsx": {
+    "mtime": 1790946117.0681887,
+    "ast_hash": "0ba6fbef24a476e4212dbe71f5519a7b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/expense-row.tsx": {
+    "mtime": 1790946117.0687366,
+    "ast_hash": "590f1a445a484bcdb2d5fa76ecfcb3c3",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/floating-tab-bar.tsx": {
+    "mtime": 1790946117.0678785,
+    "ast_hash": "54b079ef8a8624cfd96ef818e3c738b7",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/google-logo.tsx": {
+    "mtime": 1790946117.0654273,
+    "ast_hash": "1a9095e17f848333707ba65392335c80",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/icon-button.tsx": {
+    "mtime": 1790946117.0700562,
+    "ast_hash": "dda9fe8f657054372264576df7a14098",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/legal-screen.tsx": {
+    "mtime": 1790946117.0657153,
+    "ast_hash": "9155de08e2aa7c8e93fbd5574ee38993",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/screen.tsx": {
+    "mtime": 1790946117.0717735,
+    "ast_hash": "d5e64eb41e8542ff2d3c14ec3075f473",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/tag-picker.tsx": {
+    "mtime": 1790946117.0738466,
+    "ast_hash": "7f3c7c2a6371d824e9e2a5c399dab464",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/text-field.tsx": {
+    "mtime": 1790946117.0661817,
+    "ast_hash": "b491f062674e676bb12823f4d3c06584",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/themed-text.tsx": {
+    "mtime": 1790946117.0640996,
+    "ast_hash": "738c2b9fc25a6d8c9e5bf1937c636b38",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/components/wallet-card.tsx": {
+    "mtime": 1790946117.0672095,
+    "ast_hash": "33556ae3c945b2b8db2c51a500de82c6",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/analytics.ts": {
+    "mtime": 1790946117.075286,
+    "ast_hash": "68e08b1e96d7a0fe4cd97abcb76bb4a1",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/app-store.tsx": {
+    "mtime": 1790946117.0794592,
+    "ast_hash": "f6177ab405f6b12024a175f9140a0cde",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/constants.ts": {
+    "mtime": 1790946117.0777998,
+    "ast_hash": "4cffce23cafee0f4288ba563f91f5dad",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/currency-input.ts": {
+    "mtime": 1790946117.0781236,
+    "ast_hash": "0e4863cdcdc3dc6ac016288a4ae127ea",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/error-reporting.ts": {
+    "mtime": 1790946117.076491,
+    "ast_hash": "9256fdca0be11c62a171e2592faead8b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/format.ts": {
+    "mtime": 1790946117.0775557,
+    "ast_hash": "7db59012a7dc643dfdb5ad8b408cac56",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/i18n-provider.tsx": {
+    "mtime": 1790946117.0769298,
+    "ast_hash": "568620012565c0c24247ee3078029a19",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/i18n.ts": {
+    "mtime": 1790946117.075826,
+    "ast_hash": "2e1ecd8a2e3c580eb0268f36ee0fa1d0",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/id.ts": {
+    "mtime": 1790946117.0789938,
+    "ast_hash": "9d85e4d087bbe9d3128a334fd2fcb6c4",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/mappers.ts": {
+    "mtime": 1790946117.0760436,
+    "ast_hash": "a969e8031ca07b888a4d5857d2d3cc72",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/notifications.ts": {
+    "mtime": 1790946117.075525,
+    "ast_hash": "9d24ea333c47d2d55292f0b764c2e774",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/offline-sync.ts": {
+    "mtime": 1790946117.0749729,
+    "ast_hash": "0887dcdfa8e55f49c2d83d761745959b",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/secure-storage.ts": {
+    "mtime": 1790946117.078633,
+    "ast_hash": "1793bcb6e45c31ff45132a56a883fbf3",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/supabase.ts": {
+    "mtime": 1790946117.0783937,
+    "ast_hash": "fb5e2bfc74b8b460025b7566d87f86ef",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/lib/types.ts": {
+    "mtime": 1790946117.077208,
+    "ast_hash": "26a409bf6f2b32e9d67bd40c58dca323",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/theme/index.ts": {
+    "mtime": 1790946117.07455,
+    "ast_hash": "05181c9d5300715b5c2d6b41cac70e52",
+    "semantic_hash": ""
+  },
+  "expo-retired/src/theme/theme-provider.tsx": {
+    "mtime": 1790946117.0743349,
+    "ast_hash": "cab84c92c17d7a72a29038b08053c494",
+    "semantic_hash": ""
+  },
+  "next-env.d.ts": {
+    "mtime": 1790946745.3315961,
+    "ast_hash": "ba64ff7d54714a8f64db89b1003207d8",
+    "semantic_hash": ""
+  },
+  "next.config.ts": {
+    "mtime": 1790952554.056291,
+    "ast_hash": "7a961ad49a1d802e7a1b04f39da0b8f0",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1791217582.698557,
+    "ast_hash": "24bbcd20da3131a2964031caf87057cd",
+    "semantic_hash": ""
+  },
+  "playwright.config.ts": {
+    "mtime": 1791015494.962849,
+    "ast_hash": "bfbe14b45c7dc220180b35f31edc8862",
+    "semantic_hash": ""
+  },
+  "postcss.config.js": {
+    "mtime": 1790946168.3110244,
+    "ast_hash": "68fc1cc3bacabe03b45191774bd6af64",
+    "semantic_hash": ""
+  },
+  "public/sw.js": {
+    "mtime": 1791218309.1358721,
+    "ast_hash": "6ac92be878d0917f1c9ae0a581466a4a",
+    "semantic_hash": ""
+  },
+  "scripts/test-goals-db.mjs": {
+    "mtime": 1791218134.582451,
+    "ast_hash": "43812ee973c7f6dc2639f890ecbd9cf3",
+    "semantic_hash": ""
+  },
+  "scripts/validate-auth-config.mjs": {
+    "mtime": 1791020436.0254936,
+    "ast_hash": "03cabe61152ebe1cc6807242d083aab6",
+    "semantic_hash": ""
+  },
+  "scripts/validate-pwa.mjs": {
+    "mtime": 1790954272.5525293,
+    "ast_hash": "588acce5ca47675d9568bd1ed576a617",
+    "semantic_hash": ""
+  },
+  "scripts/validate-seo.mjs": {
+    "mtime": 1790952063.278732,
+    "ast_hash": "92e5df3140cebca365e20e6d20f34125",
+    "semantic_hash": ""
+  },
+  "scripts/verify-auth-routes.mjs": {
+    "mtime": 1791014859.0729733,
+    "ast_hash": "0303b029a48152909a728944a55c07b7",
+    "semantic_hash": ""
+  },
+  "src/app/add-expense/page.tsx": {
+    "mtime": 1790950780.2998827,
+    "ast_hash": "604dc9fe33ee85bfc21558e0d7f7d0d3",
+    "semantic_hash": ""
+  },
+  "src/app/auth/callback/layout.tsx": {
+    "mtime": 1790952205.2481463,
+    "ast_hash": "799f4f3ecac8e115e8bae88e446781d0",
+    "semantic_hash": ""
+  },
+  "src/app/auth/callback/page.tsx": {
+    "mtime": 1791208500.3344817,
+    "ast_hash": "0451c6a1723126c3d252b5570e41fb23",
+    "semantic_hash": ""
+  },
+  "src/app/auth/confirm/layout.tsx": {
+    "mtime": 1791014266.5911915,
+    "ast_hash": "70a892197a5a3fdd93547a466f84bcfd",
+    "semantic_hash": ""
+  },
+  "src/app/auth/confirm/page.tsx": {
+    "mtime": 1791014266.5903187,
+    "ast_hash": "916b0eac564886ac65bcde5a48f61b47",
+    "semantic_hash": ""
+  },
+  "src/app/cookies/page.tsx": {
+    "mtime": 1790952063.2728417,
+    "ast_hash": "599e7a7dbba68aa1a1bf9d7af851e89d",
+    "semantic_hash": ""
+  },
+  "src/app/data-deletion/page.tsx": {
+    "mtime": 1790952063.2732034,
+    "ast_hash": "d67e996d4aaf6f380f0712113d91081f",
+    "semantic_hash": ""
+  },
+  "src/app/error.tsx": {
+    "mtime": 1790968313.4304612,
+    "ast_hash": "1c85e3f7180d818afc76e671e41163be",
+    "semantic_hash": ""
+  },
+  "src/app/global-error.tsx": {
+    "mtime": 1790968313.4309824,
+    "ast_hash": "5208683db607bdbf12281f957b1809e1",
+    "semantic_hash": ""
+  },
+  "src/app/history/page.tsx": {
+    "mtime": 1790952205.248684,
+    "ast_hash": "aadeb74e16774aff6477edaaa049345b",
+    "semantic_hash": ""
+  },
+  "src/app/insights/page.tsx": {
+    "mtime": 1790952205.2492461,
+    "ast_hash": "3f762dc69ee86f6128a8d75933c867a3",
+    "semantic_hash": ""
+  },
+  "src/app/layout.tsx": {
+    "mtime": 1790954272.5501971,
+    "ast_hash": "0b98b7f2c64516d236ad16b6c7f9f127",
+    "semantic_hash": ""
+  },
+  "src/app/manage/page.tsx": {
+    "mtime": 1790952205.2496724,
+    "ast_hash": "56a4b846f7fae683e2b36df4374810be",
+    "semantic_hash": ""
+  },
+  "src/app/onboarding/page.tsx": {
+    "mtime": 1790952205.2500062,
+    "ast_hash": "97c6a5dbd6c3c95da39f764736d8145e",
+    "semantic_hash": ""
+  },
+  "src/app/page.tsx": {
+    "mtime": 1790952205.2510433,
+    "ast_hash": "73d2ebcf1fea36ea5299d3041e8ffd14",
+    "semantic_hash": ""
+  },
+  "src/app/privacy/page.tsx": {
+    "mtime": 1790952063.2721028,
+    "ast_hash": "535b237a86a03b8c9d3a34279045843f",
+    "semantic_hash": ""
+  },
+  "src/app/profile/page.tsx": {
+    "mtime": 1790952205.2503922,
+    "ast_hash": "1940d149b1447df4fb9ceca758168eb4",
+    "semantic_hash": ""
+  },
+  "src/app/robots.ts": {
+    "mtime": 1790952063.278085,
+    "ast_hash": "20af5be169542a181202a815d166648c",
+    "semantic_hash": ""
+  },
+  "src/app/settings/page.tsx": {
+    "mtime": 1790952205.2507634,
+    "ast_hash": "69d7719b48c6ad78d4f0923e5c3b558d",
+    "semantic_hash": ""
+  },
+  "src/app/sitemap.ts": {
+    "mtime": 1790952063.278424,
+    "ast_hash": "7597ce6851a07f2877db793544fc27f0",
+    "semantic_hash": ""
+  },
+  "src/app/terms/page.tsx": {
+    "mtime": 1790952063.272568,
+    "ast_hash": "196dfccc9dd7b6a33a0c89788e0d175a",
+    "semantic_hash": ""
+  },
+  "src/components/category-icon.tsx": {
+    "mtime": 1790949994.9942405,
+    "ast_hash": "03d98ad799c89d9f919142b56515ccf3",
+    "semantic_hash": ""
+  },
+  "src/components/currency-amount-input.tsx": {
+    "mtime": 1791225398.5397654,
+    "ast_hash": "4515a9fc4e6d9d46d9f05c18ec2637ca",
+    "semantic_hash": ""
+  },
+  "src/components/google-logo.tsx": {
+    "mtime": 1790946348.703376,
+    "ast_hash": "1afe25f22fc7a192e3716ae45cf50b72",
+    "semantic_hash": ""
+  },
+  "src/components/legal-page.tsx": {
+    "mtime": 1790964751.9243755,
+    "ast_hash": "c0af2383a6fd59f8982bb3a843581c35",
+    "semantic_hash": ""
+  },
+  "src/components/providers.tsx": {
+    "mtime": 1790946348.7022183,
+    "ast_hash": "13098b0c5dc75ee10034d2275c60f7c1",
+    "semantic_hash": ""
+  },
+  "src/components/savings-goals.tsx": {
+    "mtime": 1791225398.5413172,
+    "ast_hash": "6a8f002b7ced3cef870d54a0a998d730",
+    "semantic_hash": ""
+  },
+  "src/components/walletly-app.tsx": {
+    "mtime": 1791225398.5406551,
+    "ast_hash": "ce26239989bbe4201507582fa715f650",
+    "semantic_hash": ""
+  },
+  "src/global.d.ts": {
+    "mtime": 1790946736.2637172,
+    "ast_hash": "fb8214c6467938c43691a41c63101314",
+    "semantic_hash": ""
+  },
+  "src/lib/action-rate-limit.ts": {
+    "mtime": 1791017987.8275943,
+    "ast_hash": "51f493a3725945039e2011b39470087b",
+    "semantic_hash": ""
+  },
+  "src/lib/analytics.ts": {
+    "mtime": 1790946601.9885411,
+    "ast_hash": "af00386cba9a13929d1b6233fa7c09f5",
+    "semantic_hash": ""
+  },
+  "src/lib/app-store.tsx": {
+    "mtime": 1791230443.3521059,
+    "ast_hash": "0288dfab3c672acefd0b9a32e1e2697d",
+    "semantic_hash": ""
+  },
+  "src/lib/budgeting.ts": {
+    "mtime": 1791051151.6101644,
+    "ast_hash": "25b89b5ad650203fc84a8156d41fab83",
+    "semantic_hash": ""
+  },
+  "src/lib/constants.ts": {
+    "mtime": 1790946136.5522327,
+    "ast_hash": "4cffce23cafee0f4288ba563f91f5dad",
+    "semantic_hash": ""
+  },
+  "src/lib/currency-input.ts": {
+    "mtime": 1791226000.348222,
+    "ast_hash": "e6e662217c998fbe30a1e061c73db0f4",
+    "semantic_hash": ""
+  },
+  "src/lib/error-reporting.ts": {
+    "mtime": 1790968313.4299953,
+    "ast_hash": "58a14d3588003bf75066a34390a503d9",
+    "semantic_hash": ""
+  },
+  "src/lib/export-data.ts": {
+    "mtime": 1791217220.7716193,
+    "ast_hash": "e99ef9b29363ce2e575ddc338a634f4f",
+    "semantic_hash": ""
+  },
+  "src/lib/format.ts": {
+    "mtime": 1790964197.0647304,
+    "ast_hash": "22ad341814f297d0d83ec71bcac85904",
+    "semantic_hash": ""
+  },
+  "src/lib/i18n-provider.tsx": {
+    "mtime": 1790964167.5885854,
+    "ast_hash": "dca10a88412dfaca8fbb08084d3e3eb3",
+    "semantic_hash": ""
+  },
+  "src/lib/i18n.ts": {
+    "mtime": 1791222709.2741714,
+    "ast_hash": "6ff4a2395c36c4e378e91554babff113",
+    "semantic_hash": ""
+  },
+  "src/lib/id.ts": {
+    "mtime": 1790946685.379942,
+    "ast_hash": "af21d317bf5ac3d3b3dd4b07d73a4f6d",
+    "semantic_hash": ""
+  },
+  "src/lib/mappers.ts": {
+    "mtime": 1791227793.2245092,
+    "ast_hash": "d6614b81bd3afb2eb919bde1b4c3c637",
+    "semantic_hash": ""
+  },
+  "src/lib/notifications.ts": {
+    "mtime": 1791209116.6338086,
+    "ast_hash": "75b9a039e077102f2f1f39be5b748cf9",
+    "semantic_hash": ""
+  },
+  "src/lib/offline-sync.ts": {
+    "mtime": 1791227823.2147253,
+    "ast_hash": "23c716950f0aee867551aeeccbf1b035",
+    "semantic_hash": ""
+  },
+  "src/lib/savings-goals.ts": {
+    "mtime": 1791222709.271811,
+    "ast_hash": "27ac3654ccf9b053fc21232b0662a83f",
+    "semantic_hash": ""
+  },
+  "src/lib/secure-storage.ts": {
+    "mtime": 1790946213.6589801,
+    "ast_hash": "b04f132d8fd5e4fc66e9046fabe168ab",
+    "semantic_hash": ""
+  },
+  "src/lib/seo.ts": {
+    "mtime": 1790952063.270262,
+    "ast_hash": "e6af9a52f39ed3ee0b8ef3a6b2f52343",
+    "semantic_hash": ""
+  },
+  "src/lib/supabase.ts": {
+    "mtime": 1791209116.6348734,
+    "ast_hash": "23ae8044af7b8376bca1a20975d01973",
+    "semantic_hash": ""
+  },
+  "src/lib/types.ts": {
+    "mtime": 1791227657.4494166,
+    "ast_hash": "1381d7194d230b22aca9c74e4a3ce215",
+    "semantic_hash": ""
+  },
+  "src/theme/index.ts": {
+    "mtime": 1790946136.5582159,
+    "ast_hash": "05181c9d5300715b5c2d6b41cac70e52",
+    "semantic_hash": ""
+  },
+  "src/theme/theme-provider.tsx": {
+    "mtime": 1790946213.6626198,
+    "ast_hash": "c8c11765457217b37facd20854f43471",
+    "semantic_hash": ""
+  },
+  "supabase/functions/daily-reminders/index.ts": {
+    "mtime": 1791051529.4296474,
+    "ast_hash": "872c6a895787e21c8f04a46e085c4c03",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/202610010001_expense_tracker_mvp.sql": {
+    "mtime": 1790847052.435424,
+    "ast_hash": "f0cb370a8f276d24b2705fe0e2623e05",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/202610020002_category_icons.sql": {
+    "mtime": 1790940311.8294218,
+    "ast_hash": "7c2f074734112a35a450ca01785012b2",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/202610020003_income_budgets.sql": {
+    "mtime": 1790967643.3511646,
+    "ast_hash": "26f14547ba1a81f25dcc7451800a13a9",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/202610020004_push_reminders.sql": {
+    "mtime": 1790968090.7533731,
+    "ast_hash": "6b102107f7c834388810a076dd9ddc5a",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003181024_reminder_delivery_idempotency.sql": {
+    "mtime": 1791051087.3510098,
+    "ast_hash": "3389656dc1fa5d17d6e34c7fd546d1fa",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261005160939_savings_goals.sql": {
+    "mtime": 1791216779.2520216,
+    "ast_hash": "9d85e1433489de9d75e377665a7fa325",
+    "semantic_hash": ""
+  },
+  "supabase/tests/rls.sql": {
+    "mtime": 1791207526.9125602,
+    "ast_hash": "d4b3d8c8e1c555f84a84b9a8623eafbf",
+    "semantic_hash": ""
+  },
+  "supabase/tests/savings_goals.sql": {
+    "mtime": 1791218134.5808647,
+    "ast_hash": "e83dc20b60a70cb40ef6a1cd58d89822",
+    "semantic_hash": ""
+  },
+  "tailwind.config.ts": {
+    "mtime": 1790947770.353201,
+    "ast_hash": "114a2642b367e1e475c2547a439a2213",
+    "semantic_hash": ""
+  },
+  "tests/action-rate-limit.test.ts": {
+    "mtime": 1791017539.1434622,
+    "ast_hash": "3778f58578c011eee83270b01765b9b3",
+    "semantic_hash": ""
+  },
+  "tests/currency-input.test.ts": {
+    "mtime": 1791225855.8600354,
+    "ast_hash": "eb005872a788ab6ac7d2f73524d8607b",
+    "semantic_hash": ""
+  },
+  "tests/e2e/auth-callback.spec.ts": {
+    "mtime": 1791208998.877129,
+    "ast_hash": "f95acfb07c14bc95e99d1d11a530c445",
+    "semantic_hash": ""
+  },
+  "tests/e2e/email-magic-link.spec.ts": {
+    "mtime": 1791051783.347551,
+    "ast_hash": "0edc7c0b6fbdd99324f29e34801b41af",
+    "semantic_hash": ""
+  },
+  "tests/e2e/expense-lifecycle.spec.ts": {
+    "mtime": 1791230803.8917956,
+    "ast_hash": "ae3a6fd98c2161f2c3ca369dda8a8940",
+    "semantic_hash": ""
+  },
+  "tests/e2e/export-delete.spec.ts": {
+    "mtime": 1791209211.3129144,
+    "ast_hash": "92478a29acdbdae5654132e78b1527fc",
+    "semantic_hash": ""
+  },
+  "tests/e2e/helpers.ts": {
+    "mtime": 1791208998.877907,
+    "ast_hash": "ebdbe282198b4d1bb7b35d14ace1fa3d",
+    "semantic_hash": ""
+  },
+  "tests/e2e/offline-sync.spec.ts": {
+    "mtime": 1790968717.707541,
+    "ast_hash": "1cf56f282acf7cb8e851e27145aeba60",
+    "semantic_hash": ""
+  },
+  "tests/e2e/pwa.spec.ts": {
+    "mtime": 1791056814.651957,
+    "ast_hash": "2b7a4e421f5afc944065e3d9f7878fa9",
+    "semantic_hash": ""
+  },
+  "tests/e2e/savings-goals.spec.ts": {
+    "mtime": 1791231075.3561206,
+    "ast_hash": "ee50a74542145c7379a15ba36112d560",
+    "semantic_hash": ""
+  },
+  "tests/format.test.ts": {
+    "mtime": 1790913672.744035,
+    "ast_hash": "0e24364143bcd5691c7ddbe86e7d7ac7",
+    "semantic_hash": ""
+  },
+  "tests/i18n.test.ts": {
+    "mtime": 1790964929.7044275,
+    "ast_hash": "f25bf160aed163b71171e2b510bbfac4",
+    "semantic_hash": ""
+  },
+  "tests/income-budget.test.ts": {
+    "mtime": 1791051260.4142084,
+    "ast_hash": "5375111706432a937078d91aa1f33874",
+    "semantic_hash": ""
+  },
+  "tests/notifications.test.ts": {
+    "mtime": 1791051260.4146552,
+    "ast_hash": "cd8e2e95d6d7cd8f274e352dd74b56cd",
+    "semantic_hash": ""
+  },
+  "tests/offline-sync.test.ts": {
+    "mtime": 1791227823.2152963,
+    "ast_hash": "2afb0330bfe119ce74ee3070839f4f70",
+    "semantic_hash": ""
+  },
+  "tests/rls.integration.test.ts": {
+    "mtime": 1791217582.6992636,
+    "ast_hash": "9bd3d6192b7feaa0943a2b423d4abb8a",
+    "semantic_hash": ""
+  },
+  "tests/savings-goals-export.test.ts": {
+    "mtime": 1791230357.5497003,
+    "ast_hash": "60aea85e934cabae59b899ad3866ffbe",
+    "semantic_hash": ""
+  },
+  "tests/savings-goals.test.ts": {
+    "mtime": 1791222709.2728317,
+    "ast_hash": "b87d7d0771f55ca4eb93540f5fd26b3a",
+    "semantic_hash": ""
+  },
+  "tests/service-worker-cache.test.ts": {
+    "mtime": 1791218309.1364589,
+    "ast_hash": "70ba868cd98e7d73370a668090d6ec75",
+    "semantic_hash": ""
+  },
+  "tests/storage-keys.test.ts": {
+    "mtime": 1790943094.7975452,
+    "ast_hash": "84a13926ccb4ca0ad19cc0e33ff2fc57",
+    "semantic_hash": ""
+  },
+  "tsconfig.json": {
+    "mtime": 1790947012.338174,
+    "ast_hash": "c9e894260efc9f9482d2e09cec794fa4",
+    "semantic_hash": ""
+  },
+  "vercel.json": {
+    "mtime": 1790946168.3130486,
+    "ast_hash": "84fdb8623d6ed782157f7e9319569f49",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1790942084.2030456,
+    "ast_hash": "d9ea771854cadb33eb4e8e35d0c5777a",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1790845446.441334,
+    "ast_hash": "233d1484702a528f5dcb4333cd01bb43",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1790952784.7017894,
+    "ast_hash": "9bd625e7392ca88b88490675a4c100b7",
+    "semantic_hash": ""
+  },
+  "design-system/walletly/MASTER.md": {
+    "mtime": 1790951298.8371344,
+    "ast_hash": "e743f4623ad997bbc5b03fd65256c2c1",
+    "semantic_hash": ""
+  },
+  "design-system/walletly/pages/add-expense.md": {
+    "mtime": 1790951298.8442273,
+    "ast_hash": "3b753d40d7649fecdb23e259971a4607",
+    "semantic_hash": ""
+  },
+  "docs/e2e.md": {
+    "mtime": 1790968575.5768964,
+    "ast_hash": "9f64b1b5d393f093085a967e6b98a402",
+    "semantic_hash": ""
+  },
+  "docs/migration-note-next-pwa.md": {
+    "mtime": 1791015064.7386332,
+    "ast_hash": "163753f5bf685c70db09200be94b3b35",
+    "semantic_hash": ""
+  },
+  "docs/monitoring.md": {
+    "mtime": 1790968313.431369,
+    "ast_hash": "6d7487b28d2b87d8d8e938776f7844ec",
+    "semantic_hash": ""
+  },
+  "docs/next-pwa-deployment.md": {
+    "mtime": 1791051274.9667764,
+    "ast_hash": "0d8029b3a58fd56d2b3d20dd99e9ee64",
+    "semantic_hash": ""
+  },
+  "docs/production-readiness.md": {
+    "mtime": 1791020436.0270255,
+    "ast_hash": "4178975032531ce5ade0b53330d4a889",
+    "semantic_hash": ""
+  },
+  "docs/release-checklist.md": {
+    "mtime": 1791020436.027321,
+    "ast_hash": "6e872366d7fad2f1ff31532d75053ec9",
+    "semantic_hash": ""
+  },
+  "docs/savings-goals.md": {
+    "mtime": 1791222950.7571917,
+    "ast_hash": "ae7819ad212c5e6b4c3dc77aaa49a806",
+    "semantic_hash": ""
+  },
+  "docs/seo-audit.md": {
+    "mtime": 1790952321.0113392,
+    "ast_hash": "456a91c48c402b84909a1bdc23f5fe3c",
+    "semantic_hash": ""
+  },
+  "docs/supabase-provider-setup.md": {
+    "mtime": 1791020436.025891,
+    "ast_hash": "550084d17dbe118e9b6bcbbd4e239ee8",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-01-walletly-onboarding-surface-redesign.md": {
+    "mtime": 1790876392.435113,
+    "ast_hash": "123acd4406b0045b4c3aac8eac011914",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-02-walletly-history-icons-localization.md": {
+    "mtime": 1790939979.9306664,
+    "ast_hash": "7402d30f84230176744e54bd659646c5",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-02-walletly-next-pwa-migration.md": {
+    "mtime": 1790946644.1915848,
+    "ast_hash": "30c614129bef55dc459af76d2a2a8516",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-02-walletly-production-hardening.md": {
+    "mtime": 1790967378.5134456,
+    "ast_hash": "0a53c0dba4c751e21b89bec66f57001a",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-03-walletly-email-otp.md": {
+    "mtime": 1791011307.1078358,
+    "ast_hash": "da3a968fb174245f8a638cd76b7a61e6",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-03-walletly-magic-link.md": {
+    "mtime": 1791013919.9279408,
+    "ast_hash": "99291426edecd5dc697fe6d4090a5402",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-03-walletly-rate-limits-expiry.md": {
+    "mtime": 1791017443.9136267,
+    "ast_hash": "4251fc398fa5b9b2c430c0775d12806a",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-05-savings-goals.md": {
+    "mtime": 1791218961.25225,
+    "ast_hash": "94215adca6d271efb499211d4061e29c",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-01-walletly-onboarding-surface-redesign.md": {
+    "mtime": 1790860590.2963238,
+    "ast_hash": "140a07f6a136915547361a784168a274",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-02-walletly-history-icons-localization-design.md": {
+    "mtime": 1790939749.7309334,
+    "ast_hash": "7012b048907ca1bc1ed46930465b041c",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-02-walletly-production-hardening-design.md": {
+    "mtime": 1790967378.5125968,
+    "ast_hash": "4efedbd8131fa8665d9d3c0b7b0c80ca",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-02-walletly-web-visual-parity-design.md": {
+    "mtime": 1790947723.9116874,
+    "ast_hash": "24902c2de1219083ecc3ea5c524c8b8b",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-03-walletly-email-otp-design.md": {
+    "mtime": 1790970456.3597438,
+    "ast_hash": "dfc541786405a6420673abe9ac93ac06",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-03-walletly-magic-link-design.md": {
+    "mtime": 1791013762.898749,
+    "ast_hash": "4d273287a9f9660bf768d76b403b2138",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-10-03-walletly-rate-limits-expiry-design.md": {
+    "mtime": 1791017033.590353,
+    "ast_hash": "5ee74c1cb7a9ad70c821bde3408785e0",
+    "semantic_hash": ""
+  },
+  "docs/third-party-audit.md": {
+    "mtime": 1790942728.5126996,
+    "ast_hash": "67236c10b1903312550f948a6f088203",
+    "semantic_hash": ""
+  },
+  "supabase/templates/confirmation.html": {
+    "mtime": 1791020436.0246708,
+    "ast_hash": "6b9c5e8ab7f4219120e98cee34f3abef",
+    "semantic_hash": ""
+  },
+  "supabase/templates/magic_link.html": {
+    "mtime": 1791020436.025047,
+    "ast_hash": "40850365e1bbd5e76ba10c7f1a9d057b",
+    "semantic_hash": ""
+  },
+  "artifacts/pwa-verification/desktop-1440.png": {
+    "mtime": 1790946975.5288196,
+    "ast_hash": "290d4289ee051621aa7ef37cee1f70e3",
+    "semantic_hash": ""
+  },
+  "artifacts/pwa-verification/mobile-375.png": {
+    "mtime": 1790946971.3742087,
+    "ast_hash": "6b453e5f2587d042e2293c2ce9bff37a",
+    "semantic_hash": ""
+  },
+  "artifacts/pwa-verification/tablet-768.png": {
+    "mtime": 1790946973.519342,
+    "ast_hash": "3521240b55c2afb0fb7c403bcacfaaa2",
+    "semantic_hash": ""
+  },
+  "assets/android-icon-background.png": {
+    "mtime": 1790845376.1873014,
+    "ast_hash": "2d65569cc0e2afdcea0af9f9902d4173",
+    "semantic_hash": ""
+  },
+  "assets/android-icon-foreground.png": {
+    "mtime": 1790845376.1887317,
+    "ast_hash": "72e71a9c846c6aa4ae32476641a00e18",
+    "semantic_hash": ""
+  },
+  "assets/android-icon-monochrome.png": {
+    "mtime": 1790845376.1891835,
+    "ast_hash": "1e097dab989759fc0b69440092ca22cd",
+    "semantic_hash": ""
+  },
+  "assets/favicon.png": {
+    "mtime": 1790845376.189582,
+    "ast_hash": "d9f444efbdfbe7931aa93beada07318a",
+    "semantic_hash": ""
+  },
+  "assets/icon.png": {
+    "mtime": 1790845376.1955514,
+    "ast_hash": "cb975bba2216ce10a60e6c0ffe9941a2",
+    "semantic_hash": ""
+  },
+  "assets/splash-icon.png": {
+    "mtime": 1790845376.1960626,
+    "ast_hash": "97dae5a0e62ad8551d8a31897b425e63",
+    "semantic_hash": ""
+  },
+  "public/branding/walletly-mascot.png": {
+    "mtime": 1790954226.9157832,
+    "ast_hash": "21728220c04e77c547ef0828fdd0d654",
+    "semantic_hash": ""
+  },
+  "public/favicon.png": {
+    "mtime": 1790954227.0305912,
+    "ast_hash": "4722d28c70729fca53c6ed0505e317c5",
+    "semantic_hash": ""
+  },
+  "public/icons/icon-192.png": {
+    "mtime": 1790954227.000106,
+    "ast_hash": "9316d462c4bc7d111d8663b2bf0f45bc",
+    "semantic_hash": ""
+  },
+  "public/icons/icon-512.png": {
+    "mtime": 1790954226.9662397,
+    "ast_hash": "4b24d761b442b3527f5f93a40f894abd",
+    "semantic_hash": ""
+  },
+  "public/screenshots/desktop.png": {
+    "mtime": 1790946660.9529593,
+    "ast_hash": "a794928a36c163c15cdf2d2e1da1aef3",
+    "semantic_hash": ""
+  },
+  "public/screenshots/mobile.png": {
+    "mtime": 1790946659.9669354,
+    "ast_hash": "24d650e9cbb33c7aab5d70d5bfbb8012",
+    "semantic_hash": ""
+  },
+  "src/lib/accounts.ts": {
+    "mtime": 1791227576.7878945,
+    "ast_hash": "94d2af5b3bc5d3fc04f188358990995a",
+    "semantic_hash": ""
+  },
+  "src/lib/category-budgets.ts": {
+    "mtime": 1791227711.0383506,
+    "ast_hash": "ee1186c3baedfed93c7c7f0ea57288b8",
+    "semantic_hash": ""
+  },
+  "src/lib/recurring.ts": {
+    "mtime": 1791227757.8159194,
+    "ast_hash": "9dc561ccbdc69d23bf34b04bb11e58c0",
+    "semantic_hash": ""
+  },
+  "tests/accounts.test.ts": {
+    "mtime": 1791227576.788347,
+    "ast_hash": "c39d74ac036de6702b5700f1c43d52ff",
+    "semantic_hash": ""
+  },
+  "tests/category-budgets.test.ts": {
+    "mtime": 1791227062.7071128,
+    "ast_hash": "fa4b10a87a2fcbc4f73dc55051a7cf1d",
+    "semantic_hash": ""
+  },
+  "tests/recurring.test.ts": {
+    "mtime": 1791227692.4154415,
+    "ast_hash": "2c2d135ea74ed8dd7106870d801842a8",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-05-walletly-luna-priority-improvements.md": {
+    "mtime": 1791226873.7058344,
+    "ast_hash": "ca66484ac6caa79381c033099b0aebd8",
+    "semantic_hash": ""
+  },
+  "src/lib/demo-data.ts": {
+    "mtime": 1791230803.8904302,
+    "ast_hash": "2dd4fbbd77f97283a15a5d48959451a9",
+    "semantic_hash": ""
+  },
+  "tests/demo-data.test.ts": {
+    "mtime": 1791230427.3025873,
+    "ast_hash": "5d5a09503fb48184279ecf2a7f9ffe30",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-10-06-walletly-remaining-luna-features.md": {
+    "mtime": 1791231239.0819862,
+    "ast_hash": "706b45b49b931fa247a4250e34cb0659",
+    "semantic_hash": ""
+  }
+}

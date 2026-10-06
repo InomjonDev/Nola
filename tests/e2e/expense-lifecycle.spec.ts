@@ -7,7 +7,7 @@ test("demo user can add, edit, filter, and delete an expense", async ({ page }) 
   await saveExpense(page, "12.50", "E2E lunch");
   await page.goto("/history");
   await expect(page.getByText("E2E lunch")).toBeVisible();
-  await page.getByRole("button", { name: "Delete expense" }).first().click();
+  await page.locator(".expense-row").filter({ hasText: "E2E lunch" }).getByRole("button", { name: "Delete expense" }).click();
   await expect(page.getByText("E2E lunch")).toHaveCount(0);
 });
 

@@ -7,10 +7,14 @@ export type AmountDraft = {
 const MAX_INTEGER_DIGITS = 12;
 const MAX_FRACTION_DIGITS = 2;
 const MAX_AMOUNT = 999_999_999_999.99;
+const localeSymbols: Record<string, { decimal: string; group: string }> = {
+  "uz-Latn-UZ": { decimal: ",", group: "\u00a0" },
+};
 
 type LocaleNumberConfig = {
   decimal: string;
   group: string;
+  nativeGroup: string;
   integerFormatter: Intl.NumberFormat;
 };
 
@@ -30,9 +34,12 @@ function getLocaleConfig(locale?: string): LocaleNumberConfig {
   const parts = typeof partsFormatter.formatToParts === "function"
     ? partsFormatter.formatToParts(12_345.6)
     : null;
+  const nativeGroup = parts?.find((part) => part.type === "group")?.value ?? ",";
+  const explicitSymbols = localeSymbols[resolvedLocale];
   const config = {
-    decimal: parts?.find((part) => part.type === "decimal")?.value ?? ".",
-    group: parts?.find((part) => part.type === "group")?.value ?? ",",
+    decimal: explicitSymbols?.decimal ?? parts?.find((part) => part.type === "decimal")?.value ?? ".",
+    group: explicitSymbols?.group ?? nativeGroup,
+    nativeGroup,
     integerFormatter,
   };
   localeConfigCache.set(resolvedLocale, config);
@@ -61,7 +68,7 @@ function findDecimalIndex(input: string, decimal: string, group: string) {
 }
 
 export function formatAmountDraft(input: string, locale?: string): AmountDraft {
-  const { decimal, group, integerFormatter } = getLocaleConfig(locale);
+  const { decimal, group, nativeGroup, integerFormatter } = getLocaleConfig(locale);
   const isNegative = input.includes("-");
   const sanitized = input.replace(/[^0-9.,]/g, "");
 
@@ -76,7 +83,7 @@ export function formatAmountDraft(input: string, locale?: string): AmountDraft {
   if (!integerDigits && decimalIndex < 0) return { canonical: "", display: "", complete: false };
 
   const normalizedInteger = (integerDigits || "0").replace(/^0+(?=\d)/, "");
-  const groupedInteger = integerFormatter.format(Number(normalizedInteger));
+  const groupedInteger = integerFormatter.format(Number(normalizedInteger)).split(nativeGroup).join(group);
   const hasDecimal = decimalIndex >= 0;
   const canonical = `${isNegative ? "-" : ""}${normalizedInteger}${hasDecimal ? `.${fractionDigits}` : ""}`;
   const display = `${isNegative ? "-" : ""}${groupedInteger}${hasDecimal ? `${decimal}${fractionDigits}` : ""}`;

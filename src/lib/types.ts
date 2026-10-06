@@ -75,6 +75,7 @@ export type Expense = {
   categoryId: string;
   paymentMethodId: string;
   note: string;
+  recurringRuleId?: string | null;
   tagIds: string[];
   deletedAt: string | null;
   updatedAt: string;
@@ -89,6 +90,8 @@ export type IncomeEntry = {
   userId: string;
   amount: number;
   currency: string;
+  accountId?: string | null;
+  recurringRuleId?: string | null;
   receivedAt: string;
   note: string;
   deletedAt: string | null;
@@ -109,9 +112,105 @@ export type Budget = {
 
 export type BudgetDraft = Omit<Budget, "id" | "userId" | "deletedAt" | "updatedAt">;
 
+export type BudgetCadence = "weekly" | "monthly";
+
+export type CategoryBudget = {
+  id: string;
+  userId: string;
+  categoryId: string;
+  amount: number;
+  currency: string;
+  cadence: BudgetCadence;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type CategoryBudgetDraft = Pick<CategoryBudget, "categoryId" | "amount" | "currency" | "cadence">;
+
+export type RecurringFrequency = "weekly" | "monthly";
+
+export type RecurringRule = {
+  id: string;
+  userId: string;
+  kind: "expense" | "income";
+  amount: number;
+  currency: string;
+  accountId: string | null;
+  categoryId: string | null;
+  paymentMethodId: string | null;
+  note: string;
+  tagIds: string[];
+  frequency: RecurringFrequency;
+  startDate: string;
+  nextRunDate: string;
+  archivedAt: string | null;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type RecurringRuleDraft = Pick<RecurringRule, "kind" | "amount" | "currency" | "accountId" | "categoryId" | "paymentMethodId" | "note" | "tagIds" | "frequency" | "startDate">;
+
+export type Account = {
+  id: string;
+  userId: string;
+  name: string;
+  kind: "cash" | "bank" | "card";
+  currency: string;
+  startingBalance: number;
+  archivedAt: string | null;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type AccountDraft = Pick<Account, "name" | "kind" | "currency" | "startingBalance">;
+
+export type AccountAdjustment = {
+  id: string;
+  accountId: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  occurredOn: string;
+  note: string;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type AccountAdjustmentDraft = Pick<AccountAdjustment, "accountId" | "amount" | "currency" | "occurredOn" | "note">;
+
+export type SavingsGoal = {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  currency: string;
+  icon: "wallet" | "plane" | "home" | "car" | "gift" | "briefcase" | "heart-pulse" | "shopping-bag";
+  deadline: string | null;
+  archivedAt: string | null;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type SavingsGoalDraft = Pick<SavingsGoal, "name" | "targetAmount" | "currency" | "icon" | "deadline">;
+
+export type GoalContribution = {
+  id: string;
+  goalId: string;
+  userId: string;
+  amount: number;
+  currency: string;
+  kind: "deposit" | "withdrawal";
+  occurredOn: string;
+  note: string;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type GoalContributionDraft = Pick<GoalContribution, "goalId" | "amount" | "kind" | "occurredOn" | "note">;
+
 export type SyncOperation = {
   id: string;
-  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses" | "income_entries" | "budgets";
+  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses" | "income_entries" | "budgets" | "savings_goals" | "goal_contributions" | "category_budgets" | "recurring_rules" | "accounts" | "account_adjustments";
   action: "upsert" | "delete";
   recordId: string;
   payload?: Record<string, unknown>;
@@ -126,5 +225,11 @@ export type PersistedAppData = {
   expenses: Expense[];
   incomeEntries: IncomeEntry[];
   budgets: Budget[];
+  categoryBudgets: CategoryBudget[];
+  recurringRules: RecurringRule[];
+  accounts: Account[];
+  accountAdjustments: AccountAdjustment[];
+  savingsGoals: SavingsGoal[];
+  goalContributions: GoalContribution[];
   syncQueue: SyncOperation[];
 };
