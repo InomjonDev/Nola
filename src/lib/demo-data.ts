@@ -47,6 +47,8 @@ export function createDemoData(userId: string, currency: string, paymentMethodNa
       { id: createId(), userId, amount: 12, currency, spentAt: dateDaysAgo(1), categoryId: transport, paymentMethodId: paymentMethods[1].id, captureId: null, quantity: null, note: "Transport", tagIds: [], deletedAt: null, updatedAt: iso },
       { id: createId(), userId, amount: 34.8, currency, spentAt: dateDaysAgo(2), categoryId: food, paymentMethodId: paymentMethods[0].id, captureId: null, quantity: null, note: "Groceries", tagIds: [tag.id], deletedAt: null, updatedAt: iso },
     ],
+    spendingCaptures: [],
+    spendingFolders: [],
     incomeEntries: [{ id: createId(), userId, amount: 1800, currency, accountId: selectedMethod.id, receivedAt: iso, note: "Monthly income", deletedAt: null, updatedAt: iso }],
     budgets: [{ id: createId(), userId, month, amount: 900, currency, deletedAt: null, updatedAt: iso }],
     categoryBudgets: [

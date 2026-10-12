@@ -266,6 +266,8 @@ export type PersistedAppData = {
   paymentMethods: PaymentMethod[];
   tags: Tag[];
   expenses: Expense[];
+  spendingCaptures: SpendingCapture[];
+  spendingFolders: SpendingFolder[];
   incomeEntries: IncomeEntry[];
   budgets: Budget[];
   categoryBudgets: CategoryBudget[];

@@ -5,8 +5,9 @@ import { createContext, type PropsWithChildren, useCallback, useContext, useEffe
 
 import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, WALLETLY_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
-import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toTag } from "@/lib/mappers";
+import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, spendingCaptureRow, spendingFolderRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toSpendingCapture, toSpendingFolder, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
+import { applyCaptureParseData, editCaptureTextData, filterOwnedTagIds, hasActiveFolderName, undoCaptureData } from "@/lib/spending-captures";
 import { clearLocalReminders, setDailyReminderEnabled } from "@/lib/notifications";
 import { accountStorage, secureStorage } from "@/lib/secure-storage";
 import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase, supabaseAuthStorageKey } from "@/lib/supabase";
@@ -14,10 +15,10 @@ import { calendarDate, normalizeGoalData, validateContribution, validateGoal, ty
 import { validateCategoryBudget } from "@/lib/category-budgets";
 import { materializeDueRecurringRules, validateRecurringRule } from "@/lib/recurring";
 import { createDemoData } from "@/lib/demo-data";
-import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SyncOperation, Tag, UserIdentity } from "@/lib/types";
+import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureItem, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
-  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], savingsGoals: [], goalContributions: [], syncQueue: [] };
+  return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], spendingCaptures: [], spendingFolders: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], savingsGoals: [], goalContributions: [], syncQueue: [] };
 }
 
 type StoreValue = PersistedAppData & {
@@ -36,6 +37,14 @@ type StoreValue = PersistedAppData & {
   saveExpense: (draft: ExpenseDraft, id?: string) => string;
   deleteExpense: (id: string) => void;
   restoreExpense: (id: string) => void;
+  saveSpendingCapture: (sourceText: string, folderId: string | null, tagIds: string[]) => string;
+  editCaptureSourceText: (captureId: string, sourceText: string) => boolean;
+  setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => boolean;
+  saveSpendingFolder: (name: string, color: string) => string | undefined;
+  renameSpendingFolder: (folderId: string, name: string) => void;
+  deleteSpendingFolder: (folderId: string) => void;
+  moveCaptureToFolder: (captureId: string, folderId: string | null) => void;
+  undoSpendingCapture: (captureId: string) => void;
   saveIncome: (draft: IncomeEntryDraft, id?: string) => string;
   deleteIncome: (id: string) => void;
   saveBudget: (draft: BudgetDraft, id?: string) => string;
@@ -91,6 +100,8 @@ function scopeDataToUser(source: Partial<PersistedAppData>, userId: string): Per
     paymentMethods: (source.paymentMethods ?? []).filter((item) => item.userId === userId),
     tags: (source.tags ?? []).filter((item) => item.userId === userId),
     expenses: (source.expenses ?? []).filter((item) => item.userId === userId).map((item) => ({ ...item, captureId: item.captureId ?? null, quantity: item.quantity ?? null })),
+    spendingCaptures: (source.spendingCaptures ?? []).filter((item) => item.userId === userId),
+    spendingFolders: (source.spendingFolders ?? []).filter((item) => item.userId === userId),
     incomeEntries: (source.incomeEntries ?? []).filter((item) => item.userId === userId).map((item) => ({ ...item, accountId: item.accountId ?? null })),
     budgets: (source.budgets ?? []).filter((item) => item.userId === userId),
     categoryBudgets: (source.categoryBudgets ?? []).filter((item) => item.userId === userId),
@@ -139,6 +150,12 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const [data, setData] = useState<PersistedAppData>(createInitialData);
   const currentDataRef = useRef(data);
   currentDataRef.current = data;
+  const commitData = (update: (current: PersistedAppData) => PersistedAppData) => {
+    const next = update(currentDataRef.current);
+    currentDataRef.current = next;
+    setData(next);
+    return next;
+  };
   const [user, setUser] = useState<UserIdentity | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
@@ -170,12 +187,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const pullRemote = useCallback(async (userId: string) => {
     if (!supabase) return;
-    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult, incomeResult, budgetResult, goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult] = await Promise.all([
+    const [profileResult, categoryResult, paymentResult, tagResult, expenseResult, captureResult, folderResult, incomeResult, budgetResult, goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("categories").select("*").or(`kind.eq.global,user_id.eq.${userId}`),
       supabase.from("payment_methods").select("*").eq("user_id", userId),
       supabase.from("tags").select("*").eq("user_id", userId),
       supabase.from("expenses").select("*").eq("user_id", userId),
+      supabase.from("spending_captures").select("*").eq("user_id", userId),
+      supabase.from("spending_folders").select("*").eq("user_id", userId),
       supabase.from("income_entries").select("*").eq("user_id", userId),
       supabase.from("budgets").select("*").eq("user_id", userId),
       supabase.from("savings_goals").select("*").eq("user_id", userId),
@@ -192,7 +211,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       return;
     }
     // A pending goals migration must not prevent older Walletly data from loading.
-    const addedFeatureError = [goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult].find((result) => result.error)?.error;
+    const addedFeatureError = [captureResult, folderResult, goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult].find((result) => result.error)?.error;
     setSyncError(addedFeatureError?.message ?? null);
     setData((current) => ({
       ...current,
@@ -201,6 +220,8 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       paymentMethods: mergeLatest(current.paymentMethods, (paymentResult.data ?? []).map(toPaymentMethod)),
       tags: mergeLatest(current.tags, (tagResult.data ?? []).map(toTag)),
       expenses: mergeLatest(current.expenses, (expenseResult.data ?? []).map(toExpense)),
+      ...(!captureResult.error ? { spendingCaptures: mergeLatest(current.spendingCaptures, (captureResult.data ?? []).map(toSpendingCapture)) } : {}),
+      ...(!folderResult.error ? { spendingFolders: mergeLatest(current.spendingFolders, (folderResult.data ?? []).map(toSpendingFolder)) } : {}),
       incomeEntries: mergeLatest(current.incomeEntries, (incomeResult.data ?? []).map(toIncomeEntry)),
       budgets: mergeLatest(current.budgets, (budgetResult.data ?? []).map(toBudget)),
       categoryBudgets: mergeLatest(current.categoryBudgets, (categoryBudgetResult.data ?? []).map(toCategoryBudget)),
@@ -447,14 +468,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     const clean = [...new Set(names.map((name) => name.trim().toLowerCase()).filter(Boolean))];
     const created: Tag[] = [];
     const ids = clean.map((name) => {
-      const existing = data.tags.find((tag) => tag.name.toLowerCase() === name);
+      const existing = currentDataRef.current.tags.find((tag) => tag.userId === user.id && tag.name.toLowerCase() === name);
       if (existing) return existing.id;
       const tag = { id: createId(), userId: user.id, name, updatedAt: new Date().toISOString() };
       created.push(tag);
       return tag.id;
     });
     if (created.length) {
-      setData((current) => {
+      commitData((current) => {
         let nextQueue = current.syncQueue;
         for (const tag of created) nextQueue = queue({ ...current, syncQueue: nextQueue }, { table: "tags", action: "upsert", recordId: tag.id, payload: tagRow(tag) }, cloudEnabled);
         return { ...current, tags: [...current.tags, ...created], syncQueue: nextQueue };
@@ -514,6 +535,166 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       if (!target) return current;
       const restored = { ...target, deletedAt: null, updatedAt: now };
       return { ...current, expenses: current.expenses.map((item) => item.id === id ? restored : item), syncQueue: queue(current, { table: "expenses", action: "upsert", recordId: id, payload: expenseRow(restored) }, cloudEnabled) };
+    });
+  };
+
+  const saveSpendingCapture = (sourceText: string, folderId: string | null, tagIds: string[]) => {
+    if (!user || !sourceText.trim() || sourceText.length > 4000) return "";
+    const current = currentDataRef.current;
+    if (folderId && !current.spendingFolders.some((folder) => folder.id === folderId && folder.userId === user.id && !folder.deletedAt)) return "";
+    const now = new Date().toISOString();
+    const capture: SpendingCapture = {
+      id: createId(),
+      userId: user.id,
+      sourceText,
+      capturedAt: now,
+      folderId,
+      tagIds: filterOwnedTagIds(tagIds, current.tags, user.id),
+      parseStatus: "pending",
+      parseRevision: 1,
+      parsedRevision: null,
+      parsedItems: null,
+      deletedAt: null,
+      updatedAt: now,
+    };
+    commitData((state) => ({
+      ...state,
+      spendingCaptures: [capture, ...state.spendingCaptures],
+      syncQueue: queue(state, { table: "spending_captures", action: "upsert", recordId: capture.id, payload: spendingCaptureRow(capture) }, cloudEnabled),
+    }));
+    return capture.id;
+  };
+
+  const editCaptureSourceText = (captureId: string, sourceText: string) => {
+    const now = new Date().toISOString();
+    let changed = false;
+    commitData((state) => {
+      const currentCapture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user?.id);
+      if (!currentCapture) return state;
+      const edited = editCaptureTextData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, sourceText, now);
+      if (edited.spendingCaptures === state.spendingCaptures) return state;
+      changed = true;
+      const capture = edited.spendingCaptures.find((item) => item.id === captureId);
+      if (!capture) return state;
+      return {
+        ...state,
+        ...edited,
+        syncQueue: queue(state, { table: "spending_captures", action: "upsert", recordId: capture.id, payload: spendingCaptureRow(capture) }, cloudEnabled),
+      };
+    });
+    return changed;
+  };
+
+  const setCaptureParseResult = (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => {
+    const now = new Date().toISOString();
+    let changed = false;
+    commitData((state) => {
+      const currentCapture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user?.id);
+      if (!currentCapture) return state;
+      const parsed = applyCaptureParseData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, parseRevision, parsedItems, now);
+      if (parsed.spendingCaptures === state.spendingCaptures) return state;
+      changed = true;
+      const capture = parsed.spendingCaptures.find((item) => item.id === captureId);
+      if (!capture) return state;
+      let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(capture) }, cloudEnabled);
+      const changedExpenses = parsed.expenses.filter((item) => item.captureId === captureId && item.updatedAt === now);
+      for (const expense of changedExpenses) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+      }
+      return { ...state, ...parsed, syncQueue };
+    });
+    return changed;
+  };
+
+  const saveSpendingFolder = (name: string, color: string) => {
+    if (!user || !name.trim() || name.trim().length > 60 || !/^#[0-9a-f]{6}$/i.test(color)) return undefined;
+    const now = new Date().toISOString();
+    const folder: SpendingFolder = { id: createId(), userId: user.id, name: name.trim(), color, deletedAt: null, updatedAt: now };
+    let created = false;
+    commitData((state) => {
+      if (hasActiveFolderName(state.spendingFolders, folder.name, user.id)) return state;
+      created = true;
+      return {
+        ...state,
+        spendingFolders: [folder, ...state.spendingFolders],
+        syncQueue: queue(state, { table: "spending_folders", action: "upsert", recordId: folder.id, payload: spendingFolderRow(folder) }, cloudEnabled),
+      };
+    });
+    return created ? folder.id : undefined;
+  };
+
+  const renameSpendingFolder = (folderId: string, name: string) => {
+    if (!user || !name.trim() || name.trim().length > 60) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const folder = state.spendingFolders.find((item) => item.id === folderId && item.userId === user.id && !item.deletedAt);
+      if (!folder || folder.name === name.trim() || hasActiveFolderName(state.spendingFolders, name, user.id, folderId)) return state;
+      const renamed = { ...folder, name: name.trim(), updatedAt: now };
+      return {
+        ...state,
+        spendingFolders: state.spendingFolders.map((item) => item.id === folderId ? renamed : item),
+        syncQueue: queue(state, { table: "spending_folders", action: "upsert", recordId: folderId, payload: spendingFolderRow(renamed) }, cloudEnabled),
+      };
+    });
+  };
+
+  const deleteSpendingFolder = (folderId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const folder = state.spendingFolders.find((item) => item.id === folderId && item.userId === user.id && !item.deletedAt);
+      if (!folder) return state;
+      const capturesToMove = state.spendingCaptures.filter((item) => item.folderId === folderId && !item.deletedAt);
+      const movedCaptures = state.spendingCaptures.map((item) => item.folderId === folderId && !item.deletedAt
+        ? { ...item, folderId: null, updatedAt: now }
+        : item);
+      const deletedFolder = { ...folder, deletedAt: now, updatedAt: now };
+      let syncQueue = state.syncQueue;
+      for (const capture of capturesToMove) {
+        const moved = { ...capture, folderId: null, updatedAt: now };
+        syncQueue = queue({ ...state, syncQueue }, { table: "spending_captures", action: "upsert", recordId: moved.id, payload: spendingCaptureRow(moved) }, cloudEnabled);
+      }
+      syncQueue = queue({ ...state, syncQueue }, { table: "spending_folders", action: "upsert", recordId: folderId, payload: spendingFolderRow(deletedFolder) }, cloudEnabled);
+      return {
+        ...state,
+        spendingCaptures: movedCaptures,
+        spendingFolders: state.spendingFolders.map((item) => item.id === folderId ? deletedFolder : item),
+        syncQueue,
+      };
+    });
+  };
+
+  const moveCaptureToFolder = (captureId: string, folderId: string | null) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && !item.deletedAt);
+      const folder = folderId ? state.spendingFolders.find((item) => item.id === folderId && item.userId === user.id && !item.deletedAt) : null;
+      if (!capture || (folderId && !folder) || capture.folderId === (folder?.id ?? null)) return state;
+      const moved = { ...capture, folderId: folder?.id ?? null, updatedAt: now };
+      return {
+        ...state,
+        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? moved : item),
+        syncQueue: queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(moved) }, cloudEnabled),
+      };
+    });
+  };
+
+  const undoSpendingCapture = (captureId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id);
+      if (!capture) return state;
+      const undone = undoCaptureData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, now);
+      if (undone.spendingCaptures === state.spendingCaptures) return state;
+      const deletedCapture = undone.spendingCaptures.find((item) => item.id === captureId);
+      if (!deletedCapture) return state;
+      let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(deletedCapture) }, cloudEnabled);
+      for (const expense of undone.expenses.filter((item) => item.captureId === captureId && item.deletedAt === now)) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+      }
+      return { ...state, ...undone, syncQueue };
     });
   };
 
@@ -808,6 +989,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       saveExpense,
       deleteExpense,
       restoreExpense,
+      saveSpendingCapture,
+      editCaptureSourceText,
+      setCaptureParseResult,
+      saveSpendingFolder,
+      renameSpendingFolder,
+      deleteSpendingFolder,
+      moveCaptureToFolder,
+      undoSpendingCapture,
       saveIncome,
       deleteIncome,
       saveBudget,

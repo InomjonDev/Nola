@@ -7,7 +7,7 @@ import type { PersistedAppData, SavingsGoal } from "../src/lib/types.ts";
 
 const goal: SavingsGoal = { id: "g", userId: "u", name: 'Trip, "summer"', targetAmount: 1000, currency: "USD", icon: "plane", deadline: "2027-01-01", archivedAt: "2026-10-05T12:00:00Z", deletedAt: null, updatedAt: "2026-10-05T12:00:00Z" };
 const data: PersistedAppData = {
-  profile: null, expenses: [], categories: [], paymentMethods: [], tags: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], syncQueue: [],
+  profile: null, expenses: [], spendingCaptures: [], spendingFolders: [], categories: [], paymentMethods: [], tags: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], syncQueue: [],
   savingsGoals: [goal, { ...goal, id: "deleted", deletedAt: goal.updatedAt }],
   goalContributions: [{ id: "c", goalId: goal.id, userId: goal.userId, amount: 20, currency: goal.currency, kind: "deposit", occurredOn: "2026-10-05", note: "=HYPERLINK()", deletedAt: null, updatedAt: goal.updatedAt }, { id: "hidden", goalId: "deleted", userId: goal.userId, amount: 10, currency: goal.currency, kind: "deposit", occurredOn: "2026-10-05", note: "", deletedAt: null, updatedAt: goal.updatedAt }],
 };

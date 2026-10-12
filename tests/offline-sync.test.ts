@@ -90,3 +90,14 @@ test("new offline entities flush parent records before their dependent rows", as
   await flushOperations(queue, { send: async (item) => { sent.push(item.table); return null; }, paceMs: 0 });
   assert.deepEqual(sent, ["categories", "recurring_rules", "accounts", "category_budgets", "expenses", "account_adjustments"]);
 });
+
+test("spending folders sync before captures and captures before their expenses", async () => {
+  const queue = [
+    { ...operation(1), table: "expenses" as const, recordId: "expense" },
+    { ...operation(2), table: "spending_captures" as const, recordId: "capture" },
+    { ...operation(3), table: "spending_folders" as const, recordId: "folder" },
+  ];
+  const sent: string[] = [];
+  await flushOperations(queue, { send: async (item) => { sent.push(item.table); return null; }, paceMs: 0 });
+  assert.deepEqual(sent, ["spending_folders", "spending_captures", "expenses"]);
+});
