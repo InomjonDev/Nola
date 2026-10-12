@@ -38,6 +38,7 @@ export type Profile = {
   currency: string;
   defaultPaymentMethodId: string;
   onboardingCompleted: boolean;
+  aiParsingEnabled: boolean;
 };
 
 export type Category = {
@@ -74,6 +75,8 @@ export type Expense = {
   spentAt: string;
   categoryId: string;
   paymentMethodId: string;
+  captureId: string | null;
+  quantity: number | null;
   note: string;
   recurringRuleId?: string | null;
   tagIds: string[];
@@ -81,7 +84,47 @@ export type Expense = {
   updatedAt: string;
 };
 
-export type ExpenseDraft = Omit<Expense, "id" | "userId" | "currency" | "deletedAt" | "updatedAt"> & {
+export type SpendingFolder = {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type CaptureParseStatus = "pending" | "processing" | "parsed" | "needs_retry" | "undone";
+
+export type ParsedCaptureItem = {
+  id: string;
+  amount: number;
+  currency: string;
+  description: string;
+  quantity: number | null;
+  spentAt: string;
+  categoryId: string;
+  paymentMethodId: string;
+  tagIds: string[];
+};
+
+export type SpendingCapture = {
+  id: string;
+  userId: string;
+  sourceText: string;
+  capturedAt: string;
+  folderId: string | null;
+  tagIds: string[];
+  parseStatus: CaptureParseStatus;
+  parseRevision: number;
+  parsedRevision: number | null;
+  parsedItems: ParsedCaptureItem[] | null;
+  deletedAt: string | null;
+  updatedAt: string;
+};
+
+export type ExpenseDraft = Omit<Expense, "id" | "userId" | "currency" | "captureId" | "quantity" | "deletedAt" | "updatedAt"> & {
+  captureId?: string | null;
+  quantity?: number | null;
   currency?: string;
 };
 
@@ -210,7 +253,7 @@ export type GoalContributionDraft = Pick<GoalContribution, "goalId" | "amount" |
 
 export type SyncOperation = {
   id: string;
-  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses" | "income_entries" | "budgets" | "savings_goals" | "goal_contributions" | "category_budgets" | "recurring_rules" | "accounts" | "account_adjustments";
+  table: "profiles" | "categories" | "payment_methods" | "tags" | "expenses" | "spending_captures" | "spending_folders" | "income_entries" | "budgets" | "savings_goals" | "goal_contributions" | "category_budgets" | "recurring_rules" | "accounts" | "account_adjustments";
   action: "upsert" | "delete";
   recordId: string;
   payload?: Record<string, unknown>;

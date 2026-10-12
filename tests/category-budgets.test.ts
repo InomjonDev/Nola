@@ -9,8 +9,8 @@ const categories: Category[] = [
 ];
 
 const expenses: Expense[] = [
-  { id: "e1", userId: "user", amount: 25, currency: "USD", spentAt: "2026-10-06T10:00:00.000Z", categoryId: "food", paymentMethodId: "cash", note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-06T10:00:00.000Z" },
-  { id: "e2", userId: "user", amount: 90, currency: "USD", spentAt: "2026-10-14T10:00:00.000Z", categoryId: "food", paymentMethodId: "cash", note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-14T10:00:00.000Z" },
+  { id: "e1", userId: "user", amount: 25, currency: "USD", spentAt: "2026-10-06T10:00:00.000Z", categoryId: "food", paymentMethodId: "cash", captureId: null, quantity: null, note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-06T10:00:00.000Z" },
+  { id: "e2", userId: "user", amount: 90, currency: "USD", spentAt: "2026-10-14T10:00:00.000Z", categoryId: "food", paymentMethodId: "cash", captureId: null, quantity: null, note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-14T10:00:00.000Z" },
 ];
 
 test("validates category budget drafts", () => {

@@ -86,11 +86,11 @@ function isVisibleCategory(category: Category, userId: string) {
 
 function scopeDataToUser(source: Partial<PersistedAppData>, userId: string): PersistedAppData {
   return {
-    profile: source.profile?.userId === userId ? source.profile : null,
+    profile: source.profile?.userId === userId ? { ...source.profile, aiParsingEnabled: source.profile.aiParsingEnabled ?? false } : null,
     categories: mergeLatest(GLOBAL_CATEGORIES, (source.categories ?? []).filter((category) => isVisibleCategory(category, userId))),
     paymentMethods: (source.paymentMethods ?? []).filter((item) => item.userId === userId),
     tags: (source.tags ?? []).filter((item) => item.userId === userId),
-    expenses: (source.expenses ?? []).filter((item) => item.userId === userId),
+    expenses: (source.expenses ?? []).filter((item) => item.userId === userId).map((item) => ({ ...item, captureId: item.captureId ?? null, quantity: item.quantity ?? null })),
     incomeEntries: (source.incomeEntries ?? []).filter((item) => item.userId === userId).map((item) => ({ ...item, accountId: item.accountId ?? null })),
     budgets: (source.budgets ?? []).filter((item) => item.userId === userId),
     categoryBudgets: (source.categoryBudgets ?? []).filter((item) => item.userId === userId),
@@ -342,6 +342,8 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
         id: item.id,
         userId: user.id,
         currency: item.expense.currency ?? latest.profile?.currency ?? "USD",
+        captureId: item.expense.captureId ?? null,
+        quantity: item.expense.quantity ?? null,
         recurringRuleId: item.ruleId,
         deletedAt: null,
         updatedAt: createdAt,
@@ -431,7 +433,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     const now = new Date().toISOString();
     const paymentMethods = DEFAULT_PAYMENT_METHODS.map((name) => ({ id: createId(), userId: user.id, name, archivedAt: null, updatedAt: now }));
     const payment = paymentMethods.find((item) => item.name === paymentMethodName) ?? paymentMethods[0];
-    const profile: Profile = { userId: user.id, currency, defaultPaymentMethodId: payment.id, onboardingCompleted: true };
+    const profile: Profile = { userId: user.id, currency, defaultPaymentMethodId: payment.id, onboardingCompleted: true, aiParsingEnabled: false };
     setData((current) => {
       let nextQueue = current.syncQueue;
       for (const method of paymentMethods) nextQueue = queue({ ...current, syncQueue: nextQueue }, { table: "payment_methods", action: "upsert", recordId: method.id, payload: paymentMethodRow(method) }, cloudEnabled);
@@ -476,7 +478,17 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const saveExpense = (draft: ExpenseDraft, id?: string) => {
     if (!user || !data.profile) return "";
     const now = new Date().toISOString();
-    const expense: Expense = { ...draft, id: id ?? createId(), userId: user.id, currency: draft.currency ?? data.profile.currency, deletedAt: null, updatedAt: now };
+    const existing = id ? data.expenses.find((item) => item.id === id) : undefined;
+    const expense: Expense = {
+      ...draft,
+      captureId: draft.captureId === undefined ? existing?.captureId ?? null : draft.captureId,
+      quantity: draft.quantity === undefined ? existing?.quantity ?? null : draft.quantity,
+      id: id ?? createId(),
+      userId: user.id,
+      currency: draft.currency ?? data.profile.currency,
+      deletedAt: null,
+      updatedAt: now,
+    };
     setData((current) => ({
       ...current,
       expenses: id ? current.expenses.map((item) => item.id === id ? expense : item) : [expense, ...current.expenses],

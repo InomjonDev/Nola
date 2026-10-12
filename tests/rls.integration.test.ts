@@ -40,6 +40,28 @@ test("Supabase RLS isolates two authenticated users", async (t) => {
     const insertedPayment = await clientA.from("payment_methods").insert({ id: paymentMethodId, user_id: userAId, name: "RLS test card" });
     assert.equal(insertedPayment.error, null);
 
+    const folderId = randomUUID();
+    const insertedFolder = await clientA.from("spending_folders").insert({ id: folderId, user_id: userAId, name: "RLS test folder", color: "#2B8A68" });
+    assert.equal(insertedFolder.error, null);
+    const tagId = randomUUID();
+    const insertedTag = await clientA.from("tags").insert({ id: tagId, user_id: userAId, name: "rls-test" });
+    assert.equal(insertedTag.error, null);
+
+    const captureId = randomUUID();
+    const insertedCapture = await clientA.from("spending_captures").insert({
+      id: captureId,
+      user_id: userAId,
+      source_text: "7000 somsa 4x #rls-test",
+      captured_at: new Date().toISOString(),
+      folder_id: folderId,
+      tag_ids: [tagId],
+      parse_status: "parsed",
+      parse_revision: 1,
+      parsed_revision: 1,
+      parsed_items: [],
+    });
+    assert.equal(insertedCapture.error, null);
+
     const expenseId = randomUUID();
     const insertedExpense = await clientA.from("expenses").insert({
       id: expenseId,
@@ -50,8 +72,64 @@ test("Supabase RLS isolates two authenticated users", async (t) => {
       category_id: "00000000-0000-4000-8000-000000000001",
       payment_method_id: paymentMethodId,
       tag_ids: [],
+      capture_id: captureId,
+      quantity: 4,
     });
     assert.equal(insertedExpense.error, null);
+
+    const storedExpense = await clientA.from("expenses").select("capture_id, quantity").eq("id", expenseId).single();
+    assert.equal(storedExpense.error, null);
+    assert.equal(storedExpense.data?.capture_id, captureId);
+    assert.equal(Number(storedExpense.data?.quantity), 4);
+
+    const hiddenCapture = await clientB.from("spending_captures").select("id").eq("id", captureId);
+    assert.equal(hiddenCapture.error, null);
+    assert.deepEqual(hiddenCapture.data, []);
+    const hiddenFolder = await clientB.from("spending_folders").select("id").eq("id", folderId);
+    assert.equal(hiddenFolder.error, null);
+    assert.deepEqual(hiddenFolder.data, []);
+    const updateOtherCapture = await clientB.from("spending_captures").update({ source_text: "must stay private" }).eq("id", captureId).select("id");
+    assert.equal(updateOtherCapture.error, null);
+    assert.deepEqual(updateOtherCapture.data, []);
+    const deleteOtherCapture = await clientB.from("spending_captures").delete().eq("id", captureId).select("id");
+    assert.equal(deleteOtherCapture.error, null);
+    assert.deepEqual(deleteOtherCapture.data, []);
+
+    assert.ok((await clientB.from("spending_captures").insert({
+      id: randomUUID(),
+      user_id: userBId,
+      source_text: "cross-account folder",
+      captured_at: new Date().toISOString(),
+      folder_id: folderId,
+      tag_ids: [],
+      parse_status: "pending",
+      parse_revision: 1,
+    })).error, "a capture cannot reference another user's folder");
+    assert.ok((await clientB.from("spending_captures").insert({
+      id: randomUUID(),
+      user_id: userBId,
+      source_text: "cross-account tag",
+      captured_at: new Date().toISOString(),
+      folder_id: null,
+      tag_ids: [tagId],
+      parse_status: "pending",
+      parse_revision: 1,
+    })).error, "a capture cannot reference another user's tag");
+
+    const paymentMethodBId = randomUUID();
+    const paymentB = await clientB.from("payment_methods").insert({ id: paymentMethodBId, user_id: userBId, name: "RLS test card B" });
+    assert.equal(paymentB.error, null);
+    assert.ok((await clientB.from("expenses").insert({
+      id: randomUUID(),
+      user_id: userBId,
+      amount: 1,
+      currency: "USD",
+      spent_at: new Date().toISOString(),
+      category_id: "00000000-0000-4000-8000-000000000001",
+      payment_method_id: paymentMethodBId,
+      tag_ids: [],
+      capture_id: captureId,
+    })).error, "an expense cannot reference another user's capture");
 
     const readOtherUser = await clientB.from("expenses").select("id").eq("id", expenseId);
     assert.equal(readOtherUser.error, null);

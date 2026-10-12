@@ -38,14 +38,14 @@ export function createDemoData(userId: string, currency: string, paymentMethodNa
   const nextRunDate = dateKey(new Date(now.getFullYear(), now.getMonth() + 1, 1));
 
   return {
-    profile: { userId, currency, defaultPaymentMethodId: selectedMethod.id, onboardingCompleted: true },
+    profile: { userId, currency, defaultPaymentMethodId: selectedMethod.id, onboardingCompleted: true, aiParsingEnabled: false },
     categories: [...GLOBAL_CATEGORIES],
     paymentMethods,
     tags: [tag],
     expenses: [
-      { id: createId(), userId, amount: 4.5, currency, spentAt: dateDaysAgo(0), categoryId: food, paymentMethodId: paymentMethods[0].id, note: "Coffee", tagIds: [tag.id], deletedAt: null, updatedAt: iso },
-      { id: createId(), userId, amount: 12, currency, spentAt: dateDaysAgo(1), categoryId: transport, paymentMethodId: paymentMethods[1].id, note: "Transport", tagIds: [], deletedAt: null, updatedAt: iso },
-      { id: createId(), userId, amount: 34.8, currency, spentAt: dateDaysAgo(2), categoryId: food, paymentMethodId: paymentMethods[0].id, note: "Groceries", tagIds: [tag.id], deletedAt: null, updatedAt: iso },
+      { id: createId(), userId, amount: 4.5, currency, spentAt: dateDaysAgo(0), categoryId: food, paymentMethodId: paymentMethods[0].id, captureId: null, quantity: null, note: "Coffee", tagIds: [tag.id], deletedAt: null, updatedAt: iso },
+      { id: createId(), userId, amount: 12, currency, spentAt: dateDaysAgo(1), categoryId: transport, paymentMethodId: paymentMethods[1].id, captureId: null, quantity: null, note: "Transport", tagIds: [], deletedAt: null, updatedAt: iso },
+      { id: createId(), userId, amount: 34.8, currency, spentAt: dateDaysAgo(2), categoryId: food, paymentMethodId: paymentMethods[0].id, captureId: null, quantity: null, note: "Groceries", tagIds: [tag.id], deletedAt: null, updatedAt: iso },
     ],
     incomeEntries: [{ id: createId(), userId, amount: 1800, currency, accountId: selectedMethod.id, receivedAt: iso, note: "Monthly income", deletedAt: null, updatedAt: iso }],
     budgets: [{ id: createId(), userId, month, amount: 900, currency, deletedAt: null, updatedAt: iso }],

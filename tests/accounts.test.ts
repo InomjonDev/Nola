@@ -5,7 +5,7 @@ import { accountBalance } from "../src/lib/accounts.ts";
 import type { Account, AccountAdjustment, Expense, IncomeEntry } from "../src/lib/types.ts";
 
 const account: Account = { id: "cash", userId: "user", name: "Cash", kind: "cash", currency: "USD", startingBalance: 100, archivedAt: null, deletedAt: null, updatedAt: "2026-10-01T00:00:00.000Z" };
-const expenses: Expense[] = [{ id: "e1", userId: "user", amount: 25, currency: "USD", spentAt: "2026-10-05T00:00:00.000Z", categoryId: "food", paymentMethodId: "cash", note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-05T00:00:00.000Z" }];
+const expenses: Expense[] = [{ id: "e1", userId: "user", amount: 25, currency: "USD", spentAt: "2026-10-05T00:00:00.000Z", categoryId: "food", paymentMethodId: "cash", captureId: null, quantity: null, note: "", tagIds: [], deletedAt: null, updatedAt: "2026-10-05T00:00:00.000Z" }];
 const income: IncomeEntry[] = [
   { id: "i1", userId: "user", accountId: "cash", amount: 50, currency: "USD", receivedAt: "2026-10-04T00:00:00.000Z", note: "", deletedAt: null, updatedAt: "2026-10-04T00:00:00.000Z" },
   { id: "i2", userId: "user", accountId: "bank", amount: 500, currency: "USD", receivedAt: "2026-10-04T00:00:00.000Z", note: "Other account", deletedAt: null, updatedAt: "2026-10-04T00:00:00.000Z" },

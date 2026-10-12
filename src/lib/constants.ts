@@ -6,6 +6,7 @@ export const GLOBAL_CATEGORIES: Category[] = [
   { id: "00000000-0000-4000-8000-000000000003", userId: null, name: "Bills", color: "#B7782C", icon: "receipt", kind: "global", archivedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
   { id: "00000000-0000-4000-8000-000000000004", userId: null, name: "Shopping", color: "#9B5F86", icon: "shopping-bag", kind: "global", archivedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
   { id: "00000000-0000-4000-8000-000000000005", userId: null, name: "Entertainment", color: "#C85A4D", icon: "clapperboard", kind: "global", archivedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
+  { id: "00000000-0000-4000-8000-000000000006", userId: null, name: "Other", color: "#7A827D", icon: "more-horizontal", kind: "global", archivedAt: null, updatedAt: "2026-01-01T00:00:00.000Z" },
 ];
 
 export const CURRENCIES = ["USD", "EUR", "GBP", "UZS", "JPY", "CAD", "AUD"] as const;

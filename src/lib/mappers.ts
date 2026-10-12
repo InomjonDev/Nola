@@ -1,4 +1,4 @@
-import type { Account, AccountAdjustment, Budget, Category, CategoryBudget, Expense, GoalContribution, IncomeEntry, PaymentMethod, Profile, RecurringRule, SavingsGoal, Tag } from "@/lib/types";
+import type { Account, AccountAdjustment, Budget, Category, CategoryBudget, Expense, GoalContribution, IncomeEntry, PaymentMethod, Profile, RecurringRule, SavingsGoal, SpendingCapture, SpendingFolder, Tag } from "@/lib/types";
 
 type Row = Record<string, unknown>;
 
@@ -7,6 +7,7 @@ export const toProfile = (row: Row): Profile => ({
   currency: row.currency as string,
   defaultPaymentMethodId: row.default_payment_method_id as string,
   onboardingCompleted: Boolean(row.onboarding_completed),
+  aiParsingEnabled: Boolean(row.ai_parsing_enabled ?? false),
 });
 
 export const profileRow = (profile: Profile) => ({
@@ -14,6 +15,7 @@ export const profileRow = (profile: Profile) => ({
   currency: profile.currency,
   default_payment_method_id: profile.defaultPaymentMethodId,
   onboarding_completed: profile.onboardingCompleted,
+  ai_parsing_enabled: profile.aiParsingEnabled,
   updated_at: new Date().toISOString(),
 });
 
@@ -44,6 +46,8 @@ export const toExpense = (row: Row): Expense => ({
   spentAt: row.spent_at as string,
   categoryId: row.category_id as string,
   paymentMethodId: row.payment_method_id as string,
+  captureId: (row.capture_id as string | null) ?? null,
+  quantity: row.quantity == null ? null : Number(row.quantity),
   note: (row.note as string | null) ?? "",
   recurringRuleId: (row.recurring_rule_id as string | null) ?? null,
   tagIds: (row.tag_ids as string[] | null) ?? [],
@@ -59,9 +63,61 @@ export const expenseRow = (item: Expense) => ({
   spent_at: item.spentAt,
   category_id: item.categoryId,
   payment_method_id: item.paymentMethodId,
+  capture_id: item.captureId ?? null,
+  quantity: item.quantity ?? null,
   note: item.note || null,
   recurring_rule_id: item.recurringRuleId ?? null,
   tag_ids: item.tagIds,
+  deleted_at: item.deletedAt,
+  client_updated_at: item.updatedAt,
+  updated_at: item.updatedAt,
+});
+
+export const toSpendingFolder = (row: Row): SpendingFolder => ({
+  id: row.id as string,
+  userId: row.user_id as string,
+  name: row.name as string,
+  color: row.color as string,
+  deletedAt: (row.deleted_at as string | null) ?? null,
+  updatedAt: (row.client_updated_at as string) ?? (row.updated_at as string),
+});
+
+export const spendingFolderRow = (item: SpendingFolder) => ({
+  id: item.id,
+  user_id: item.userId,
+  name: item.name,
+  color: item.color,
+  deleted_at: item.deletedAt,
+  client_updated_at: item.updatedAt,
+  updated_at: item.updatedAt,
+});
+
+export const toSpendingCapture = (row: Row): SpendingCapture => ({
+  id: row.id as string,
+  userId: row.user_id as string,
+  sourceText: row.source_text as string,
+  capturedAt: row.captured_at as string,
+  folderId: (row.folder_id as string | null) ?? null,
+  tagIds: (row.tag_ids as string[] | null) ?? [],
+  parseStatus: row.parse_status as SpendingCapture["parseStatus"],
+  parseRevision: Number(row.parse_revision),
+  parsedRevision: row.parsed_revision == null ? null : Number(row.parsed_revision),
+  parsedItems: (row.parsed_items as SpendingCapture["parsedItems"] | null) ?? null,
+  deletedAt: (row.deleted_at as string | null) ?? null,
+  updatedAt: (row.client_updated_at as string) ?? (row.updated_at as string),
+});
+
+export const spendingCaptureRow = (item: SpendingCapture) => ({
+  id: item.id,
+  user_id: item.userId,
+  source_text: item.sourceText,
+  captured_at: item.capturedAt,
+  folder_id: item.folderId ?? null,
+  tag_ids: item.tagIds,
+  parse_status: item.parseStatus,
+  parse_revision: item.parseRevision,
+  parsed_revision: item.parsedRevision ?? null,
+  parsed_items: item.parsedItems ?? null,
   deleted_at: item.deletedAt,
   client_updated_at: item.updatedAt,
   updated_at: item.updatedAt,
