@@ -130,10 +130,10 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
     }
   }, [store.hydrated, store.user?.id]);
 
-  function openExpenseSheet(editId?: string) {
+  function openExpenseSheet(editId?: string, initialNote = "") {
     setReturnToCaptureAfterExpense(false);
     captureReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setExpenseInitialNote("");
+    setExpenseInitialNote(initialNote);
     setExpenseSheet(editId ?? "new");
   }
 
@@ -214,6 +214,7 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
             onEditExpense={openExpenseSheet}
             onRetryCapture={captureParser.retryCapture}
             onCaptureEditorActive={setCaptureEditorActive}
+            onAddManualExpense={(sourceText) => openExpenseSheet(undefined, sourceText)}
             onSignInCapture={(id) => {
               const capture = store.spendingCaptures.find((item) => item.id === id && !item.deletedAt);
               if (!capture) return;
@@ -345,6 +346,7 @@ function SpendingWorkspace({
   onEditExpense,
   onRetryCapture,
   onCaptureEditorActive,
+  onAddManualExpense,
   onSignInCapture,
 }: {
   mode: "home" | "capture" | "folders";
@@ -355,6 +357,7 @@ function SpendingWorkspace({
   onEditExpense: (id: string) => void;
   onRetryCapture: (captureId: string) => void;
   onCaptureEditorActive: (active: boolean) => void;
+  onAddManualExpense: (sourceText: string) => void;
   onSignInCapture: (captureId: string) => void;
 }) {
   const store = useAppStore();
@@ -540,11 +543,15 @@ function SpendingWorkspace({
           onClose={() => router.back()}
           onRetry={() => onRetryCapture(selectedCapture.id)}
           onSignIn={() => onSignInCapture(selectedCapture.id)}
-          onReparse={() => { store.editCaptureSourceText(selectedCapture.id, selectedCapture.sourceText, store.ensureTags(extractHashtags(selectedCapture.sourceText))); }}
+          onReparse={(sourceText) => {
+            const text = sourceText ?? selectedCapture.sourceText;
+            store.editCaptureSourceText(selectedCapture.id, text, store.ensureTags(extractHashtags(text)));
+          }}
           onEditExpense={(expense) => onEditExpense(expense.id)}
           onSaveSourceText={(id, text) => store.editCaptureSourceText(id, text, store.ensureTags(extractHashtags(text)))}
           onPauseParsingChange={onCaptureEditorActive}
           onMoveToFolder={(id, targetFolderId) => store.moveCaptureToFolder(id, targetFolderId)}
+          onManualEntry={onAddManualExpense}
         />
         : mode === "home" ? <div className="spending-overview"><SavingsGoalsPreview /><BudgetPreview /></div>
           : <div className="spending-detail-empty"><span className="spending-empty-mark" aria-hidden="true">N</span><p>{t("capture.selectNote")}</p></div>}
