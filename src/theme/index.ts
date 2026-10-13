@@ -22,13 +22,13 @@ export const palettes = {
     chartBackground: ["#FFF1E2", "#EAF2FE", "#EAF7EE", "#FBEAF1", "#EAF7EE"],
   },
   dark: {
-    background: "#19191C", surface: "#242427", surfaceElevated: "#303034", raised: "#303034",
-    text: "#F5F4F7", textMuted: "#B6B4BC", border: "#403F46", controlBorder: "#85838D",
-    accent: "#8AB4FF", accentStrong: "#A4C3FF", accentSoft: "#24395B", onAccent: "#101A2A",
-    destructive: "#FCA5A5", onDestructive: "#000000", destructiveSoft: "#30191C",
-    success: "#32D74B", warning: "#FFC47A", overlay: "rgba(0, 0, 0, 0.7)",
-    chart: ["#FF9F0A", "#409CFF", "#32D74B", "#FF6482", "#32D74B"],
-    chartBackground: ["#332310", "#12263D", "#11291C", "#321B25", "#11291C"],
+    background: "#000000", surface: "#1C1C1E", surfaceElevated: "#2C2C2E", raised: "#2C2C2E",
+    text: "#F2F2F7", textMuted: "#AEAEB2", border: "#38383A", controlBorder: "#8E8E93",
+    accent: "#0A84FF", accentStrong: "#409CFF", accentSoft: "#061321", onAccent: "#FFFFFF",
+    destructive: "#FF453A", onDestructive: "#000000", destructiveSoft: "#3A1C1E",
+    success: "#30D158", warning: "#FF9F0A", overlay: "rgba(0, 0, 0, 0.72)",
+    chart: ["#FF9F0A", "#0A84FF", "#30D158", "#FF375F", "#64D2FF"],
+    chartBackground: ["#332310", "#07182A", "#11291C", "#321B25", "#10262B"],
   },
 } as const;
 
