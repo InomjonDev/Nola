@@ -12,7 +12,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 button, a { touch-action: manipulation; }
 button { text-align: inherit; appearance: none; -webkit-appearance: none; box-shadow: none; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid rgb(var(--color-accent)); outline-offset: 2px; }
-button:active:not(:disabled), a:active { text-decoration: underline; text-underline-offset: 3px; }
+a:not(.underline):hover { text-decoration: none; }
 input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opacity: 1; }
 
 @layer components {
