@@ -3,6 +3,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 
+import { ChevronLeft, Plus } from "@/components/icons";
 import { AiProcessingNotice } from "@/components/spending/ai-processing-notice";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 import { useAppStore } from "@/lib/app-store";
@@ -32,6 +33,9 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
   const [showNotice, setShowNotice] = useState(false);
   const [error, setError] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [helpHovered, setHelpHovered] = useState(false);
+  const [helpPinned, setHelpPinned] = useState(false);
+  const helpOpen = helpHovered || helpPinned;
 
   useDialogFocus(dialog, backdrop, closeComposer);
 
@@ -145,7 +149,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
   }
 
   function startManualEntry() {
-    flushAutoSave();
+    if (sourceTextRef.current.trim() && !flushAutoSave()) return;
     onManualEntry?.(sourceTextRef.current);
   }
 
@@ -154,13 +158,54 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
   return createPortal(<div ref={backdrop} className="expense-sheet-backdrop capture-editor-backdrop fixed inset-0 z-50 flex">
     <section ref={dialog} tabIndex={-1} className="expense-sheet capture-editor" role="dialog" aria-modal="true" aria-labelledby="capture-composer-title">
       <header className="editor-toolbar capture-editor-toolbar">
-        <button type="button" className="toolbar-action" onClick={closeComposer}>{t("common.close")}</button>
+        <button type="button" className="capture-editor-back" aria-label={t("common.back")} title={t("common.back")} onClick={closeComposer}><ChevronLeft size={28} aria-hidden="true" /></button>
         <h2 id="capture-composer-title" className="editor-title">{showNotice ? t(store.user?.isDemo ? "capture.demoGateTitle" : "capture.privacyTitle") : t("capture.new")}</h2>
-        {!showNotice
-          ? <button type="button" className="toolbar-action capture-editor-done" onClick={submitCapture}>{t("common.done")}</button>
-          : <span aria-hidden="true" />}
+        <div className="capture-editor-actions">
+          {!showNotice && <>
+            <span className="capture-editor-save-status" id="capture-save-status" role="status" aria-live="polite">
+              {saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : ""}
+            </span>
+            <div
+              className="capture-editor-help"
+              onMouseEnter={() => setHelpHovered(true)}
+              onMouseLeave={() => setHelpHovered(false)}
+              onFocus={() => setHelpHovered(true)}
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHelpHovered(false);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && helpOpen) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setHelpPinned(false);
+                  setHelpHovered(false);
+                }
+              }}
+            >
+              <button
+                type="button"
+                className="capture-editor-help-button"
+                aria-label={t("capture.helpTitle")}
+                aria-expanded={helpOpen}
+                aria-controls="capture-help-popover"
+                aria-describedby={helpOpen ? "capture-help-popover" : undefined}
+                onClick={() => {
+                  const pinned = !helpPinned;
+                  setHelpPinned(pinned);
+                  setHelpHovered(false);
+                }}
+              ><span aria-hidden="true">?</span></button>
+              {helpOpen && <div id="capture-help-popover" className="capture-editor-help-popover" role="tooltip">
+                <p>{t("capture.helper")}</p>
+                <p>{t("capture.autoSaveHint")}</p>
+                <p>{t("capture.privacyShort")}</p>
+              </div>}
+            </div>
+            <button type="button" className="toolbar-action capture-editor-done" onClick={submitCapture}>{t("common.done")}</button>
+          </>}
+        </div>
       </header>
-      <div className="capture-editor-content">
+      <div className={`capture-editor-content${showNotice ? " capture-editor-notice-content" : ""}`}>
         {showNotice ? <AiProcessingNotice open onContinue={finishCapture} onNotNow={() => { setShowNotice(false); setError(""); }} onSignIn={() => { flushAutoSave(); onSignIn?.(sourceTextRef.current); }} /> : <>
           <label className="sr-only" htmlFor="capture-source">{t("capture.noteLabel")}</label>
           <textarea
@@ -172,21 +217,12 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
             placeholder={t("capture.placeholder")}
             value={sourceText}
             maxLength={4200}
-            aria-describedby="capture-helper capture-character-count capture-save-status"
+            aria-describedby={helpOpen ? "capture-character-count capture-help-popover" : "capture-character-count"}
             onChange={(event) => queueAutoSave(event.target.value)}
           />
-          <div className="capture-editor-meta">
-            <p id="capture-helper" className="max-w-prose text-sm leading-6 text-muted">{t("capture.helper")}</p>
-            <span id="capture-character-count" className="shrink-0 pt-1 text-xs tabular-nums text-muted">{sourceText.length}/4000</span>
-          </div>
-          <div className="capture-editor-footer">
-            <span id="capture-save-status" className="text-xs text-muted" role="status" aria-live="polite">
-              {saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : t("capture.autoSaveHint")}
-            </span>
-            {onManualEntry && <button type="button" className="control min-h-11 justify-center bg-raised text-text" onClick={startManualEntry}>{t("capture.manualEntry")}</button>}
-          </div>
-          {error && <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">{error}</p>}
-          <p className="text-xs leading-5 text-muted">{t("capture.privacyShort")}</p>
+          <span id="capture-character-count" className="capture-editor-character-count">{sourceText.length}/4000</span>
+          {error && <p className="capture-editor-error" role="alert">{error}</p>}
+          {onManualEntry && <button type="button" className="capture-editor-add-button" aria-label={t("capture.manualEntry")} onClick={startManualEntry}><Plus className="h-6 w-6" aria-hidden="true" /></button>}
         </>}
       </div>
     </section>
