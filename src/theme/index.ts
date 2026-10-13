@@ -13,8 +13,8 @@ export const typography = {
 
 export const palettes = {
   light: {
-    background: "#F2F1F7", surface: "#FFFFFF", surfaceElevated: "#E8E7EE", raised: "#E8E7EE",
-    text: "#1B1B1F", textMuted: "#62616A", border: "#DAD9E1", controlBorder: "#77767F",
+    background: "#FFFFFF", surface: "#FFFFFF", surfaceElevated: "#F2F2F2", raised: "#F2F2F2",
+    text: "#1B1B1F", textMuted: "#62616A", border: "#E5E5E5", controlBorder: "#77767F",
     accent: "#2457C5", accentStrong: "#1743AF", accentSoft: "#E8F0FF", onAccent: "#FFFFFF",
     destructive: "#B42332", onDestructive: "#FFFFFF", destructiveSoft: "#FCEFF0",
     success: "#16753D", warning: "#925500", overlay: "rgba(0, 0, 0, 0.6)",
