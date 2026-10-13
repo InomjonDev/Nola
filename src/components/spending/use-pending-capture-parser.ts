@@ -25,7 +25,7 @@ function parseResponse(value: unknown): value is ParseResponse {
     && Array.isArray(result.items);
 }
 
-export function usePendingCaptureParser() {
+export function usePendingCaptureParser({ paused = false }: { paused?: boolean } = {}) {
   const store = useAppStore();
   const [issues, setIssues] = useState<Record<string, CaptureParseIssue>>({});
   const inFlight = useRef(new Set<string>());
@@ -68,7 +68,7 @@ export function usePendingCaptureParser() {
       const hasOldActiveRows = store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && !parsedIds.has(expense.id));
       if (hasMissingRows || hasOldActiveRows) store.replayCachedCaptureParse(capture.id, capture.parseRevision);
     }
-    if (!isOnline || (typeof navigator !== "undefined" && !navigator.onLine) || !profile?.aiParsingEnabled || !user) return;
+    if (paused || !isOnline || (typeof navigator !== "undefined" && !navigator.onLine) || !profile?.aiParsingEnabled || !user) return;
 
     const activeCaptures = spendingCaptures.filter((capture) => !capture.deletedAt && capture.parseStatus === "pending");
     for (const capture of activeCaptures) {
@@ -143,7 +143,7 @@ export function usePendingCaptureParser() {
         }
       })();
     }
-  }, [issues, store]);
+  }, [issues, paused, store]);
 
   return { issues, retryCapture };
 }

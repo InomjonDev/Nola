@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CategoryIcon } from "@/components/category-icon";
 import { ArrowLeft, Pencil, RefreshCw } from "@/components/icons";
@@ -33,9 +33,9 @@ export function CaptureDetail({
   onRetry,
   onSignIn,
   onReparse,
-  onUndo,
   onEditExpense,
   onSaveSourceText,
+  onPauseParsingChange,
   onMoveToFolder,
 }: {
   capture: SpendingCapture;
@@ -58,20 +58,67 @@ export function CaptureDetail({
   onRetry?: () => void;
   onSignIn?: () => void;
   onReparse?: () => void;
-  onUndo?: () => void;
   onEditExpense?: (expense: Expense) => void;
   onSaveSourceText?: (captureId: string, sourceText: string) => boolean;
+  onPauseParsingChange?: (paused: boolean) => void;
   onMoveToFolder?: (captureId: string, folderId: string | null) => void;
 }) {
   const { language, t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [sourceText, setSourceText] = useState(capture.sourceText);
   const [error, setError] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("saved");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sourceTextRef = useRef(sourceText);
+  const lastSavedTextRef = useRef(capture.sourceText);
+  const activeCaptureIdRef = useRef(capture.id);
+  const latestRef = useRef({ captureId: activeCaptureIdRef.current, sourceText, editing });
+  const saveSourceRef = useRef(onSaveSourceText);
+  const pauseParsingRef = useRef(onPauseParsingChange);
+  sourceTextRef.current = sourceText;
+  latestRef.current = { captureId: activeCaptureIdRef.current, sourceText, editing };
+  saveSourceRef.current = onSaveSourceText;
+  pauseParsingRef.current = onPauseParsingChange;
+
   useEffect(() => {
+    if (activeCaptureIdRef.current !== capture.id) {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+      if (editing) persistSourceText(sourceTextRef.current, activeCaptureIdRef.current);
+      activeCaptureIdRef.current = capture.id;
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
     setSourceText(capture.sourceText);
+    sourceTextRef.current = capture.sourceText;
+    lastSavedTextRef.current = capture.sourceText;
     setEditing(false);
     setError("");
-  }, [capture.id, capture.sourceText]);
+    setSaveState("saved");
+  }, [capture.id]);
+
+  useEffect(() => {
+    if (!editing) {
+      setSourceText(capture.sourceText);
+      sourceTextRef.current = capture.sourceText;
+      lastSavedTextRef.current = capture.sourceText;
+    }
+  }, [capture.sourceText, editing]);
+
+  useEffect(() => {
+    pauseParsingRef.current?.(editing);
+    return () => pauseParsingRef.current?.(false);
+  }, [editing]);
+
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    const draft = latestRef.current;
+    const trimmed = draft.sourceText.trim();
+    if (draft.editing && trimmed && trimmed.length <= 4000 && trimmed !== lastSavedTextRef.current) {
+      saveSourceRef.current?.(draft.captureId, trimmed);
+    }
+    pauseParsingRef.current?.(false);
+  }, []);
 
   const activeExpenses = expenses.filter((expense) => expense.captureId === capture.id && !expense.deletedAt)
     .sort((left, right) => Date.parse(right.spentAt) - Date.parse(left.spentAt));
@@ -94,29 +141,77 @@ export function CaptureDetail({
   const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const visibleFolders = folders.filter((folder) => !folder.deletedAt).sort((left, right) => left.name.localeCompare(right.name));
 
-  function saveSourceText() {
-    const trimmed = sourceText.trim();
-    if (!trimmed) { setError(t("capture.textRequired")); return; }
-    if (trimmed.length > 4000) { setError(t("capture.textTooLong")); return; }
-    if (!onSaveSourceText || !onSaveSourceText(capture.id, trimmed)) { setError(t("capture.saveError")); return; }
-    setSourceText(trimmed);
+  function persistSourceText(value: string, targetCaptureId = activeCaptureIdRef.current) {
+    const trimmed = value.trim();
+    if (!trimmed) { setError(t("capture.textRequired")); setSaveState("idle"); return false; }
+    if (trimmed.length > 4000) { setError(t("capture.textTooLong")); setSaveState("idle"); return false; }
+    if (trimmed === lastSavedTextRef.current) {
+      setSaveState("saved");
+      return true;
+    }
+    if (!saveSourceRef.current || !saveSourceRef.current(targetCaptureId, trimmed)) {
+      setError(t("capture.saveError"));
+      setSaveState("idle");
+      return false;
+    }
+    lastSavedTextRef.current = trimmed;
+    setError("");
+    setSaveState("saved");
+    return true;
+  }
+
+  function flushAutoSave() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    return persistSourceText(sourceTextRef.current);
+  }
+
+  function queueAutoSave(value: string) {
+    sourceTextRef.current = value;
+    setSourceText(value);
+    setError("");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaveState("saving");
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      persistSourceText(value);
+    }, 400);
+  }
+
+  function beginEditing() {
+    sourceTextRef.current = capture.sourceText;
+    setSourceText(capture.sourceText);
+    setSaveState("saved");
+    setError("");
+    setEditing(true);
+  }
+
+  function finishEditing() {
+    if (!flushAutoSave()) return;
     setEditing(false);
     setError("");
   }
 
+  function closeDetail() {
+    if (editing && !flushAutoSave()) return;
+    pauseParsingRef.current?.(false);
+    onClose();
+  }
+
   return <article className="mx-auto grid w-full max-w-3xl gap-6 pb-16">
     <header className="sticky top-0 z-10 -mx-4 flex min-h-14 items-center justify-between gap-3 border-b border-line bg-bg/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
-      <button type="button" className="control min-h-11 justify-center gap-2 bg-raised px-3 text-sm font-medium text-text" onClick={onClose}>
+      <button type="button" className="control min-h-11 justify-center gap-2 bg-raised px-3 text-sm font-medium text-text" onClick={closeDetail}>
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />{closeLabel ?? t("common.close")}
       </button>
       <div className="flex items-center gap-2">
-        {!editing && onSaveSourceText && <button type="button" className="control min-h-11 justify-center gap-2 bg-raised px-3 text-sm font-medium text-text" onClick={() => setEditing(true)}>
-          <Pencil className="h-4 w-4" aria-hidden="true" />{t("common.edit")}
-        </button>}
+        {editing
+          ? <button type="button" className="control min-h-11 justify-center gap-2 bg-accent px-4 text-sm font-semibold text-on-accent" onClick={finishEditing}>{t("common.done")}</button>
+          : onSaveSourceText && <button type="button" className="control min-h-11 justify-center gap-2 bg-raised px-3 text-sm font-medium text-text" onClick={beginEditing}>
+            <Pencil className="h-4 w-4" aria-hidden="true" />{t("common.edit")}
+          </button>}
         {!editing && onReparse && reparseLabel && capture.parseStatus === "parsed" && <button type="button" className="control min-h-11 justify-center gap-2 bg-raised px-3 text-sm font-medium text-text" onClick={onReparse}>
           <RefreshCw className="h-4 w-4" aria-hidden="true" />{reparseLabel}
         </button>}
-        {onUndo && <button type="button" className="control min-h-11 justify-center px-3 text-sm font-medium text-muted" onClick={onUndo}>{t("history.undo")}</button>}
       </div>
     </header>
 
@@ -129,13 +224,10 @@ export function CaptureDetail({
       {editing
         ? <div className="grid gap-3">
           <label className="sr-only" htmlFor="capture-detail-source">{sourceLabel ?? t("capture.noteLabel")}</label>
-          <textarea id="capture-detail-source" autoFocus className="input min-h-[220px] resize-y !rounded-2xl !border-0 !bg-surface !px-4 !py-4 text-lg leading-8" value={sourceText} maxLength={4200} aria-describedby="capture-detail-count" onChange={(event) => { setSourceText(event.target.value); setError(""); }} />
+          <textarea id="capture-detail-source" autoFocus className="capture-note-body min-h-[220px] !flex-none !rounded-xl !bg-transparent text-lg leading-8" value={sourceText} maxLength={4200} aria-describedby="capture-detail-count capture-detail-save-status" onChange={(event) => queueAutoSave(event.target.value)} />
           <div className="flex items-center justify-between gap-3">
             <span id="capture-detail-count" className="text-xs tabular-nums text-muted">{sourceText.length}/4000</span>
-            <div className="flex gap-2">
-              <button type="button" className="control min-h-11 justify-center bg-raised px-4 text-text" onClick={() => { setSourceText(capture.sourceText); setEditing(false); setError(""); }}>{t("common.cancel")}</button>
-              <button type="button" className="control min-h-11 justify-center bg-accent px-4 font-semibold text-on-accent" disabled={sourceText.trim() === capture.sourceText.trim()} onClick={saveSourceText}>{t("common.saveChanges")}</button>
-            </div>
+            <span id="capture-detail-save-status" className="text-xs text-muted" role="status" aria-live="polite">{saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : ""}</span>
           </div>
           {error && <p className="text-sm text-danger" role="alert">{error}</p>}
         </div>

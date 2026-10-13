@@ -31,6 +31,7 @@ import { parseAmountValue } from "@/lib/currency-input";
 import { exportNolaData } from "@/lib/export-data";
 import { exportSpendingPdf } from "@/lib/export-pdf";
 import { budgetStatus, monthKey } from "@/lib/budgeting";
+import { extractHashtags } from "@/lib/spending-parser";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notifications";
@@ -101,12 +102,13 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
   const [expenseSheet, setExpenseSheet] = useState<string | "new" | null>(() => overlay === "add" ? "new" : null);
   const [expenseInitialNote, setExpenseInitialNote] = useState("");
   const [captureComposerOpen, setCaptureComposerOpen] = useState(false);
+  const [captureEditorActive, setCaptureEditorActive] = useState(false);
   const [captureFolderId, setCaptureFolderId] = useState<string | null>(null);
   const [captureDraftText, setCaptureDraftText] = useState("");
   const [returnToCaptureAfterExpense, setReturnToCaptureAfterExpense] = useState(false);
   const [captureFeedbackId, setCaptureFeedbackId] = useState<string | null>(null);
   const captureReturnFocus = useRef<HTMLElement | null>(null);
-  const captureParser = usePendingCaptureParser();
+  const captureParser = usePendingCaptureParser({ paused: captureComposerOpen || captureEditorActive });
   const needsAuth = store.hydrated && !store.user;
   const needsOnboarding = store.hydrated && store.user && !store.profile && view !== "settings";
 
@@ -211,7 +213,7 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
             onCapture={openCaptureComposer}
             onEditExpense={openExpenseSheet}
             onRetryCapture={captureParser.retryCapture}
-            onUndoCapture={undoCapture}
+            onCaptureEditorActive={setCaptureEditorActive}
             onSignInCapture={(id) => {
               const capture = store.spendingCaptures.find((item) => item.id === id && !item.deletedAt);
               if (!capture) return;
@@ -307,7 +309,6 @@ function OnboardingScreen() {
 function DesktopNav({ active }: { active: View }) {
   const { t } = useI18n();
   return <aside className="desktop-nav">
-    <Link href="/" className="brand-wordmark" aria-label="Nola">Nola</Link>
     <nav aria-label={t("nav.main")} className="grid gap-1">
       {navItems.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className="desktop-nav-link" aria-label={t(item.labelKey)} title={t(item.labelKey)} aria-current={active === item.view ? "page" : undefined}><span className="nav-icon-background"><Icon size={22} aria-hidden="true" /></span><span className="nav-link-label">{t(item.labelKey)}</span></Link>; })}
     </nav>
@@ -330,7 +331,7 @@ function TopBar() {
   const { t } = useI18n();
   return <header className="app-header">
     <div>{(!store.isOnline || store.syncError) && <button aria-label={t("nav.refreshSync")} className="icon-button" onClick={store.retrySync}><RefreshCw size={20} /></button>}</div>
-    <Link href="/" className="brand-wordmark lg:invisible" aria-label="Nola">Nola</Link>
+    <div aria-hidden="true" />
     <div aria-hidden="true" />
   </header>;
 }
@@ -343,8 +344,8 @@ function SpendingWorkspace({
   onCapture,
   onEditExpense,
   onRetryCapture,
+  onCaptureEditorActive,
   onSignInCapture,
-  onUndoCapture,
 }: {
   mode: "home" | "capture" | "folders";
   captureId?: string;
@@ -353,20 +354,20 @@ function SpendingWorkspace({
   onCapture: (folderId?: string | null) => void;
   onEditExpense: (id: string) => void;
   onRetryCapture: (captureId: string) => void;
+  onCaptureEditorActive: (active: boolean) => void;
   onSignInCapture: (captureId: string) => void;
-  onUndoCapture: (captureId: string) => void;
 }) {
   const store = useAppStore();
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [mobileFoldersMounted, setMobileFoldersMounted] = useState(false);
   const [mobileFoldersOpen, setMobileFoldersOpen] = useState(false);
+  const mobileFolderCloseTimer = useRef<number | null>(null);
+  const mobileFolderOpenFrame = useRef<number | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<SpendingFolder | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
-  const [searchRange, setSearchRange] = useState<"all" | "week" | "month">("all");
-  const [searchCategory, setSearchCategory] = useState("all");
-  const [searchFocused, setSearchFocused] = useState(false);
   const selectedCategoryId = mode === "folders" ? searchParams.get("category") : null;
   const activeExpenses = visibleExpenses(store.expenses);
   const selectedCapture = mode === "capture"
@@ -385,18 +386,13 @@ function SpendingWorkspace({
   const visibleStandaloneCount = activeExpenses.filter((expense) => expense.captureId === null
     && (folderFilter === undefined || folderFilter === null)
     && (!selectedCategoryId || expense.categoryId === selectedCategoryId)).length;
-  const searchInRange = (value: string) => searchRange === "week" ? new Date(value) >= startOfWeek()
-    : searchRange === "month" ? new Date(value) >= startOfMonth() : true;
-  const effectiveSearchCategory = searchCategory === "all" ? selectedCategoryId : searchCategory;
-  const searchExpenses = activeExpenses.filter((expense) => searchInRange(expense.spentAt)
-    && (!effectiveSearchCategory || expense.categoryId === effectiveSearchCategory)
+  const searchExpenses = activeExpenses.filter((expense) => (!selectedCategoryId || expense.categoryId === selectedCategoryId)
     && (folderFilter === undefined || (expense.captureId
       ? store.spendingCaptures.some((capture) => capture.id === expense.captureId && !capture.deletedAt && capture.folderId === folderFilter)
       : folderFilter === null)));
   const searchCaptures = store.spendingCaptures.filter((capture) => !capture.deletedAt && capture.parseStatus !== "undone"
-    && searchInRange(capture.capturedAt)
     && (folderFilter === undefined || capture.folderId === folderFilter)
-    && (!effectiveSearchCategory || store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && expense.categoryId === effectiveSearchCategory)));
+    && (!selectedCategoryId || store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && expense.categoryId === selectedCategoryId)));
   const workspaceTitle = selectedCapture
     ? t("capture.noteLabel")
     : selectedFolder?.name ?? (selectedCategory ? categoryLabel(selectedCategory, t) : t("nav.spending"));
@@ -405,14 +401,42 @@ function SpendingWorkspace({
     router.push(`/captures/${encodeURIComponent(id)}`);
   }
 
-  function selectCategory(id: string) {
+  function openMobileFolders() {
+    if (mobileFolderCloseTimer.current) window.clearTimeout(mobileFolderCloseTimer.current);
+    mobileFolderCloseTimer.current = null;
+    if (mobileFolderOpenFrame.current !== null) window.cancelAnimationFrame(mobileFolderOpenFrame.current);
+    setMobileFoldersMounted(true);
+    mobileFolderOpenFrame.current = window.requestAnimationFrame(() => {
+      mobileFolderOpenFrame.current = null;
+      setMobileFoldersOpen(true);
+    });
+  }
+
+  function closeMobileFolders(afterClose?: () => void) {
+    if (mobileFolderOpenFrame.current !== null) window.cancelAnimationFrame(mobileFolderOpenFrame.current);
+    mobileFolderOpenFrame.current = null;
     setMobileFoldersOpen(false);
+    if (mobileFolderCloseTimer.current) window.clearTimeout(mobileFolderCloseTimer.current);
+    mobileFolderCloseTimer.current = window.setTimeout(() => {
+      setMobileFoldersMounted(false);
+      mobileFolderCloseTimer.current = null;
+      afterClose?.();
+    }, 240);
+  }
+
+  useEffect(() => () => {
+    if (mobileFolderCloseTimer.current) window.clearTimeout(mobileFolderCloseTimer.current);
+    if (mobileFolderOpenFrame.current !== null) window.cancelAnimationFrame(mobileFolderOpenFrame.current);
+  }, []);
+
+  function selectCategory(id: string) {
+    closeMobileFolders();
     router.push(`/folders?category=${encodeURIComponent(id)}`);
   }
 
   function createFolder() {
-    setMobileFoldersOpen(false);
-    setFolderDialogOpen(true);
+    if (mobileFoldersMounted) closeMobileFolders(() => setFolderDialogOpen(true));
+    else setFolderDialogOpen(true);
   }
 
   function deleteFolder(id: string) {
@@ -448,7 +472,7 @@ function SpendingWorkspace({
     <section className="spending-list-pane" aria-labelledby="spending-workspace-title">
       <header className="spending-list-header">
         <div className="spending-title-group">
-          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersOpen ? "mobile-folder-sidebar" : undefined} onClick={() => setMobileFoldersOpen(true)}><SidebarLeft className="h-5 w-5" aria-hidden="true" /></button>}
+          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><SidebarLeft className="h-5 w-5" aria-hidden="true" /></button>}
           <div className="min-w-0">
             <h1 id="spending-workspace-title" className={`screen-title truncate${mode === "home" ? " spending-page-title" : ""}`}>{workspaceTitle}</h1>
             <p className="mt-1 text-sm text-muted">{selectedCapture ? t("capture.linkedExpenses") : t("folders.itemCount").replace("{count}", String(visibleCaptureCount + visibleStandaloneCount))}</p>
@@ -458,16 +482,8 @@ function SpendingWorkspace({
           {mode !== "capture" && <button type="button" className="control min-h-11 shrink-0 justify-center bg-accent px-3 text-sm font-semibold text-on-accent desktop-capture-action" aria-label={t("capture.open")} onClick={() => onCapture(mode === "folders" ? folderId ?? null : null)}><Pencil className="h-4 w-4" aria-hidden="true" /><span>{t("capture.open")}</span></button>}
         </div>
       </header>
+      {mode === "home" && <HomeSummary expenses={activeExpenses} />}
       <div className="spending-list-scroll">
-        {searchFocused || searchQuery.trim() ? <div className="mb-4 grid gap-3" aria-label={t("history.searchFilters")}>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {(["week", "month", "all"] as const).map((item) => <button key={item} type="button" className={cx("chip shrink-0", searchRange === item && "chip-active")} aria-pressed={searchRange === item} onClick={() => setSearchRange(item)}>{item === "all" ? t("history.allTime") : item === "week" ? t("history.thisWeek") : t("history.thisMonth")}</button>)}
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <button type="button" className={cx("chip shrink-0", searchCategory === "all" && "chip-active")} aria-pressed={searchCategory === "all"} onClick={() => setSearchCategory("all")}>{t("history.allCategories")}</button>
-            {store.categories.filter((item) => !item.archivedAt).map((item) => <button key={item.id} type="button" className={cx("chip shrink-0", searchCategory === item.id && "chip-active")} aria-pressed={searchCategory === item.id} onClick={() => setSearchCategory(item.id)}>{categoryLabel(item, t)}</button>)}
-          </div>
-        </div> : null}
         {searchQuery.trim() ? <SpendingSearch
           captures={searchCaptures}
           expenses={searchExpenses}
@@ -498,7 +514,6 @@ function SpendingWorkspace({
           onOpenExpense={onEditExpense}
           onRetryCapture={onRetryCapture}
           onSignInCapture={onSignInCapture}
-          onUndoCapture={onUndoCapture}
         />}
       </div>
     </section>
@@ -525,18 +540,19 @@ function SpendingWorkspace({
           onClose={() => router.back()}
           onRetry={() => onRetryCapture(selectedCapture.id)}
           onSignIn={() => onSignInCapture(selectedCapture.id)}
-          onReparse={() => { store.editCaptureSourceText(selectedCapture.id, selectedCapture.sourceText); }}
-          onUndo={() => { onUndoCapture(selectedCapture.id); router.push("/"); }}
+          onReparse={() => { store.editCaptureSourceText(selectedCapture.id, selectedCapture.sourceText, store.ensureTags(extractHashtags(selectedCapture.sourceText))); }}
           onEditExpense={(expense) => onEditExpense(expense.id)}
-          onSaveSourceText={(id, text) => store.editCaptureSourceText(id, text)}
+          onSaveSourceText={(id, text) => store.editCaptureSourceText(id, text, store.ensureTags(extractHashtags(text)))}
+          onPauseParsingChange={onCaptureEditorActive}
           onMoveToFolder={(id, targetFolderId) => store.moveCaptureToFolder(id, targetFolderId)}
         />
-        : mode === "home" ? <div className="spending-overview"><HomeSummary expenses={activeExpenses} /><SavingsGoalsPreview /><BudgetPreview /></div>
+        : mode === "home" ? <div className="spending-overview"><SavingsGoalsPreview /><BudgetPreview /></div>
           : <div className="spending-detail-empty"><span className="spending-empty-mark" aria-hidden="true">N</span><p>{t("capture.selectNote")}</p></div>}
     </aside>
 
-    {mobileFoldersOpen && <MobileFolderDrawer
+    {mobileFoldersMounted && <MobileFolderDrawer
       id="mobile-folder-sidebar"
+      open={mobileFoldersOpen}
       title={t("folders.title")}
       allLabel={t("folders.allSpending")}
       foldersLabel={t("folders.folders")}
@@ -548,17 +564,16 @@ function SpendingWorkspace({
       categories={store.categories}
       selectedFolderId={mode === "folders" ? folderId ?? null : null}
       selectedCategoryId={selectedCategoryId}
-      onClose={() => setMobileFoldersOpen(false)}
-      onNavigate={() => setMobileFoldersOpen(false)}
+      onClose={() => closeMobileFolders()}
+      onNavigate={() => closeMobileFolders()}
       onSelectCategory={selectCategory}
       onCreateFolder={createFolder}
       onRenameFolder={(id) => {
-        setMobileFoldersOpen(false);
-        setRenamingFolder(store.spendingFolders.find((folder) => folder.id === id && !folder.deletedAt) ?? null);
+        const folder = store.spendingFolders.find((item) => item.id === id && !item.deletedAt) ?? null;
+        closeMobileFolders(() => setRenamingFolder(folder));
       }}
       onDeleteFolder={(id) => {
-        setMobileFoldersOpen(false);
-        window.setTimeout(() => deleteFolder(id), 0);
+        closeMobileFolders(() => deleteFolder(id));
       }}
     />}
 
@@ -568,8 +583,6 @@ function SpendingWorkspace({
         setSearchQuery(value);
         router.replace(value ? `/?q=${encodeURIComponent(value)}` : "/", { scroll: false });
       }}
-      onSearchFocus={() => setSearchFocused(true)}
-      onSearchBlur={() => setSearchFocused(false)}
       onCapture={() => onCapture(mode === "folders" ? folderId ?? null : null)}
     />}
     {folderDialogOpen && <FolderNameDialog titleLabel={t("folders.new")} onClose={() => setFolderDialogOpen(false)} onSave={(name) => {
@@ -590,18 +603,16 @@ function SpendingWorkspace({
   </div>;
 }
 
-function WorkspaceDock({ query, onQueryChange, onSearchFocus, onSearchBlur, onCapture }: {
+function WorkspaceDock({ query, onQueryChange, onCapture }: {
   query: string;
   onQueryChange: (value: string) => void;
-  onSearchFocus: () => void;
-  onSearchBlur: () => void;
   onCapture: () => void;
 }) {
   const { t } = useI18n();
   return <div className="workspace-dock">
     <label className="workspace-search-field">
       <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
-      <input type="search" aria-label={t("history.search")} placeholder={t("history.search")} value={query} onFocus={onSearchFocus} onBlur={onSearchBlur} onChange={(event) => onQueryChange(event.target.value)} />
+      <input type="search" aria-label={t("history.search")} placeholder={t("history.search")} value={query} onChange={(event) => onQueryChange(event.target.value)} />
       {query && <button type="button" className="workspace-search-clear" aria-label={t("search.clear")} onClick={() => onQueryChange("")}><X size={18} aria-hidden="true" /></button>}
     </label>
     <button type="button" className="workspace-compose-button" data-dialog-return-focus aria-label={t("capture.open")} title={t("capture.open")} onClick={onCapture}><Pencil className="h-5 w-5" aria-hidden="true" /></button>
@@ -610,6 +621,7 @@ function WorkspaceDock({ query, onQueryChange, onSearchFocus, onSearchBlur, onCa
 
 function MobileFolderDrawer({
   id,
+  open,
   title,
   allLabel,
   foldersLabel,
@@ -629,6 +641,7 @@ function MobileFolderDrawer({
   onDeleteFolder,
 }: {
   id: string;
+  open: boolean;
   title: string;
   allLabel: string;
   foldersLabel: string;
@@ -652,9 +665,9 @@ function MobileFolderDrawer({
   const backdrop = useRef<HTMLDivElement>(null);
   useDialogFocus(dialog, backdrop, onClose);
   if (typeof document === "undefined") return null;
-  return createPortal(<div ref={backdrop} className="mobile-folder-backdrop fixed inset-0 z-50">
+  return createPortal(<div ref={backdrop} className="mobile-folder-backdrop fixed inset-0 z-50" data-open={open}>
     <button type="button" className="mobile-folder-scrim" aria-hidden="true" tabIndex={-1} onClick={onClose} />
-    <aside id={id} ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="mobile-folder-drawer">
+    <aside id={id} ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} aria-hidden={!open} inert={!open} className="mobile-folder-drawer">
       <button type="button" className="mobile-folder-close icon-button" aria-label={t("common.close")} onClick={onClose}><X className="h-5 w-5" aria-hidden="true" /></button>
       <FolderList
         title={title}

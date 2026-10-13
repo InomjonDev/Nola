@@ -21,8 +21,6 @@ export function CaptureCard({
   onOpen,
   onRetry,
   onSignIn,
-  onUndo,
-  undoLabel,
   signInLabel,
   highlight,
 }: {
@@ -35,8 +33,6 @@ export function CaptureCard({
   onOpen: () => void;
   onRetry?: () => void;
   onSignIn?: () => void;
-  onUndo?: () => void;
-  undoLabel?: string;
   signInLabel?: string;
   highlight?: { start: number; end: number };
 }) {
@@ -101,12 +97,11 @@ export function CaptureCard({
 
     {(capture.parseStatus === "needs_retry" || issue === "signIn" || issue === "sync") && <p className="mt-2 text-sm leading-5 text-muted" role={issue === "retry" || capture.parseStatus === "needs_retry" ? "status" : undefined}>{status}</p>}
 
-    {(canRetry || (issue === "signIn" && onSignIn) || onUndo) && <div className="mt-2 flex flex-wrap items-center gap-2">
+    {(canRetry || (issue === "signIn" && onSignIn)) && <div className="mt-2 flex flex-wrap items-center gap-2">
       {canRetry && <button type="button" className="control min-h-11 justify-center bg-raised px-3 text-sm font-medium text-text" onClick={onRetry}>
         {issue === "sync" ? t("capture.retrySync") : t("capture.retry")}
       </button>}
       {issue === "signIn" && onSignIn && <button type="button" className="control min-h-11 justify-center bg-accent px-3 text-sm font-semibold text-on-accent" onClick={onSignIn}>{signInLabel ?? t("capture.signInForAi")}</button>}
-      {onUndo && <button type="button" className="control min-h-11 justify-center px-3 text-sm text-muted" onClick={onUndo}>{undoLabel ?? t("history.undo")}</button>}
     </div>}
   </article>;
 }

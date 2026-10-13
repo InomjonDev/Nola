@@ -38,14 +38,14 @@ export function undoCaptureData<T extends SpendingCaptureData>(data: T, captureI
   };
 }
 
-export function editCaptureTextData<T extends SpendingCaptureData>(data: T, captureId: string, sourceText: string, updatedAt = new Date().toISOString()): T {
+export function editCaptureTextData<T extends SpendingCaptureData>(data: T, captureId: string, sourceText: string, updatedAt = new Date().toISOString(), tagIds?: string[]): T {
   const capture = data.spendingCaptures.find((item) => item.id === captureId);
   if (!capture || capture.deletedAt || !sourceText.trim() || sourceText.length > 4000) return data;
 
   return {
     ...data,
     spendingCaptures: data.spendingCaptures.map((item) => item.id === captureId
-      ? { ...item, sourceText, parseStatus: "pending", parseRevision: item.parseRevision + 1, updatedAt }
+      ? { ...item, sourceText, ...(tagIds ? { tagIds } : {}), parseStatus: "pending", parseRevision: item.parseRevision + 1, updatedAt }
       : item),
   };
 }

@@ -38,7 +38,7 @@ type StoreValue = PersistedAppData & {
   deleteExpense: (id: string) => void;
   restoreExpense: (id: string) => void;
   saveSpendingCapture: (sourceText: string, folderId: string | null, tagIds: string[]) => string;
-  editCaptureSourceText: (captureId: string, sourceText: string) => boolean;
+  editCaptureSourceText: (captureId: string, sourceText: string, tagIds?: string[]) => boolean;
   setCaptureParseStatus: (captureId: string, parseRevision: number, status: Extract<CaptureParseStatus, "pending" | "processing" | "needs_retry">) => void;
   setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => boolean;
   replayCachedCaptureParse: (captureId: string, parseRevision: number) => boolean;
@@ -568,13 +568,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     return capture.id;
   };
 
-  const editCaptureSourceText = (captureId: string, sourceText: string) => {
+  const editCaptureSourceText = (captureId: string, sourceText: string, tagIds?: string[]) => {
     const now = new Date().toISOString();
     let changed = false;
     commitData((state) => {
       const currentCapture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user?.id);
       if (!currentCapture) return state;
-      const edited = editCaptureTextData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, sourceText, now);
+      const ownedTagIds = tagIds ? filterOwnedTagIds(tagIds, state.tags, currentCapture.userId) : undefined;
+      const edited = editCaptureTextData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, sourceText, now, ownedTagIds);
       if (edited.spendingCaptures === state.spendingCaptures) return state;
       changed = true;
       const capture = edited.spendingCaptures.find((item) => item.id === captureId);

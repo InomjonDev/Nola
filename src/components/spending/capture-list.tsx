@@ -71,7 +71,6 @@ export function CaptureList({
   onOpenExpense,
   onRetryCapture,
   onSignInCapture,
-  onUndoCapture,
 }: {
   captures: SpendingCapture[];
   expenses: Expense[];
@@ -89,7 +88,6 @@ export function CaptureList({
   onOpenExpense: (expenseId: string) => void;
   onRetryCapture?: (captureId: string) => void;
   onSignInCapture?: (captureId: string) => void;
-  onUndoCapture?: (captureId: string) => void;
 }) {
   const { language, t } = useI18n();
   const today = new Date();
@@ -159,7 +157,6 @@ export function CaptureList({
               onOpen={() => onOpenCapture(entry.capture.id)}
               onRetry={onRetryCapture ? () => onRetryCapture(entry.capture.id) : undefined}
               onSignIn={onSignInCapture ? () => onSignInCapture(entry.capture.id) : undefined}
-              onUndo={onUndoCapture ? () => onUndoCapture(entry.capture.id) : undefined}
             />
             : <StandaloneExpenseRow key={`expense:${entry.expense.id}`} expense={entry.expense} categories={categories} tags={tags} onOpen={() => onOpenExpense(entry.expense.id)} />)}
         </div>
