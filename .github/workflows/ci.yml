@@ -1,4 +1,4 @@
-name: Walletly checks
+name: Nola checks
 
 on:
   push:
