@@ -43,4 +43,5 @@ create policy "budgets_insert_own" on public.budgets for insert to authenticated
 create policy "budgets_update_own" on public.budgets for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "budgets_delete_own" on public.budgets for delete to authenticated using ((select auth.uid()) = user_id);
 
+revoke all on public.income_entries, public.budgets from public, anon;
 grant select, insert, update, delete on public.income_entries, public.budgets to authenticated;

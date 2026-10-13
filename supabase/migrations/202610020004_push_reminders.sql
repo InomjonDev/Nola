@@ -33,4 +33,5 @@ create policy "reminder_preferences_insert_own" on public.reminder_preferences f
 create policy "reminder_preferences_update_own" on public.reminder_preferences for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 create policy "reminder_preferences_delete_own" on public.reminder_preferences for delete to authenticated using ((select auth.uid()) = user_id);
 
+revoke all on public.push_subscriptions, public.reminder_preferences from public, anon;
 grant select, insert, update, delete on public.push_subscriptions, public.reminder_preferences to authenticated;
