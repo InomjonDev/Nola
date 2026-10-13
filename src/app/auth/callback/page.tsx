@@ -26,9 +26,9 @@ export default function AuthCallbackPage() {
   return (
     <main className="grid min-h-dvh place-items-center bg-bg px-4 text-text">
       <section className="panel max-w-md text-center">
-        <h1 className="text-2xl font-semibold">{failed ? t("auth.callbackFailedTitle") : t("auth.finishingTitle")}</h1>
+        <h1 className="screen-title">{failed ? t("auth.callbackFailedTitle") : t("auth.finishingTitle")}</h1>
         <p className="mt-3 text-muted">{failed ? t("auth.callbackFailedMessage") : t("auth.finishingMessage")}</p>
-        {failed && <Link className="control mt-5 justify-center bg-text text-bg" href="/">{t("auth.backToWalletly")}</Link>}
+        {failed && <Link className="control mt-5 justify-center bg-accent text-on-accent" href="/">{t("auth.backToNola")}</Link>}
       </section>
     </main>
   );

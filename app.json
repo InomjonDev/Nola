@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Walletly",
+    "name": "Nola",
     "slug": "walletly",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./public/icons/nola-1024.png",
     "scheme": "walletly",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#005D50",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -24,7 +24,7 @@
       "versionCode": 1
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./public/icons/nola-192.png"
     },
     "plugins": [
       "expo-router",

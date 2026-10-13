@@ -6,7 +6,7 @@ export function formatMoney(value: number, currency: string, locale?: string) {
   const key = `${locale ?? "default"}:${currency}`;
   let formatter = currencyFormatters.get(key);
   if (!formatter) {
-    formatter = new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: currency === "UZS" || currency === "JPY" ? 0 : 2 });
+    formatter = new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: currency === "JPY" ? 0 : 2 });
     currencyFormatters.set(key, formatter);
   }
   return formatter.format(value);

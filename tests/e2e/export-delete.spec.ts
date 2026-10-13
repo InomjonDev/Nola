@@ -31,11 +31,11 @@ for (const { deletionSucceeds, cleanupFails } of [{ deletionSucceeds: true, clea
 
     await page.goto("/");
     await page.getByRole("button", { name: "Continue with Google" }).click();
-    await page.getByRole("button", { name: "Enter Walletly" }).click();
+    await page.getByRole("button", { name: "Enter Nola" }).click();
     await page.getByRole("button", { name: "Accept", exact: true }).click();
     await page.goto("/settings");
     await page.getByRole("button", { name: "Delete account" }).click();
-    const dialog = page.getByRole("dialog", { name: "Delete your Walletly account?" });
+    const dialog = page.getByRole("dialog", { name: "Delete your Nola account?" });
     await dialog.getByRole("button", { name: "Delete permanently" }).click();
     if (deletionSucceeds) {
       await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
@@ -44,7 +44,7 @@ for (const { deletionSucceeds, cleanupFails } of [{ deletionSucceeds: true, clea
       await page.reload();
       await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
     } else {
-      await expect(dialog.getByRole("alert")).toContainText("Walletly could not delete your account");
+      await expect(dialog.getByRole("alert")).toContainText("Nola could not delete your account");
       const retained = await page.evaluate(() => Object.keys(localStorage).some((key) => key.endsWith("-auth-token")));
       expect(retained).toBe(true);
       const retainedData = await page.evaluate(() => Object.keys(localStorage).some((key) => key.startsWith("walletly.app-data") && key.includes("11111111-1111-4111-8111-111111111111")));
@@ -64,9 +64,9 @@ test("settings exports JSON and account deletion returns to auth", async ({ page
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export JSON" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("walletly-export.json");
+  expect(download.suggestedFilename()).toBe("nola-export.json");
   await page.getByRole("button", { name: "Delete account" }).click();
-  const dialog = page.getByRole("dialog", { name: "Delete your Walletly account?" });
+  const dialog = page.getByRole("dialog", { name: "Delete your Nola account?" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page.getByRole("button", { name: "Try local demo" })).toBeVisible();

@@ -1,4 +1,4 @@
-import { WALLETLY_CURRENCIES } from "./constants.ts";
+import { SUPPORTED_CURRENCIES } from "./constants.ts";
 import { monthKey } from "./budgeting.ts";
 import { parseAmountValue } from "./currency-input.ts";
 import type { Category, CategoryBudget, CategoryBudgetDraft, Expense } from "./types.ts";
@@ -30,7 +30,7 @@ export function isoWeekKey(value: string | Date) {
 export function validateCategoryBudget(draft: CategoryBudgetDraft, categories: Category[]): CategoryBudgetError | null {
   if (!categories.some((category) => category.id === draft.categoryId && !category.archivedAt)) return "categoryBudgets.categoryError";
   if (parseAmountValue(String(draft.amount)) === null) return "categoryBudgets.amountError";
-  if (!(WALLETLY_CURRENCIES as readonly string[]).includes(draft.currency)) return "categoryBudgets.currencyError";
+  if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(draft.currency)) return "categoryBudgets.currencyError";
   if (draft.cadence !== "weekly" && draft.cadence !== "monthly") return "categoryBudgets.cadenceError";
   return null;
 }

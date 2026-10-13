@@ -1,4 +1,4 @@
-# Walletly third-party audit
+# Nola third-party audit
 
 Reviewed for the MVP redesign on 2026-10-01.
 

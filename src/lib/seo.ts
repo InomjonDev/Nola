@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const siteName = "Walletly";
+export const siteName = "Nola";
 export const siteDescription = "A private, local-first expense tracker for clear everyday money decisions.";
 export const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
 export const socialImagePath = "/screenshots/desktop.png";
@@ -22,7 +22,7 @@ export function publicPageMetadata({ title, description, path }: PublicPageMetad
       siteName,
       title,
       description,
-      images: [{ url: socialImagePath, width: 1440, height: 900, alt: "Walletly expense tracker dashboard" }],
+      images: [{ url: socialImagePath, width: 1440, height: 900, alt: "Nola expense tracker dashboard" }],
     },
     twitter: {
       card: "summary_large_image",

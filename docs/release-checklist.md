@@ -1,4 +1,4 @@
-# Walletly release checklist
+# Nola release checklist
 
 Use this checklist for every preview and production candidate. The commands are intentionally split between local validation and account/device validation.
 

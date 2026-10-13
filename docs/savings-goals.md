@@ -61,7 +61,7 @@ public/sw.js
 scripts/test-goals-db.mjs
 src/app/globals.css
 src/components/savings-goals.tsx
-src/components/walletly-app.tsx
+src/components/nola-app.tsx
 src/lib/app-store.tsx
 src/lib/export-data.ts
 src/lib/i18n.ts

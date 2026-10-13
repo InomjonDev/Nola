@@ -14,6 +14,9 @@ const config: Config = {
         text: "rgb(var(--color-text) / <alpha-value>)",
         muted: "rgb(var(--color-muted) / <alpha-value>)",
         line: "rgb(var(--color-line) / <alpha-value>)",
+        "control-edge": "rgb(var(--color-control-edge) / <alpha-value>)",
+        "on-accent": "rgb(var(--color-on-accent) / <alpha-value>)",
+        "on-danger": "rgb(var(--color-on-danger) / <alpha-value>)",
         accent: "rgb(var(--color-accent) / <alpha-value>)",
         "accent-strong": "rgb(var(--color-accent-strong) / <alpha-value>)",
         "accent-soft": "rgb(var(--color-accent-soft) / <alpha-value>)",
@@ -22,10 +25,7 @@ const config: Config = {
         success: "rgb(var(--color-success) / <alpha-value>)",
         warning: "rgb(var(--color-warning) / <alpha-value>)",
       },
-      boxShadow: {
-        glass: "0 18px 60px rgb(10 12 20 / 18%)",
-        soft: "0 12px 36px rgb(15 23 42 / 10%)",
-      },
+
     },
   },
   plugins: [],

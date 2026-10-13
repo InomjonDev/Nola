@@ -3,7 +3,7 @@ import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
   title: "Cookie policy",
-  description: "See which essential browser storage Walletly uses for sessions, preferences, consent, and offline functionality.",
+  description: "See which essential browser storage Nola uses for sessions, preferences, consent, and offline functionality.",
   path: "/cookies",
 });
 

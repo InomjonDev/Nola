@@ -6,6 +6,11 @@ test("PWA metadata and service worker are available", async ({ page }) => {
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
   const manifest = await page.request.get("/manifest.webmanifest");
   expect(manifest.ok()).toBeTruthy();
+  const manifestData = await manifest.json();
+  expect(manifestData.name).toBe("Nola");
+  expect(manifestData.short_name).toBe("Nola");
+  expect(manifestData.icons.map((icon: { src: string }) => icon.src)).toEqual(expect.arrayContaining(["/icons/nola-192.png", "/icons/nola-512.png"]));
+  await expect(page).toHaveTitle(/Nola/);
   const serviceWorker = await page.request.get("/sw.js");
   expect(serviceWorker.ok()).toBeTruthy();
   await expect.poll(async () => page.evaluate(() => navigator.serviceWorker?.controller !== null || navigator.serviceWorker?.getRegistrations().then((items) => items.length > 0))).toBeTruthy();

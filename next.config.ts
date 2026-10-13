@@ -13,6 +13,8 @@ if (process.env.NODE_ENV === "production") {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  devIndicators: false,
+  experimental: { optimizePackageImports: ["@remixicon/react"] },
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
   // Keep local Expo environment files working while the migration is rolled out.

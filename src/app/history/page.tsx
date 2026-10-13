@@ -1,8 +1,8 @@
-import { WalletlyApp } from "@/components/walletly-app";
+import { NolaApp } from "@/components/nola-app";
 import { privatePageMetadata } from "@/lib/seo";
 
-export const metadata = { ...privatePageMetadata, title: "History" };
+export const metadata = { ...privatePageMetadata, title: "Search" };
 
 export default function Page() {
-  return <WalletlyApp view="history" />;
+  return <NolaApp view="history" />;
 }

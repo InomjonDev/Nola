@@ -16,11 +16,11 @@ sign_in_sign_ups = 30
 token_verifications = 30
 
 [auth.email.template.confirmation]
-subject = "Confirm your Walletly account"
+subject = "Confirm your Nola account"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.magic_link]
-subject = "Your Walletly sign-in link"
+subject = "Your Nola sign-in link"
 content_path = "./supabase/templates/magic_link.html"
 
 [functions.daily-reminders]

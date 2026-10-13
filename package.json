@@ -1,5 +1,5 @@
 {
-  "name": "walletly",
+  "name": "nola",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -19,8 +19,9 @@
     "seo:validate": "node scripts/validate-seo.mjs"
   },
   "dependencies": {
+    "@remixicon/react": "^4.9.0",
     "@supabase/supabase-js": "^2.117.2",
-    "lucide-react": "^0.545.0",
+    "jspdf": "^4.2.1",
     "next": "^15.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"

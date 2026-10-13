@@ -1,6 +1,8 @@
-# Walletly
+# Nola
 
-Walletly is now a responsive Next.js PWA for private, local-first expense tracking. It keeps Supabase Auth/Postgres/RLS as the backend, preserves the Walletly domain model, and replaces the Expo UI with web-native responsive screens.
+Nola is now a responsive Next.js PWA for private, local-first expense tracking. It keeps Supabase Auth/Postgres/RLS as the backend, preserves the Nola domain model, and replaces the Expo UI with web-native responsive screens.
+
+The rebrand keeps existing `walletly.*` browser storage keys and Supabase project/deep-link identifiers intact so existing data and hosted integrations continue to work.
 
 ## Run Locally
 
@@ -26,7 +28,7 @@ npm start
 
 ## PWA Installation
 
-On Chrome or Edge, use the browser install button or Walletly's install prompt. On iOS Safari, use Share -> Add to Home Screen. The manifest, app shell, icons, screenshots, and service worker live in `public/`.
+On Chrome or Edge, use the browser install button or Nola's install prompt. On iOS Safari, use Share -> Add to Home Screen. The manifest, app shell, icons, screenshots, and service worker live in `public/`.
 
 ## Supabase
 
@@ -39,7 +41,7 @@ Run the migrations in `supabase/migrations/` before testing cloud sync. The Expo
 
 ## SEO and production URL
 
-Set `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin users will visit in production, for example `https://walletly.example.com`. Walletly generates canonical URLs, Open Graph metadata, `robots.txt`, and `sitemap.xml` from that value. The public entry and legal pages are indexable; authenticated workspace routes and the OAuth callback are intentionally noindex.
+Set `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin users will visit in production, for example `https://nola.example.com`. Nola generates canonical URLs, Open Graph metadata, `robots.txt`, and `sitemap.xml` from that value. The public entry and legal pages are indexable; authenticated workspace routes and the OAuth callback are intentionally noindex.
 
 ## Documentation
 
@@ -50,4 +52,4 @@ Set `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin users will visit in product
 ## Current Limitations
 
 Browser notifications can show from the service worker and route clicks to `/add-expense`, but reliable reminders while the PWA is closed require backend Web Push scheduling. The starter Supabase Edge Function is in `supabase/functions/daily-reminders/`.
-# walletly
+# Nola

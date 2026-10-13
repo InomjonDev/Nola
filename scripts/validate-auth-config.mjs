@@ -67,7 +67,7 @@ if (!existsSync(authConfigPath)) {
 
 for (const [templateName, templatePath] of emailTemplates) {
   if (!existsSync(templatePath)) {
-    errors.push(`${templatePath} must contain the Walletly ${templateName} email`);
+    errors.push(`${templatePath} must contain the Nola ${templateName} email`);
     continue;
   }
   const emailTemplate = readFileSync(templatePath, "utf8");

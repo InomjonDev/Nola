@@ -1,4 +1,4 @@
-# Walletly SEO audit
+# Nola SEO audit
 
 ## Implemented
 
@@ -16,4 +16,4 @@ Run `npm run seo:validate` for static checks. After deployment, verify the live 
 
 ## Scope limitation
 
-Walletly is an authenticated finance application rather than a content site. Indexing private dashboards would expose low-value app shells and create privacy/crawl noise, so SEO work is focused on the public entry and legal surfaces. English is the crawlable default; the in-app Russian and Uzbek translations do not currently have separate locale URLs or `hreflang` alternates.
+Nola is an authenticated finance application rather than a content site. Indexing private dashboards would expose low-value app shells and create privacy/crawl noise, so SEO work is focused on the public entry and legal surfaces. English is the crawlable default; the in-app Russian and Uzbek translations do not currently have separate locale URLs or `hreflang` alternates.

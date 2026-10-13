@@ -1,25 +1,72 @@
 {
-  "name": "Walletly",
-  "short_name": "Walletly",
+  "name": "Nola",
+  "short_name": "Nola",
   "description": "Private, local-first expense tracking.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "browser"],
-  "background_color": "#F6F5F1",
-  "theme_color": "#377466",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "browser"
+  ],
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
   "orientation": "portrait-primary",
-  "categories": ["finance", "productivity"],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icons/nola-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/nola-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ],
   "screenshots": [
-    { "src": "/screenshots/mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow", "label": "Walletly mobile dashboard" },
-    { "src": "/screenshots/desktop.png", "sizes": "1440x900", "type": "image/png", "form_factor": "wide", "label": "Walletly desktop dashboard" }
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Nola mobile dashboard"
+    },
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1440x900",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Nola desktop dashboard"
+    }
   ],
   "shortcuts": [
-    { "name": "Add expense", "url": "/add-expense", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "History", "url": "/history", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Add expense",
+      "url": "/add-expense",
+      "icons": [
+        {
+          "src": "/icons/nola-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "url": "/history",
+      "icons": [
+        {
+          "src": "/icons/nola-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

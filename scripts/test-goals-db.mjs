@@ -10,7 +10,7 @@ function run(command, args, input) {
 }
 
 const binaries = run("pg_config", ["--bindir"]).trim();
-const directory = mkdtempSync(join(tmpdir(), "walletly-goals-db-"));
+const directory = mkdtempSync(join(tmpdir(), "nola-goals-db-"));
 const cluster = join(directory, "data");
 let started = false;
 try {

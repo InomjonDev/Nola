@@ -45,7 +45,7 @@ Deno.serve(async (request) => {
     let deliveredForUser = 0;
     for (const subscription of subscriptions as PushSubscription[]) {
       try {
-        await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify({ title: "A small Walletly check-in", body: "Nothing logged today yet. Add an expense when you are ready.", tag: "daily-check-in", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", url: "/add-expense" }));
+        await webpush.sendNotification({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify({ title: "A small Nola check-in", body: "Nothing logged today yet. Add an expense when you are ready.", tag: "daily-check-in", icon: "/icons/nola-192.png", badge: "/icons/nola-192.png", url: "/add-expense" }));
         sent += 1;
         deliveredForUser += 1;
       } catch (error) {
@@ -54,13 +54,13 @@ Deno.serve(async (request) => {
           await supabase.from("push_subscriptions").delete().eq("id", subscription.id);
           removed += 1;
         } else {
-          console.error("Walletly push delivery failed", { userId: subscription.user_id, statusCode });
+          console.error("Nola push delivery failed", { userId: subscription.user_id, statusCode });
         }
       }
     }
     if (deliveredForUser === 0) {
       const { error: releaseError } = await supabase.from("reminder_preferences").update({ last_notified_on: preference.last_notified_on, updated_at: new Date().toISOString() }).eq("user_id", preference.user_id).eq("last_notified_on", reminderDate);
-      if (releaseError) console.error("Walletly reminder claim release failed", { userId: preference.user_id });
+      if (releaseError) console.error("Nola reminder claim release failed", { userId: preference.user_id });
     }
   }
   return Response.json({ checkedAt: new Date().toISOString(), checked, sent, removed });

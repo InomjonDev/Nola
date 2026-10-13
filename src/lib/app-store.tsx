@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, WALLETLY_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
+import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, SUPPORTED_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
 import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, spendingCaptureRow, spendingFolderRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toSpendingCapture, toSpendingFolder, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
@@ -15,7 +15,7 @@ import { calendarDate, normalizeGoalData, validateContribution, validateGoal, ty
 import { validateCategoryBudget } from "@/lib/category-budgets";
 import { materializeDueRecurringRules, validateRecurringRule } from "@/lib/recurring";
 import { createDemoData } from "@/lib/demo-data";
-import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureItem, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
+import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, CaptureParseStatus, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureItem, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
   return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], spendingCaptures: [], spendingFolders: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], savingsGoals: [], goalContributions: [], syncQueue: [] };
@@ -39,7 +39,10 @@ type StoreValue = PersistedAppData & {
   restoreExpense: (id: string) => void;
   saveSpendingCapture: (sourceText: string, folderId: string | null, tagIds: string[]) => string;
   editCaptureSourceText: (captureId: string, sourceText: string) => boolean;
+  setCaptureParseStatus: (captureId: string, parseRevision: number, status: Extract<CaptureParseStatus, "pending" | "processing" | "needs_retry">) => void;
   setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => boolean;
+  replayCachedCaptureParse: (captureId: string, parseRevision: number) => boolean;
+  setAiParsingEnabled: (enabled: boolean) => void;
   saveSpendingFolder: (name: string, color: string) => string | undefined;
   renameSpendingFolder: (folderId: string, name: string) => void;
   deleteSpendingFolder: (folderId: string) => void;
@@ -210,7 +213,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       setSyncError(firstError.message);
       return;
     }
-    // A pending goals migration must not prevent older Walletly data from loading.
+    // A pending goals migration must not prevent older Nola data from loading.
     const addedFeatureError = [captureResult, folderResult, goalResult, contributionResult, categoryBudgetResult, recurringRuleResult, accountResult, accountAdjustmentResult].find((result) => result.error)?.error;
     setSyncError(addedFeatureError?.message ?? null);
     setData((current) => ({
@@ -585,6 +588,37 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     return changed;
   };
 
+  const setCaptureParseStatus = (captureId: string, parseRevision: number, status: Extract<CaptureParseStatus, "pending" | "processing" | "needs_retry">) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id);
+      if (!capture || capture.deletedAt || capture.parseRevision !== parseRevision || capture.parseStatus === "undone" || capture.parseStatus === "parsed" || capture.parseStatus === status) return state;
+      const updated = { ...capture, parseStatus: status, updatedAt: now };
+      return {
+        ...state,
+        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? updated : item),
+        // The parse endpoint owns the remote processing transition. Sending a
+        // full local capture row here could race and overwrite its CAS result.
+        syncQueue: status === "processing" ? state.syncQueue : queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(updated) }, cloudEnabled),
+      };
+    });
+  };
+
+  const setAiParsingEnabled = (enabled: boolean) => {
+    if (!user) return;
+    commitData((state) => {
+      const current = state.profile;
+      if (!current || current.userId !== user.id || current.aiParsingEnabled === enabled) return state;
+      const profile = { ...current, aiParsingEnabled: enabled };
+      return {
+        ...state,
+        profile,
+        syncQueue: queue(state, { table: "profiles", action: "upsert", recordId: user.id, payload: profileRow(profile) }, cloudEnabled),
+      };
+    });
+  };
+
   const setCaptureParseResult = (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => {
     const now = new Date().toISOString();
     let changed = false;
@@ -602,6 +636,43 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
       return { ...state, ...parsed, syncQueue };
+    });
+    return changed;
+  };
+
+  const replayCachedCaptureParse = (captureId: string, parseRevision: number) => {
+    if (!user) return false;
+    const now = new Date().toISOString();
+    let changed = false;
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && !item.deletedAt);
+      if (!capture || capture.parseStatus !== "parsed" || capture.parseRevision !== parseRevision || capture.parsedRevision !== parseRevision || !capture.parsedItems?.length) return state;
+
+      const cachedIds = new Set(capture.parsedItems.map((item) => item.id));
+      const existingCachedRows = state.expenses.filter((item) => cachedIds.has(item.id));
+      if (existingCachedRows.some((item) => item.userId !== user.id || item.captureId !== captureId)) return state;
+      const existingById = new Map(existingCachedRows.map((item) => [item.id, item]));
+      const needsReplay = capture.parsedItems.some((item) => !existingById.has(item.id))
+        || state.expenses.some((item) => item.captureId === captureId && !item.deletedAt && !cachedIds.has(item.id));
+      if (!needsReplay) return state;
+      const input = {
+        ...state,
+        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? { ...item, parseStatus: "pending" as const, parsedRevision: null } : item),
+        expenses: state.expenses.filter((item) => !cachedIds.has(item.id)),
+      };
+      const replayed = applyCaptureParseData(input, captureId, parseRevision, capture.parsedItems, now);
+      if (replayed.spendingCaptures === input.spendingCaptures) return state;
+
+      const cachedExpenses = replayed.expenses.filter((item) => cachedIds.has(item.id))
+        .map((item) => existingById.get(item.id) ?? item);
+      const expenses = [...cachedExpenses, ...replayed.expenses.filter((item) => !cachedIds.has(item.id))];
+      let syncQueue = state.syncQueue;
+      const changedExpenses = replayed.expenses.filter((item) => item.updatedAt === now && !existingById.has(item.id));
+      for (const expense of changedExpenses) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+      }
+      changed = true;
+      return { ...state, expenses, syncQueue };
     });
     return changed;
   };
@@ -792,7 +863,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   };
 
   const saveAccount = (draft: AccountDraft) => {
-    if (!user || !draft.name.trim() || draft.name.trim().length > 60 || !(WALLETLY_CURRENCIES as readonly string[]).includes(draft.currency) || !["cash", "bank", "card"].includes(draft.kind)) return undefined;
+    if (!user || !draft.name.trim() || draft.name.trim().length > 60 || !(SUPPORTED_CURRENCIES as readonly string[]).includes(draft.currency) || !["cash", "bank", "card"].includes(draft.kind)) return undefined;
     if (!Number.isFinite(draft.startingBalance) || draft.startingBalance < 0 || draft.startingBalance >= 1e12 || Math.abs(draft.startingBalance * 100 - Math.round(draft.startingBalance * 100)) > 0.0001) return undefined;
     const name = draft.name.trim();
     const linkedMethod = data.paymentMethods.find((method) => method.userId === user.id && !method.archivedAt && method.name.toLocaleLowerCase() === name.toLocaleLowerCase() && !data.accounts.some((account) => account.id === method.id && !account.deletedAt));
@@ -991,7 +1062,10 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       restoreExpense,
       saveSpendingCapture,
       editCaptureSourceText,
+      setCaptureParseStatus,
       setCaptureParseResult,
+      replayCachedCaptureParse,
+      setAiParsingEnabled,
       saveSpendingFolder,
       renameSpendingFolder,
       deleteSpendingFolder,

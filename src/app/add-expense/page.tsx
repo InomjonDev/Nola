@@ -1,5 +1,5 @@
-import { WalletlyApp } from "@/components/walletly-app";
+import { NolaApp } from "@/components/nola-app";
 
 export default function Page() {
-  return <WalletlyApp view="home" overlay="add" />;
+  return <NolaApp view="home" overlay="add" />;
 }

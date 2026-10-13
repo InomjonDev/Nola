@@ -22,17 +22,17 @@ test("Google callback exchanges the code once and preserves the session on reloa
 
   await page.goto("/");
   await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("heading", { name: "Make it yours in one minute." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
   expect(exchanges).toBe(1);
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Make it yours in one minute." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Could not sign you in" })).toHaveCount(0);
   expect(exchanges).toBe(1);
 
   await page.goto("/auth/callback");
-  await expect(page.getByRole("heading", { name: "Make it yours in one minute." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
   expect(exchanges).toBe(1);
 });
@@ -40,18 +40,18 @@ test("Google callback exchanges the code once and preserves the session on reloa
 test("auth callback presents provider errors without a login loop", async ({ page }) => {
   await page.goto("/auth/callback?error=access_denied&error_description=The%20provider%20denied%20access");
   await expect(page.getByRole("heading", { name: "Could not sign you in" })).toBeVisible();
-  await expect(page.getByText("This sign-in could not be completed. Go back to Walletly and try again in the same browser.")).toBeVisible();
+  await expect(page.getByText("This sign-in could not be completed. Go back to Nola and try again in the same browser.")).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/callback$/);
-  await expect(page.getByRole("link", { name: "Back to Walletly" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "Back to Nola" })).toHaveAttribute("href", "/");
 });
 
 test("a callback opened without its browser verifier provides a recoverable error", async ({ page }) => {
   await page.goto("/auth/callback?code=code-from-another-browser");
   await expect(page.getByRole("heading", { name: "Could not sign you in" })).toBeVisible();
-  await expect(page.getByText("This sign-in could not be completed. Go back to Walletly and try again in the same browser.")).toBeVisible();
+  await expect(page.getByText("This sign-in could not be completed. Go back to Nola and try again in the same browser.")).toBeVisible();
   await expect(page.getByText(/PKCE|@supabase\/ssr/)).toHaveCount(0);
   await expect(page).toHaveURL(/\/auth\/callback$/);
-  await page.getByRole("link", { name: "Back to Walletly" }).click();
+  await page.getByRole("link", { name: "Back to Nola" }).click();
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
 });
 

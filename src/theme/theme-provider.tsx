@@ -24,10 +24,15 @@ function getSystemMode() {
 export function LedgerThemeProvider({ children }: PropsWithChildren) {
   const [mode, setModeState] = useState<ThemeMode>("system");
   const [systemMode, setSystemMode] = useState<"light" | "dark">("light");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setModeState((localStorage.getItem(THEME_KEY) as ThemeMode | null) ?? "system");
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      setModeState(saved === "light" || saved === "dark" ? saved : "system");
+    } catch { /* System preference remains available without storage. */ }
     setSystemMode(getSystemMode());
+    setReady(true);
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const listener = () => setSystemMode(getSystemMode());
     media.addEventListener("change", listener);
@@ -36,15 +41,20 @@ export function LedgerThemeProvider({ children }: PropsWithChildren) {
 
   const setMode = (next: ThemeMode) => {
     setModeState(next);
-    localStorage.setItem(THEME_KEY, next);
+    try { localStorage.setItem(THEME_KEY, next); } catch { /* Keep the in-memory preference. */ }
   };
 
   const resolvedMode = mode === "system" ? systemMode : mode;
 
   useEffect(() => {
+    if (!ready) return;
     document.documentElement.dataset.theme = resolvedMode;
     document.documentElement.style.colorScheme = resolvedMode;
-  }, [resolvedMode]);
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
+      meta.removeAttribute("media");
+      meta.content = resolvedMode === "dark" ? "#000000" : "#FFFFFF";
+    });
+  }, [resolvedMode, ready]);
 
   const value = useMemo(
     () => ({ colors: palettes[resolvedMode], mode, resolvedMode, setMode }),

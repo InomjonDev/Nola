@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { exportWalletlyData } from "../src/lib/export-data.ts";
+import { exportNolaData } from "../src/lib/export-data.ts";
 import { goalContributionRow, savingsGoalRow, toGoalContribution, toSavingsGoal } from "../src/lib/mappers.ts";
 import type { PersistedAppData, SavingsGoal } from "../src/lib/types.ts";
 
@@ -18,15 +18,15 @@ test("goal mappers round trip every financial and lifecycle field", () => {
 });
 
 test("JSON includes archived goals and contributions but excludes deleted goals and their history", () => {
-  const exported = JSON.parse(exportWalletlyData(data, "json"));
+  const exported = JSON.parse(exportNolaData(data, "json"));
   assert.deepEqual(exported.savingsGoals, [goal]);
   assert.deepEqual(exported.goalContributions, [data.goalContributions[0]]);
   assert.equal(exported.syncQueue, undefined);
 });
 
 test("CSV appends relational goal fields, quotes text, and neutralizes spreadsheet formulas", () => {
-  const csv = exportWalletlyData(data, "csv");
-  assert.ok(csv.startsWith("type,id,amount,currency,date,category,note,month,goal_id,name,target_amount,deadline,archived_at,icon,kind\n"));
+  const csv = exportNolaData(data, "csv");
+  assert.ok(csv.startsWith("type,id,amount,currency,date,category,note,month,goal_id,name,target_amount,deadline,archived_at,icon,kind,capture_id,quantity\n"));
   assert.ok(csv.includes('"Trip, ""summer"""'));
   assert.ok(csv.includes('"\'=HYPERLINK()"'));
   assert.ok(csv.includes('"goal_contribution","c","20","USD"'));

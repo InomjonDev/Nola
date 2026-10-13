@@ -10,7 +10,7 @@ export const GLOBAL_CATEGORIES: Category[] = [
 ];
 
 export const CURRENCIES = ["USD", "EUR", "GBP", "UZS", "JPY", "CAD", "AUD"] as const;
-export const WALLETLY_CURRENCIES = ["USD", "UZS", "RUB", "EUR", "GBP"] as const;
+export const SUPPORTED_CURRENCIES = ["USD", "UZS", "RUB", "EUR", "GBP"] as const;
 export const DEFAULT_PAYMENT_METHODS = ["Card", "Cash", "Bank transfer"] as const;
 export const TAG_SUGGESTIONS = ["Work", "Personal", "Travel", "Recurring", "Shared"] as const;
 export const APP_STORAGE_PREFIX = "walletly.app-data.v2";

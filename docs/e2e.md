@@ -1,4 +1,4 @@
-# Walletly E2E Tests
+# Nola E2E Tests
 
 Install the browser once with `npx playwright install chromium`, then run `npm run e2e`. The suite starts a separate Next.js server on port 3100, uses local demo mode for deterministic data workflows, and runs both iPhone-sized and desktop Chromium projects.
 

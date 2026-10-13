@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 import { Providers } from "@/components/providers";
 import { siteDescription, siteName, siteUrl } from "@/lib/seo";
+import { themeInitScript, themeStyles } from "@/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,10 +15,10 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: siteName, statusBarStyle: "default" },
   icons: {
     icon: [
-      { url: "/favicon.png", sizes: "64x64", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/nola-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/nola-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/nola-192.png", sizes: "192x192", type: "image/png" }],
   },
 };
 
@@ -26,14 +27,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F6F5F1" },
-    { media: "(prefers-color-scheme: dark)", color: "#101114" },
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: themeStyles }} />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

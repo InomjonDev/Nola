@@ -1,5 +1,5 @@
-const CACHE_NAME = "walletly-shell-v4";
-const APP_SHELL = ["/", "/add-expense", "/history", "/insights", "/profile", "/settings", "/manifest.webmanifest", "/favicon.png", "/branding/walletly-mascot.png", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE_NAME = "nola-shell-v2";
+const APP_SHELL = ["/", "/add-expense", "/history", "/insights", "/profile", "/settings", "/manifest.webmanifest", "/icons/nola-192.png", "/icons/nola-512.png", "/icons/nola-1024.png", "/fonts/NotoSans-Regular.ttf", "/fonts/NotoSans-Bold.ttf"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
@@ -14,7 +14,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   // Private finance/auth responses belong in account-scoped storage, not a shared cache.
-  if (url.origin !== self.location.origin || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/") || request.headers.has("authorization")) return;
+  const isPrivateCaptureOrFolderRoute = url.pathname === "/captures" || url.pathname.startsWith("/captures/") || url.pathname === "/folders" || url.pathname.startsWith("/folders/");
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/") || isPrivateCaptureOrFolderRoute || request.headers.has("authorization")) return;
   event.respondWith(
     fetch(request)
       .then((response) => {
@@ -30,12 +31,12 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const payload = event.data?.json?.() || {};
-  const title = payload.title || "A small Walletly check-in";
+  const title = payload.title || "A small Nola check-in";
   const options = {
     body: payload.body || "Nothing logged today yet. Add an expense when you are ready.",
     tag: payload.tag || "daily-check-in",
-    icon: payload.icon || "/icons/icon-192.png",
-    badge: payload.badge || "/icons/icon-192.png",
+    icon: payload.icon || "/icons/nola-192.png",
+    badge: payload.badge || "/icons/nola-192.png",
     data: { url: payload.url || "/add-expense" },
   };
   event.waitUntil(self.registration.showNotification(title, options));

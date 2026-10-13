@@ -3,7 +3,7 @@ import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
   title: "Terms of service",
-  description: "Read the Walletly terms of service for personal expense tracking and offline use.",
+  description: "Read the Nola terms of service for personal expense tracking and offline use.",
   path: "/terms",
 });
 

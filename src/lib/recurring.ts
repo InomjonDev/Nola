@@ -1,4 +1,4 @@
-import { WALLETLY_CURRENCIES } from "./constants.ts";
+import { SUPPORTED_CURRENCIES } from "./constants.ts";
 import { parseAmountValue } from "./currency-input.ts";
 import { validCalendarDate } from "./savings-goals.ts";
 import type { Account, Category, ExpenseDraft, IncomeEntryDraft, PaymentMethod, RecurringFrequency, RecurringRule, RecurringRuleDraft, Tag } from "./types.ts";
@@ -45,7 +45,7 @@ export async function recurringOccurrenceId(ruleId: string, occurrenceDate: stri
 
 export function validateRecurringRule(draft: RecurringRuleDraft, categories: Category[], paymentMethods: PaymentMethod[], accounts: Account[], tags: Tag[]): RecurringError | null {
   if (parseAmountValue(String(draft.amount)) === null) return "recurring.amountError";
-  if (!(WALLETLY_CURRENCIES as readonly string[]).includes(draft.currency)) return "recurring.currencyError";
+  if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(draft.currency)) return "recurring.currencyError";
   if (draft.frequency !== "weekly" && draft.frequency !== "monthly") return "recurring.frequencyError";
   if (!validCalendarDate(draft.startDate)) return "recurring.dateError";
   if (draft.note.length > 160) return "recurring.detailsError";

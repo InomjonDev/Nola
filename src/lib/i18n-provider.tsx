@@ -19,7 +19,8 @@ export function I18nProvider({ children }: PropsWithChildren) {
   const [language, setLanguageState] = useState<Language>("en");
 
   useEffect(() => {
-    const saved = localStorage.getItem(LANGUAGE_KEY);
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(LANGUAGE_KEY); } catch { /* Use the browser language. */ }
     setLanguageState(saved === "en" || saved === "ru" || saved === "uz" ? saved : detectLanguage(navigator.language));
   }, []);
 
@@ -29,7 +30,7 @@ export function I18nProvider({ children }: PropsWithChildren) {
 
   const setLanguage = (next: Language) => {
     setLanguageState(next);
-    localStorage.setItem(LANGUAGE_KEY, next);
+    try { localStorage.setItem(LANGUAGE_KEY, next); } catch { /* Keep the in-memory preference. */ }
   };
 
   const value = useMemo(() => ({ language, setLanguage, t: createTranslator(language) }), [language]);

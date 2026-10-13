@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "@/components/icons";
 
 import { useI18n } from "@/lib/i18n-provider";
 
@@ -21,11 +22,14 @@ const titleKeys = {
 export function LegalPage({ title: _title, kind }: { title: string; kind: keyof typeof copyKeys }) {
   const { t } = useI18n();
   return (
-    <main className="min-h-dvh bg-bg px-4 py-8 text-text">
-      <article className="mx-auto max-w-3xl rounded-[28px] bg-surface p-6 shadow-soft sm:p-8">
-        <Link href="/settings" className="text-sm font-medium text-muted">{t("legal.back")}</Link>
-        <h1 className="mt-6 text-3xl font-semibold">{t(titleKeys[kind])}</h1>
-        <div className="mt-6 grid gap-4 text-base leading-7 text-muted">
+    <main className="min-h-dvh bg-bg px-5 py-6 text-text sm:px-8 sm:py-8">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between border-b border-line pb-5">
+        <Link href="/" className="flex min-h-11 items-center gap-3 font-bold"><span className="brand-wordmark">Nola</span></Link>
+        <Link href="/settings" className="control min-h-11 bg-raised px-4 text-text"><ArrowLeft className="h-4 w-4" />{t("legal.back")}</Link>
+      </div>
+      <article className="mx-auto max-w-2xl px-1 py-8">
+        <h1 className="mt-3 screen-title">{t(titleKeys[kind])}</h1>
+        <div className="mt-8 grid gap-6 text-base leading-7 text-muted ">
           {copyKeys[kind].map((key) => <p key={key}>{t(key)}</p>)}
         </div>
       </article>

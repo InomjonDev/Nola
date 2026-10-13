@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { expensesInCurrency, isThisWeek, primaryCurrency } from "../src/lib/format.ts";
+import { formatMoney, expensesInCurrency, isThisWeek, primaryCurrency } from "../src/lib/format.ts";
 
 const expense = (currency: string) => ({ currency }) as Parameters<typeof primaryCurrency>[0][number];
 
@@ -22,4 +22,9 @@ test("treats the full current day as part of this week", () => {
   const laterToday = new Date();
   laterToday.setHours(23, 0, 0, 0);
   assert.equal(isThisWeek(laterToday.toISOString()), true);
+});
+
+test("UZS display preserves fractional recorded amounts", () => {
+  assert.match(formatMoney(0.25, "UZS", "en-US"), /0\.25/);
+  assert.match(formatMoney(1234567890.12, "UZS", "en-US"), /1,234,567,890\.12/);
 });

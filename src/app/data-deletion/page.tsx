@@ -3,7 +3,7 @@ import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
   title: "Data deletion",
-  description: "Learn how to delete a Walletly account and remove locally stored expense data from a browser.",
+  description: "Learn how to delete a Nola account and remove locally stored expense data from a browser.",
   path: "/data-deletion",
 });
 

@@ -1,4 +1,4 @@
-# Walletly Supabase Provider Setup
+# Nola Supabase Provider Setup
 
 Project ref: `fudtkdiqzkroouiawldd`
 
@@ -56,22 +56,22 @@ In **Authentication > Rate Limits**, begin with these release values:
 
 In **Authentication > Email Templates**:
 
-1. Set **Confirm signup** to subject `Confirm your Walletly account` and use the complete contents of `supabase/templates/confirmation.html`.
-2. Set **Magic Link** to subject `Your Walletly sign-in link` and use the complete contents of `supabase/templates/magic_link.html`.
+1. Set **Confirm signup** to subject `Confirm your Nola account` and use the complete contents of `supabase/templates/confirmation.html`.
+2. Set **Magic Link** to subject `Your Nola sign-in link` and use the complete contents of `supabase/templates/magic_link.html`.
 3. Confirm both templates contain `{{ .RedirectTo }}` and `{{ .TokenHash }}` and do not contain `{{ .Token }}`.
 4. Confirm the primary button target is `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email`.
 
 New email addresses receive the Confirm signup template; returning addresses receive the Magic Link template. Both routes exchange the one-time token hash at `/auth/confirm`, so the message can be opened on another browser or device without relying on the requester browser's PKCE verifier.
 
-For production, configure **Authentication > SMTP Settings** with Resend and a verified Walletly sender domain:
+For production, configure **Authentication > SMTP Settings** with Resend and a verified Nola sender domain:
 
 - Host: `smtp.resend.com`
 - Port: `465`
 - Encryption: SSL/TLS
 - Username: `resend`
 - Password: a server-only Resend API key
-- Sender name: `Walletly`
-- Sender address: an address on the verified domain, such as `hello@walletly.example`
+- Sender name: `Nola`
+- Sender address: an address on the verified domain, such as `hello@nola.example`
 
 The Resend API key belongs only in Supabase's hosted SMTP settings. Do not add it to `.env.local`, Vercel browser variables, Git, screenshots, or test fixtures. Supabase's default SMTP is a project-wide development mailer with a very small shared allowance and is not suitable for production delivery. A first request for one address can fail after unrelated project emails consume that shared limit. New Free projects using default SMTP also cannot customize Auth templates, so custom SMTP is required for the branded email on those projects.
 
@@ -93,7 +93,7 @@ Verify Google OAuth and request a real link for a dedicated mailbox:
 
 ```bash
 AUTH_VERIFY_ORIGIN=http://localhost:3000 \
-AUTH_TEST_EMAIL=walletly-auth-test@example.com \
+AUTH_TEST_EMAIL=nola-auth-test@example.com \
 npm run auth:verify
 ```
 

@@ -15,9 +15,9 @@ test("Supabase RLS isolates two authenticated users", async (t) => {
 
   const admin = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const suffix = randomUUID().replaceAll("-", "");
-  const password = `Walletly-${randomUUID()}!aA1`;
-  const emailA = `walletly-rls-a-${suffix}@example.com`;
-  const emailB = `walletly-rls-b-${suffix}@example.com`;
+  const password = `Nola-${randomUUID()}!aA1`;
+  const emailA = `nola-rls-a-${suffix}@example.com`;
+  const emailB = `nola-rls-b-${suffix}@example.com`;
   let userAId: string | null = null;
   let userBId: string | null = null;
 

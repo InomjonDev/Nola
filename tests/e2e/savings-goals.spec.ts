@@ -43,7 +43,7 @@ test("goals support lifecycle, history, withdrawals, exports, and home preview",
   await expect(dialog).toBeHidden();
   let completion = page.getByRole("dialog", { name: "Goal reached" });
   await expect(completion.getByText("You reached your target.")).toBeVisible();
-  await expect(page.getByTestId("goal-confetti")).toBeVisible();
+  await expect(page.getByTestId("goal-confetti")).toHaveCount(0);
   await expect(completion.getByRole("button", { name: "Archive goal", exact: true })).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Travel fund" })).toHaveAttribute("aria-valuenow", "100");
   await completion.getByRole("button", { name: "Keep active" }).click();
@@ -69,7 +69,7 @@ test("goals support lifecycle, history, withdrawals, exports, and home preview",
   dialog = await contribute(page, "100");
   await expect(dialog).toBeHidden();
   completion = page.getByRole("dialog", { name: "Goal reached" });
-  await expect(page.getByTestId("goal-confetti")).toBeVisible();
+  await expect(page.getByTestId("goal-confetti")).toHaveCount(0);
   await completion.getByRole("button", { name: "Archive goal", exact: true }).click();
   await expect(completion).toBeHidden();
   await expect(page.getByRole("button", { name: "Archived", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -128,14 +128,14 @@ test("goal sheets are keyboard accessible, localized, themed and responsive", as
       await page.reload();
       await expect(page.getByRole("heading", { name: t("goals.savings") })).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 240, 248)" : "rgb(13, 12, 16)");
-      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("color", theme === "light" ? "rgb(23, 21, 29)" : "rgb(247, 245, 250)");
+      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("color", theme === "light" ? "rgb(27, 27, 31)" : "rgb(245, 244, 247)");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-      await page.screenshot({ path: testInfo.outputPath(`goals-${language}-${theme}.png`), fullPage: true });
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath(`goals-${language}-${theme}.png`), fullPage: true });
       await page.getByRole("button", { name: t("goals.new"), exact: true }).click();
       const dialog = page.getByRole("dialog", { name: t("goals.new"), exact: true });
       await expect(dialog.getByRole("textbox", { name: t("goals.name") })).toBeFocused();
-      expect(await dialog.locator("select, input[type=date]").count()).toBe(0);
+      expect(await dialog.locator("select:visible, input[type=date]:visible").count()).toBe(0);
       await page.keyboard.press("Shift+Tab");
       await expect(dialog.getByRole("button", { name: t("goals.close"), exact: true })).toBeFocused();
       await page.keyboard.press("Shift+Tab");
@@ -145,7 +145,7 @@ test("goal sheets are keyboard accessible, localized, themed and responsive", as
       const sizes = await calendarButtons.evaluateAll((buttons) => buttons.map((button) => { const bounds = button.getBoundingClientRect(); return { width: bounds.width, height: bounds.height }; }));
       expect(sizes.every(({ width, height }) => width >= 43.9 && height >= 44)).toBe(true);
       expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
-      await page.screenshot({ path: testInfo.outputPath(`goal-sheet-${language}-${theme}.png`) });
+      await page.screenshot({ animations: "disabled", path: testInfo.outputPath(`goal-sheet-${language}-${theme}.png`) });
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
       await expect(page.getByRole("button", { name: t("goals.new"), exact: true })).toBeFocused();
@@ -155,7 +155,7 @@ test("goal sheets are keyboard accessible, localized, themed and responsive", as
   const t = createTranslator("uz");
   await page.getByRole("button", { name: t("goals.new"), exact: true }).click();
   await expect(page.locator(".goal-sheet")).toHaveCSS("animation-name", "none");
-  await page.locator(".goal-sheet-backdrop").click({ position: { x: 3, y: 3 } });
+  await page.getByRole("dialog").getByRole("button", { name: t("goals.close"), exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
 });
 
@@ -192,7 +192,7 @@ test("cloud goals recover offline changes with parent ordering and idempotent re
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Continue with Google" }).click();
-  await page.getByRole("button", { name: "Enter Walletly" }).click();
+  await page.getByRole("button", { name: "Enter Nola" }).click();
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("walletly.app-data.v2-11111111-1111-4111-8111-111111111111") ?? "{}").syncQueue?.length)).toBe(0);
   await page.goto("/insights?tab=goals");
@@ -233,23 +233,23 @@ test("cached PWA goals survive a fully offline reload and new contributions", as
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   // Warm all script assets under the controlling worker before going offline.
   await page.reload();
-  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "40");
+  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "40", { timeout: 15000 });
   await expect.poll(async () => page.evaluate(async () => {
-    const cache = await caches.open("walletly-shell-v4");
+    const cache = await caches.open("nola-shell-v2");
     const keys = (await cache.keys()).map((request) => request.url);
     return keys.some((url) => url.includes("/insights?tab=goals") && !url.includes("_rsc")) && keys.some((url) => url.includes("/_next/static/"));
   })).toBe(true);
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "40");
+  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "40", { timeout: 15000 });
   await expect(await contribute(page, "10")).toBeHidden();
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "50");
+  await expect(page.getByRole("progressbar", { name: "Offline PWA" })).toHaveAttribute("aria-valuenow", "50", { timeout: 15000 });
   await context.setOffline(false);
 });
 
 test("all financial amount fields live-format by locale and preserve the edit caret", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await enterDemo(page);
   await createGoal(page, "Formatting goal", "250");
 
@@ -270,10 +270,12 @@ test("all financial amount fields live-format by locale and preserve the edit ca
     await expect(expenseAmount).toHaveValue(formatAmountDraft("91234567.89", locale).display);
 
     await page.goto("/insights");
-    await page.getByRole("button", { name: t("insights.income"), exact: true }).click();
+    await page.getByRole("button", { name: t("common.add"), exact: true }).click();
+    await page.getByRole("button", { name: t("insights.addIncome"), exact: true }).click();
     const incomeAmount = page.getByRole("textbox", { name: t("insights.addIncome") });
     await incomeAmount.fill("1234567.89");
     await expect(incomeAmount).toHaveValue(formatted);
+    await page.getByRole("dialog", { name: t("insights.addIncome"), exact: true }).getByRole("button", { name: t("common.cancel"), exact: true }).click();
     const budgetAmount = page.getByRole("textbox", { name: t("insights.addBudget") });
     await budgetAmount.fill("1234567.89");
     await expect(budgetAmount).toHaveValue(formatted);

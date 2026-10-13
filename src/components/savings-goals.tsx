@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Target, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Archive, ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Target, Trash2, X } from "@/components/icons";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useDialogFocus } from "@/components/use-dialog-focus";
 
 import { CategoryIcon } from "@/components/category-icon";
+import { FloatingAddButton } from "@/components/floating-add-button";
 import { CurrencyAmountInput } from "@/components/currency-amount-input";
 import { useAppStore } from "@/lib/app-store";
-import { WALLETLY_CURRENCIES } from "@/lib/constants";
+import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { parseAmountValue } from "@/lib/currency-input";
 import { formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
@@ -21,57 +23,13 @@ function GoalSheet({ title, onClose, children }: { title: string; onClose: () =>
   const titleId = useId();
   const dialog = useRef<HTMLElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
-  const closeCallback = useRef(onClose);
-  closeCallback.current = onClose;
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const swipeY = useRef<number | null>(null);
-  const [closing, setClosing] = useState(false);
-  const dismiss = useCallback(() => {
-    if (closeTimer.current) return;
-    setClosing(true);
-    closeTimer.current = setTimeout(() => closeCallback.current(), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 220);
-  }, []);
-
-  useLayoutEffect(() => {
-    const focused = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const siblings = Array.from(document.body.children).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== backdrop.current && !["SCRIPT", "STYLE"].includes(node.tagName));
-    const inertStates = siblings.map((node) => node.inert);
-    siblings.forEach((node) => { node.inert = true; });
-    (dialog.current?.querySelector<HTMLElement>("[data-autofocus]") ?? dialog.current)?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); dismiss(); }
-      if (event.key !== "Tab") return;
-      const controls = Array.from(dialog.current?.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled), a[href], [tabindex='0']") ?? []).filter((node) => node.getClientRects().length);
-      const first = controls[0];
-      const last = controls.at(-1);
-      if (!first) { event.preventDefault(); dialog.current?.focus(); return; }
-      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) { event.preventDefault(); last?.focus(); }
-      else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      if (closeTimer.current) clearTimeout(closeTimer.current);
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
-      siblings.forEach((node, index) => { node.inert = inertStates[index]; });
-      if (focused?.isConnected) focused.focus();
-    };
-  }, [dismiss]);
-
-  return createPortal(
-    <div ref={backdrop} className={`expense-sheet-backdrop goal-sheet-backdrop fixed inset-0 z-50 flex${closing ? " is-closing" : ""}`} onPointerDown={(event) => { if (event.target === event.currentTarget) dismiss(); }}>
-      <section ref={dialog} className="expense-sheet goal-sheet relative" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-        <div aria-hidden="true" className="flex h-7 touch-none items-center justify-center" onPointerDown={(event) => { swipeY.current = event.clientY; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={(event) => { if (swipeY.current !== null && event.clientY - swipeY.current > 55) dismiss(); swipeY.current = null; }} onPointerCancel={() => { swipeY.current = null; }}><span className="h-1 w-10 rounded-full bg-muted/40" /></div>
-        <header className="flex items-center justify-between gap-3 px-4 pb-3">
-          <h2 id={titleId} className="min-w-0 break-words text-xl font-semibold [overflow-wrap:anywhere]">{title}</h2>
-          <button type="button" className="icon-button shrink-0" aria-label={t("goals.close")} title={t("goals.close")} onClick={dismiss}><X className="h-5 w-5" /></button>
-        </header>
-        <div className="goal-sheet-content px-4 pb-5">{children(dismiss)}</div>
-      </section>
-    </div>, document.body,
-  );
+  useDialogFocus(dialog, backdrop, onClose);
+  return createPortal(<div ref={backdrop} className="expense-sheet-backdrop goal-sheet-backdrop fixed inset-0 z-50 flex">
+    <section ref={dialog} className="expense-sheet goal-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+      <header className="editor-toolbar"><button type="button" className="toolbar-action" aria-label={t("goals.close")} onClick={onClose}>{t("common.close")}</button><h2 id={titleId} className="editor-title">{title}</h2><span className="w-11" aria-hidden="true" /></header>
+      <div className="goal-sheet-content">{children(onClose)}</div>
+    </section>
+  </div>, document.body);
 }
 
 function GoalDatePicker({ value, onChange, label, optional = false }: { value: string | null; onChange: (value: string | null) => void; label: string; optional?: boolean }) {
@@ -86,7 +44,8 @@ function GoalDatePicker({ value, onChange, label, optional = false }: { value: s
   return <div className="grid gap-2">
     <span id={`${id}-label`} className="label">{label}</span>
     <div className="flex items-center gap-2">
-      <button type="button" className="input flex min-w-0 items-center justify-between gap-2 text-left" aria-labelledby={`${id}-label ${id}-value`} aria-expanded={open} aria-controls={`${id}-calendar`} onClick={() => setOpen((current) => !current)}><span id={`${id}-value`}>{dateLabel}</span><CalendarDays className="h-5 w-5 shrink-0 text-muted" /></button>
+      <input type="date" className="native-date-input input" value={value ?? ""} aria-label={label} onChange={(event) => onChange(event.target.value || null)} />
+      <button type="button" className="custom-date-trigger input flex min-w-0 items-center justify-between gap-2 text-left" aria-labelledby={`${id}-label ${id}-value`} aria-expanded={open} aria-controls={`${id}-calendar`} onClick={() => setOpen((current) => !current)}><span id={`${id}-value`}>{dateLabel}</span><CalendarDays className="h-5 w-5 shrink-0 text-muted" /></button>
       {optional && value && <button type="button" className="icon-button shrink-0" aria-label={t("goals.clearDeadline")} title={t("goals.clearDeadline")} onClick={() => { onChange(null); setOpen(false); }}><X className="h-4 w-4" /></button>}
     </div>
     {open && <div id={`${id}-calendar`} className="grid gap-2" role="group" aria-label={label} onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); setOpen(false); } }}>
@@ -101,7 +60,7 @@ function GoalDatePicker({ value, onChange, label, optional = false }: { value: s
           if (index < offset) return <span key={index} />;
           const date = new Date(month.getFullYear(), month.getMonth(), index - offset + 1);
           const key = calendarDate(date);
-          return <button key={key} type="button" className={`grid min-h-11 place-items-center rounded-full text-sm transition hover:bg-raised${value === key ? " bg-accent-soft text-accent-strong" : ""}`} aria-label={date.toLocaleDateString(languageLocale(language), { dateStyle: "full" })} aria-pressed={value === key} onClick={() => { onChange(key); setOpen(false); }}>{date.getDate()}</button>;
+          return <button key={key} type="button" className={`grid min-h-11 place-items-center rounded-lg text-sm transition hover:bg-raised${value === key ? " bg-accent-soft text-accent-strong" : ""}`} aria-label={date.toLocaleDateString(languageLocale(language), { dateStyle: "full" })} aria-pressed={value === key} onClick={() => { onChange(key); setOpen(false); }}>{date.getDate()}</button>;
         })}
       </div>
     </div>}
@@ -123,7 +82,7 @@ function GoalSummary({ goal }: { goal: SavingsGoal }) {
       <div className="min-w-0"><p className="text-xs text-muted">{t("goals.saved")}</p><p className={`mt-1 break-all text-lg font-semibold tabular-nums${status.negativeBalance ? " text-danger" : ""}`}>{money(status.saved)}</p></div>
       <div className="min-w-0 text-right"><p className="text-xs text-muted">{t("goals.remaining")}</p><p className="mt-1 break-all text-lg font-semibold tabular-nums">{money(status.remaining)}</p></div>
     </div>
-    <div className="h-1.5 overflow-hidden rounded-full bg-raised" role="progressbar" aria-label={goal.name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.percentage)} aria-valuetext={`${money(status.saved)} / ${money(goal.targetAmount)}`}><div className={`goal-progress h-full rounded-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div>
+    <div className="h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-label={goal.name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.percentage)} aria-valuetext={`${money(status.saved)} / ${money(goal.targetAmount)}`}><div className={`goal-progress h-full rounded-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div>
     <div className="flex flex-wrap justify-between gap-2 text-xs text-muted"><span className="tabular-nums">{Math.round(status.percentage)}%</span><span className="break-all">{t("goals.target")}: {money(goal.targetAmount)}</span></div>
     {status.negativeBalance && <p role="alert" className="text-sm text-danger">{t("goals.negativeBalance")}</p>}
   </div>;
@@ -151,11 +110,11 @@ function GoalForm({ goal, onSaved }: { goal?: SavingsGoal; onSaved: () => void }
   }}>
     <label className="grid gap-2"><span className="label">{t("goals.name")}</span><input data-autofocus className="input" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} /></label>
     <label className="grid gap-2"><span className="label">{t("goals.target")}</span><CurrencyAmountInput locale={languageLocale(language)} className="input text-xl font-semibold tabular-nums" value={amount} onValueChange={(value) => setAmount(value)} /></label>
-    <fieldset className="min-w-0"><legend className="label mb-2">{t("goals.currency")}</legend><div className="flex gap-2 overflow-x-auto pb-1">{WALLETLY_CURRENCIES.map((item) => <button key={item} type="button" className={`chip shrink-0${currency === item ? " chip-active" : ""}`} aria-pressed={currency === item} disabled={currencyLocked} onClick={() => setCurrency(item)}>{item}</button>)}</div>{currencyLocked && <p className="mt-1 text-xs text-muted">{t("goals.currencyLocked")}</p>}</fieldset>
-    <fieldset className="min-w-0"><legend className="label mb-2">{t("goals.icon")}</legend><div className="flex gap-2 overflow-x-auto pb-1">{GOAL_ICONS.map((item) => <button key={item} type="button" className={`icon-button shrink-0${icon === item ? " !bg-accent-soft !text-accent-strong" : ""}`} aria-label={t(`goals.icon.${item}`)} title={t(`goals.icon.${item}`)} aria-pressed={icon === item} onClick={() => setIcon(item)}><CategoryIcon icon={item} /></button>)}</div></fieldset>
+    <fieldset className="min-w-0"><legend className="label mb-2">{t("goals.currency")}</legend><div className="flex gap-2 overflow-x-auto pb-1">{SUPPORTED_CURRENCIES.map((item) => <button key={item} type="button" className={`chip shrink-0${currency === item ? " chip-active" : ""}`} aria-pressed={currency === item} disabled={currencyLocked} onClick={() => setCurrency(item)}>{item}</button>)}</div>{currencyLocked && <p className="mt-1 text-xs text-muted">{t("goals.currencyLocked")}</p>}</fieldset>
+    <fieldset className="min-w-0"><legend className="label mb-2">{t("goals.icon")}</legend><div className="flex flex-wrap gap-2">{GOAL_ICONS.map((item) => <button key={item} type="button" className={`chip shrink-0${icon === item ? " chip-active" : ""}`} aria-label={t(`goals.icon.${item}`)} title={t(`goals.icon.${item}`)} aria-pressed={icon === item} onClick={() => setIcon(item)}><CategoryIcon icon={item} /><span>{t(`goals.icon.${item}`)}</span></button>)}</div></fieldset>
     <GoalDatePicker value={deadline} onChange={setDeadline} label={t("goals.deadline")} optional />
     {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
-    <button type="submit" className="control justify-center bg-text text-bg"><Check className="h-5 w-5" />{t("goals.save")}</button>
+    <button type="submit" className="control justify-center text-accent"><Check className="h-5 w-5" />{t("goals.save")}</button>
   </form>;
 }
 
@@ -176,32 +135,17 @@ function ContributionForm({ goal, kind, onSaved }: { goal: SavingsGoal; kind: Go
     setError(result.error);
     if (!result.error) { submitted.current = true; onSaved(); }
   }}>
-    <div className="flex items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-strong"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0"><p className="break-words font-semibold [overflow-wrap:anywhere]">{goal.name}</p><p className="text-xs text-muted">{t("goals.saved")}: {formatMoney(goalProgress(goal, store.goalContributions).saved, goal.currency, languageLocale(language))}</p></div></div>
+    <div className="flex items-center gap-3"><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0"><p className="break-words font-semibold [overflow-wrap:anywhere]">{goal.name}</p><p className="text-xs text-muted">{t("goals.saved")}: {formatMoney(goalProgress(goal, store.goalContributions).saved, goal.currency, languageLocale(language))}</p></div></div>
     <label className="grid gap-2"><span className="label">{t("goals.amount")} · {goal.currency}</span><CurrencyAmountInput locale={languageLocale(language)} data-autofocus className="amount-input" value={amount} onValueChange={(value) => setAmount(value)} /></label>
     <GoalDatePicker value={occurredOn} onChange={(value) => { if (value) setOccurredOn(value); }} label={t("goals.date")} />
     <label className="grid gap-2"><span className="label">{t("goals.note")}</span><input className="input" value={note} maxLength={160} onChange={(event) => setNote(event.target.value)} /></label>
     {error && <p role="alert" className="text-sm text-danger">{t(error)}</p>}
-    <button type="submit" className="control justify-center bg-text text-bg">{kind === "deposit" ? <Plus className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}{t(kind === "deposit" ? "goals.addSavings" : "goals.withdraw")}</button>
+    <button type="submit" className="control justify-center text-accent">{kind === "deposit" ? <Plus className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}{t(kind === "deposit" ? "goals.addSavings" : "goals.withdraw")}</button>
   </form>;
 }
 
 type GoalPanel = { type: "new" } | { type: "detail" | "edit" | "deposit" | "withdrawal" | "delete"; goalId: string };
 type CompletionPanel = { type: "completion"; goalId: string };
-
-const confettiColors = ["#6366F1", "#2E9BC3", "#D59C48", "#B26DD4", "#D95D70", "#248568"];
-const confettiVectors = [
-  [-164, -124], [-122, -178], [-71, -135], [-20, -205], [30, -150], [84, -186], [139, -129], [179, -171],
-  [-190, -28], [-133, 13], [-84, -52], [-35, 44], [36, -35], [89, 28], [144, -23], [197, 31],
-  [-158, 121], [-105, 175], [-52, 132], [0, 198], [54, 145], [109, 178], [161, 119], [203, 147],
-];
-
-function GoalConfetti() {
-  return createPortal(
-    <div className="goal-confetti-layer" data-testid="goal-confetti" aria-hidden="true">
-      {confettiVectors.map(([x, y], index) => <span key={index} className="goal-confetti-piece" style={{ "--confetti-x": `${x}px`, "--confetti-y": `${y}px`, "--confetti-turn": `${(index % 3 - 1) * 540 + 360}deg`, "--confetti-delay": `${index % 4 * 18}ms`, "--confetti-color": confettiColors[index % confettiColors.length] } as CSSProperties} />)}
-    </div>, document.body,
-  );
-}
 
 export function SavingsGoalsView() {
   const store = useAppStore();
@@ -209,7 +153,6 @@ export function SavingsGoalsView() {
   const [archived, setArchived] = useState(false);
   const [panel, setPanel] = useState<GoalPanel | CompletionPanel | null>(null);
   const [completionQueue, setCompletionQueue] = useState<string[]>([]);
-  const [celebrationRun, setCelebrationRun] = useState(0);
   const previousCompletion = useRef<Map<string, ReturnType<typeof goalCompletionSnapshot>> | null>(null);
   const activeCompletion = useRef<string | null>(null);
   const restoreArchivedFocus = useRef(false);
@@ -241,14 +184,7 @@ export function SavingsGoalsView() {
     activeCompletion.current = goalId;
     setCompletionQueue((current) => current.filter((id) => id !== goalId));
     setPanel({ type: "completion", goalId });
-    setCelebrationRun((run) => run + 1);
   }, [panel, completionQueue, store.savingsGoals, store.goalContributions]);
-
-  useEffect(() => {
-    if (celebrationRun === 0) return;
-    const timer = window.setTimeout(() => setCelebrationRun(0), 1450);
-    return () => window.clearTimeout(timer);
-  }, [celebrationRun]);
 
   useLayoutEffect(() => {
     if (panel !== null || !restoreArchivedFocus.current) return;
@@ -265,19 +201,20 @@ export function SavingsGoalsView() {
 
   return <section className="grid gap-4" aria-label={t("goals.savings")}>
     {store.cloudEnabled && store.syncError && <p role="status" className="text-sm text-warning">{t("goals.syncError")}</p>}
-    <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="section-title">{t("goals.savings")}</h3><button type="button" className="chip bg-text text-bg" onClick={() => setPanel({ type: "new" })}><Plus className="h-4 w-4" />{t("goals.new")}</button></div>
+    <h3 className="section-title">{t("goals.savings")}</h3>
+    <FloatingAddButton label={t("goals.new")} onClick={() => setPanel({ type: "new" })} />
     <div className="flex flex-wrap gap-2">{[false, true].map((value) => <button key={String(value)} ref={value ? archivedFilter : undefined} type="button" className={`chip${archived === value ? " chip-active" : ""}`} aria-pressed={archived === value} onClick={() => setArchived(value)}>{t(value ? "goals.archived" : "goals.active")}</button>)}</div>
-    {goals.length ? <div className="grid items-start gap-3 sm:grid-cols-2">{goals.map((goal) => <article key={goal.id} className="min-w-0 rounded-lg bg-surface p-4">
-      <button type="button" className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg text-left" aria-label={goal.name} onClick={() => setPanel({ type: "detail", goalId: goal.id })}><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-strong"><CategoryIcon icon={goal.icon} /></span><span className="min-w-0 flex-1 break-words font-semibold [overflow-wrap:anywhere]">{goal.name}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted" /></button>
+    {goals.length ? <div className="grid gap-0">{goals.map((goal) => <article key={goal.id} className="goal-card min-w-0">
+      <button type="button" className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg text-left" aria-label={goal.name} onClick={() => setPanel({ type: "detail", goalId: goal.id })}><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><span className="min-w-0 flex-1 break-words font-semibold [overflow-wrap:anywhere]">{goal.name}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted" /></button>
       <GoalSummary goal={goal} />
       {!archived && <div className="mt-4 flex items-center gap-2"><button type="button" className="chip min-w-0 flex-1 justify-center !rounded-lg !px-2" onClick={() => setPanel({ type: "deposit", goalId: goal.id })}><Plus className="h-4 w-4 shrink-0" /><span>{t("goals.addSavings")}</span></button><button type="button" className="icon-button shrink-0" aria-label={t("goals.withdraw")} title={t("goals.withdraw")} onClick={() => setPanel({ type: "withdrawal", goalId: goal.id })}><ArrowUpRight className="h-5 w-5" /></button></div>}
-    </article>)}</div> : <div className="grid justify-items-center gap-3 py-10 text-center"><Target className="h-8 w-8 text-muted" /><p className="text-sm text-muted">{t(archived ? "goals.noArchived" : "goals.empty")}</p></div>}
+    </article>)}</div> : <div className="grid justify-items-center gap-3 py-10 text-center"><Target className="h-6 w-6 text-muted" /><p className="text-sm text-muted">{t(archived ? "goals.noArchived" : "goals.empty")}</p></div>}
 
-    {celebrationRun > 0 && <GoalConfetti key={celebrationRun} />}
+
     {panel && (panel.type === "new" || selected) && <GoalSheet key={`${panel.type}-${selected?.id ?? "new"}`} title={title} onClose={closePanel}>
       {(dismiss) => panel.type === "new" || panel.type === "edit" ? <GoalForm goal={selected} onSaved={dismiss} /> : selected && panel.type === "completion" ? <div className="grid gap-5">
-        <div className="grid justify-items-center gap-3 py-2 text-center"><span className="grid h-16 w-16 place-items-center rounded-full border border-success/30 bg-accent-soft text-success"><Check className="h-8 w-8" strokeWidth={2.5} /></span><p className="max-w-sm text-sm leading-6 text-muted">{t("goals.archivePrompt")}</p></div>
-        <div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={dismiss}>{t("goals.keepActive")}</button><button type="button" className="control justify-center bg-text text-bg" onClick={() => { store.archiveGoal(selected.id, true); setArchived(true); restoreArchivedFocus.current = true; dismiss(); }}><Archive className="h-4 w-4" />{t("goals.archive")}</button></div>
+        <div className="grid justify-items-center gap-3 py-2 text-center"><span className="inline-flex items-center text-success"><Check className="h-6 w-6" /></span><p className="max-w-sm text-sm leading-6 text-muted">{t("goals.archivePrompt")}</p></div>
+        <div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={dismiss}>{t("goals.keepActive")}</button><button type="button" className="control justify-center text-accent" onClick={() => { store.archiveGoal(selected.id, true); setArchived(true); restoreArchivedFocus.current = true; dismiss(); }}><Archive className="h-4 w-4" />{t("goals.archive")}</button></div>
       </div> : selected && (panel.type === "deposit" || panel.type === "withdrawal") ? <ContributionForm goal={selected} kind={panel.type === "deposit" ? "deposit" : "withdrawal"} onSaved={dismiss} /> : selected && panel.type === "delete" ? <div className="grid gap-5"><p className="text-sm leading-6 text-muted">{t("goals.deleteDetail")}</p><div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={() => setPanel({ type: "detail", goalId: selected.id })}>{t("common.cancel")}</button><button type="button" className="control goal-destructive justify-center" onClick={() => { store.deleteGoal(selected.id); setPanel(null); }}><Trash2 className="h-4 w-4" />{t("goals.delete")}</button></div></div> : selected && <div className="grid gap-5">
         <GoalSummary goal={selected} />
         <div className="flex flex-wrap items-center gap-2">
@@ -285,7 +222,7 @@ export function SavingsGoalsView() {
           <button type="button" className="chip" onClick={() => { store.archiveGoal(selected.id, !selected.archivedAt); setArchived(!selected.archivedAt); setPanel(null); }}>{selected.archivedAt ? <RotateCcw className="h-4 w-4 shrink-0" /> : <Archive className="h-4 w-4 shrink-0" />}{t(selected.archivedAt ? "goals.reopen" : "goals.archive")}</button>
           <button type="button" className="icon-button ml-auto !text-danger" aria-label={t("goals.delete")} title={t("goals.delete")} onClick={() => setPanel({ type: "delete", goalId: selected.id })}><Trash2 className="h-4 w-4" /></button>
         </div>
-        {!selected.archivedAt && <div className="grid gap-2"><button type="button" className="control justify-center bg-text text-bg" onClick={() => setPanel({ type: "deposit", goalId: selected.id })}><Plus className="h-5 w-5" />{t("goals.addSavings")}</button><button type="button" className="chip justify-center" onClick={() => setPanel({ type: "withdrawal", goalId: selected.id })}><ArrowUpRight className="h-4 w-4" />{t("goals.withdraw")}</button></div>}
+        {!selected.archivedAt && <div className="grid gap-2"><button type="button" className="control justify-center text-accent" onClick={() => setPanel({ type: "deposit", goalId: selected.id })}><Plus className="h-5 w-5" />{t("goals.addSavings")}</button><button type="button" className="chip justify-center" onClick={() => setPanel({ type: "withdrawal", goalId: selected.id })}><ArrowUpRight className="h-4 w-4" />{t("goals.withdraw")}</button></div>}
         <section className="grid gap-3"><h3 className="section-title">{t("goals.history")}</h3>{entries.length ? <ul className="grid gap-3">{entries.map((entry) => <li key={entry.id} className="flex items-start gap-3 border-b border-line pb-3"><span className={`mt-1 ${entry.kind === "deposit" ? "text-success" : "text-muted"}`}>{entry.kind === "deposit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{t(entry.kind === "deposit" ? "goals.deposit" : "goals.withdrawal")}</p><p className="text-xs text-muted">{new Date(`${entry.occurredOn}T12:00:00`).toLocaleDateString(languageLocale(language))}</p>{entry.note && <p className="mt-1 break-words text-sm text-muted [overflow-wrap:anywhere]">{entry.note}</p>}</div><span className="max-w-[45%] break-all text-right text-sm font-semibold tabular-nums">{entry.kind === "deposit" ? "+" : "-"}{formatMoney(entry.amount, entry.currency, languageLocale(language))}</span></li>)}</ul> : <p className="text-sm text-muted">{t("goals.noHistory")}</p>}</section>
       </div>}
     </GoalSheet>}
@@ -296,11 +233,11 @@ export function SavingsGoalsPreview() {
   const store = useAppStore();
   const { t, language } = useI18n();
   const goals = store.savingsGoals.filter((goal) => !goal.deletedAt && !goal.archivedAt).slice(0, 2);
-  return <section className="xl:col-span-2" aria-label={t("goals.savings")}>
+  return <section aria-label={t("goals.savings")}>
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="section-title">{t("goals.savings")}</h2><Link className="flex min-h-11 items-center gap-1 text-sm font-semibold text-accent" href="/insights?tab=goals">{t(goals.length ? "goals.viewAll" : "goals.new")}<ChevronRight className="h-4 w-4" /></Link></div>
-    {goals.length ? <div className="grid gap-3 sm:grid-cols-2">{goals.map((goal) => {
+    {goals.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">{goals.map((goal) => {
       const status = goalProgress(goal, store.goalContributions);
-      return <Link key={goal.id} href="/insights?tab=goals" className="flex min-w-0 items-center gap-3 rounded-lg py-2 transition hover:bg-raised"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-strong"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-semibold [overflow-wrap:anywhere]">{goal.name}</span><span className={`text-xs font-semibold tabular-nums ${status.reached ? "text-success" : "text-muted"}`}>{Math.round(status.percentage)}%</span></div><p className="mt-1 break-all text-xs text-muted">{formatMoney(status.saved, goal.currency, languageLocale(language))} / {formatMoney(goal.targetAmount, goal.currency, languageLocale(language))}</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-raised"><div className={`goal-progress h-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div></div></Link>;
+      return <Link key={goal.id} href="/insights?tab=goals" className="flex min-w-0 items-center gap-3 border-b border-line py-3"><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-semibold [overflow-wrap:anywhere]">{goal.name}</span><span className={`text-xs font-semibold tabular-nums ${status.reached ? "text-success" : "text-muted"}`}>{Math.round(status.percentage)}%</span></div><p className="mt-1 break-all text-xs text-muted">{formatMoney(status.saved, goal.currency, languageLocale(language))} / {formatMoney(goal.targetAmount, goal.currency, languageLocale(language))}</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-line"><div className={`goal-progress h-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div></div></Link>;
     })}</div> : <p className="text-sm text-muted">{t("goals.empty")}</p>}
   </section>;
 }

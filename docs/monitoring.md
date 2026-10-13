@@ -1,6 +1,6 @@
-# Walletly Monitoring
+# Nola Monitoring
 
-Walletly reports uncaught App Router errors through `src/lib/error-reporting.ts`. The payload is intentionally limited to a sanitized message, error name, short stack, surface, platform, and app version. It never sends expense amounts, notes, tags, categories, payment methods, exports, or user email addresses.
+Nola reports uncaught App Router errors through `src/lib/error-reporting.ts`. The payload is intentionally limited to a sanitized message, error name, short stack, surface, platform, and app version. It never sends expense amounts, notes, tags, categories, payment methods, exports, or user email addresses.
 
 ## Configure a collector
 

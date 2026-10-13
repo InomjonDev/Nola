@@ -1,4 +1,4 @@
-import { WALLETLY_CURRENCIES } from "./constants.ts";
+import { SUPPORTED_CURRENCIES } from "./constants.ts";
 import type { GoalContribution, SavingsGoal, SavingsGoalDraft } from "./types.ts";
 
 export const GOAL_ICONS = ["wallet", "plane", "home", "car", "gift", "briefcase", "heart-pulse", "shopping-bag"] as const;
@@ -57,7 +57,7 @@ export function validateGoal(draft: SavingsGoalDraft, existing?: SavingsGoal, co
   if (!draft.name.trim() || draft.name.trim().length > 80) return "goals.nameError";
   if (!validGoalAmount(draft.targetAmount)) return "goals.amountError";
   if (!(GOAL_ICONS as readonly string[]).includes(draft.icon)) return "goals.iconError";
-  if (!(WALLETLY_CURRENCIES as readonly string[]).includes(draft.currency)) return "goals.currencyError";
+  if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(draft.currency)) return "goals.currencyError";
   if (draft.deadline !== null && !validCalendarDate(draft.deadline)) return "goals.dateError";
   if (existing?.deletedAt) return "goals.inactiveError";
   if (existing && existing.currency !== draft.currency && contributions.some((item) => item.goalId === existing.id && item.userId === existing.userId)) return "goals.currencyLocked";

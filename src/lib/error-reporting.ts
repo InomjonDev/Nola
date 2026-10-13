@@ -14,7 +14,7 @@ function sanitize(value: string) {
 export function reportError(error: unknown, context: ErrorContext) {
   const source = error instanceof Error ? error : new Error(String(error));
   const payload = {
-    event: "walletly_error",
+    event: "nola_error",
     message: sanitize(source.message),
     name: sanitize(source.name),
     stack: source.stack ? sanitize(source.stack) : undefined,
@@ -24,7 +24,7 @@ export function reportError(error: unknown, context: ErrorContext) {
   };
 
   if (!endpoint) {
-    if (process.env.NODE_ENV !== "production") console.error("Walletly error", payload);
+    if (process.env.NODE_ENV !== "production") console.error("Nola error", payload);
     return;
   }
 
