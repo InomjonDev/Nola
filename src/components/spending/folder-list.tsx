@@ -20,6 +20,7 @@ export function FolderList({
   selectedFolderId = null,
   selectedCategoryId = null,
   onSelectCategory,
+  onNavigate,
   onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
@@ -36,6 +37,7 @@ export function FolderList({
   selectedFolderId?: string | null;
   selectedCategoryId?: string | null;
   onSelectCategory?: (categoryId: string) => void;
+  onNavigate?: () => void;
   onCreateFolder?: () => void;
   onRenameFolder?: (folderId: string) => void;
   onDeleteFolder?: (folderId: string) => void;
@@ -55,7 +57,7 @@ export function FolderList({
       <h2 className="px-3 pb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted">{title}</h2>
       <ul className="grid gap-1">
         <li>
-          <Link href="/" className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selectedAll ? "bg-raised font-semibold text-text" : "text-muted hover:bg-raised/70 hover:text-text"}`} aria-current={selectedAll ? "page" : undefined}>
+          <Link href="/" onClick={onNavigate} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selectedAll ? "bg-raised font-semibold text-text" : "text-muted hover:bg-raised/70 hover:text-text"}`} aria-current={selectedAll ? "page" : undefined}>
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
             <span className="min-w-0 flex-1 truncate">{allLabel}</span>
             <span className="text-xs tabular-nums text-muted">{allRecordCount}</span>
@@ -70,7 +72,7 @@ export function FolderList({
         {visibleFolders.map((folder) => {
           const selected = selectedFolderId === folder.id && !selectedCategoryId;
           return <li key={folder.id} className="flex min-w-0 items-center gap-1">
-            <Link href={`/folders/${encodeURIComponent(folder.id)}`} className={`flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selected ? "bg-raised font-semibold text-text" : "text-muted hover:bg-raised/70 hover:text-text"}`} aria-current={selected ? "page" : undefined}>
+            <Link href={`/folders/${encodeURIComponent(folder.id)}`} onClick={onNavigate} className={`flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${selected ? "bg-raised font-semibold text-text" : "text-muted hover:bg-raised/70 hover:text-text"}`} aria-current={selected ? "page" : undefined}>
               <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: folder.color }} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">{folder.name}</span>
               <span className="text-xs tabular-nums text-muted">{folderCount(folder.id)}</span>

@@ -15,6 +15,7 @@ export {
   RiEyeOffLine as EyeOff,
   RiHome5Line as Home,
   RiHome5Fill as HomeFill,
+  RiLayoutLeft2Line as SidebarLeft,
   RiPieChart2Line as LineChart,
   RiPieChart2Fill as LineChartFill,
   RiBarChartFill as ListFilter,

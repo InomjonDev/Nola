@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, CalendarDays, Check, ChevronRight, Cloud, Download, Eye, EyeOff, Home, LineChart, LogOut, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Tags, Trash2, User, X } from "@/components/icons";
+import { Bell, CalendarDays, Check, ChevronRight, Cloud, Download, Eye, EyeOff, Home, LineChart, LogOut, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SidebarLeft, SlidersHorizontal, Tags, Trash2, User, X } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -35,7 +35,7 @@ import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notifications";
 import { useAppStore } from "@/lib/app-store";
-import type { CategoryIconName, Expense, PersistedAppData, SpendingCapture, SpendingFolder } from "@/lib/types";
+import type { Category, CategoryIconName, Expense, PersistedAppData, SpendingCapture, SpendingFolder } from "@/lib/types";
 
 type View = "home" | "add" | "capture" | "folders" | "insights" | "manage" | "profile" | "settings";
 
@@ -361,6 +361,7 @@ function SpendingWorkspace({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [mobileFoldersOpen, setMobileFoldersOpen] = useState(false);
   const [renamingFolder, setRenamingFolder] = useState<SpendingFolder | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
   const [searchRange, setSearchRange] = useState<"all" | "week" | "month">("all");
@@ -405,7 +406,13 @@ function SpendingWorkspace({
   }
 
   function selectCategory(id: string) {
+    setMobileFoldersOpen(false);
     router.push(`/folders?category=${encodeURIComponent(id)}`);
+  }
+
+  function createFolder() {
+    setMobileFoldersOpen(false);
+    setFolderDialogOpen(true);
   }
 
   function deleteFolder(id: string) {
@@ -432,7 +439,7 @@ function SpendingWorkspace({
         selectedFolderId={mode === "folders" ? folderId ?? null : null}
         selectedCategoryId={selectedCategoryId}
         onSelectCategory={selectCategory}
-        onCreateFolder={() => setFolderDialogOpen(true)}
+        onCreateFolder={createFolder}
         onRenameFolder={(id) => setRenamingFolder(store.spendingFolders.find((folder) => folder.id === id && !folder.deletedAt) ?? null)}
         onDeleteFolder={deleteFolder}
       />
@@ -440,12 +447,14 @@ function SpendingWorkspace({
 
     <section className="spending-list-pane" aria-labelledby="spending-workspace-title">
       <header className="spending-list-header">
-        <div className="min-w-0">
-          <h1 id="spending-workspace-title" className={`screen-title truncate${mode === "home" ? " spending-page-title" : ""}`}>{workspaceTitle}</h1>
-          <p className="mt-1 text-sm text-muted">{selectedCapture ? t("capture.linkedExpenses") : t("folders.itemCount").replace("{count}", String(visibleCaptureCount + visibleStandaloneCount))}</p>
+        <div className="spending-title-group">
+          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersOpen ? "mobile-folder-sidebar" : undefined} onClick={() => setMobileFoldersOpen(true)}><SidebarLeft className="h-5 w-5" aria-hidden="true" /></button>}
+          <div className="min-w-0">
+            <h1 id="spending-workspace-title" className={`screen-title truncate${mode === "home" ? " spending-page-title" : ""}`}>{workspaceTitle}</h1>
+            <p className="mt-1 text-sm text-muted">{selectedCapture ? t("capture.linkedExpenses") : t("folders.itemCount").replace("{count}", String(visibleCaptureCount + visibleStandaloneCount))}</p>
+          </div>
         </div>
         <div className="spending-header-actions">
-          {mode === "home" && <Link href="/folders" className="mobile-folders-link">{t("folders.browse")}</Link>}
           {mode !== "capture" && <button type="button" className="control min-h-11 shrink-0 justify-center bg-accent px-3 text-sm font-semibold text-on-accent desktop-capture-action" aria-label={t("capture.open")} onClick={() => onCapture(mode === "folders" ? folderId ?? null : null)}><Pencil className="h-4 w-4" aria-hidden="true" /><span>{t("capture.open")}</span></button>}
         </div>
       </header>
@@ -526,6 +535,33 @@ function SpendingWorkspace({
           : <div className="spending-detail-empty"><span className="spending-empty-mark" aria-hidden="true">N</span><p>{t("capture.selectNote")}</p></div>}
     </aside>
 
+    {mobileFoldersOpen && <MobileFolderDrawer
+      id="mobile-folder-sidebar"
+      title={t("folders.title")}
+      allLabel={t("folders.allSpending")}
+      foldersLabel={t("folders.folders")}
+      categoriesLabel={t("folders.categories")}
+      createFolderLabel={t("folders.new")}
+      folders={store.spendingFolders}
+      captures={store.spendingCaptures}
+      expenses={store.expenses}
+      categories={store.categories}
+      selectedFolderId={mode === "folders" ? folderId ?? null : null}
+      selectedCategoryId={selectedCategoryId}
+      onClose={() => setMobileFoldersOpen(false)}
+      onNavigate={() => setMobileFoldersOpen(false)}
+      onSelectCategory={selectCategory}
+      onCreateFolder={createFolder}
+      onRenameFolder={(id) => {
+        setMobileFoldersOpen(false);
+        setRenamingFolder(store.spendingFolders.find((folder) => folder.id === id && !folder.deletedAt) ?? null);
+      }}
+      onDeleteFolder={(id) => {
+        setMobileFoldersOpen(false);
+        window.setTimeout(() => deleteFolder(id), 0);
+      }}
+    />}
+
     {mode !== "capture" && <WorkspaceDock
       query={searchQuery}
       onQueryChange={(value) => {
@@ -570,6 +606,76 @@ function WorkspaceDock({ query, onQueryChange, onSearchFocus, onSearchBlur, onCa
     </label>
     <button type="button" className="workspace-compose-button" data-dialog-return-focus aria-label={t("capture.open")} title={t("capture.open")} onClick={onCapture}><Pencil className="h-5 w-5" aria-hidden="true" /></button>
   </div>;
+}
+
+function MobileFolderDrawer({
+  id,
+  title,
+  allLabel,
+  foldersLabel,
+  categoriesLabel,
+  createFolderLabel,
+  folders,
+  captures,
+  expenses,
+  categories,
+  selectedFolderId,
+  selectedCategoryId,
+  onClose,
+  onNavigate,
+  onSelectCategory,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+}: {
+  id: string;
+  title: string;
+  allLabel: string;
+  foldersLabel: string;
+  categoriesLabel: string;
+  createFolderLabel: string;
+  folders: SpendingFolder[];
+  captures: SpendingCapture[];
+  expenses: Expense[];
+  categories: Category[];
+  selectedFolderId: string | null;
+  selectedCategoryId: string | null;
+  onClose: () => void;
+  onNavigate: () => void;
+  onSelectCategory: (categoryId: string) => void;
+  onCreateFolder: () => void;
+  onRenameFolder: (folderId: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+}) {
+  const { t } = useI18n();
+  const dialog = useRef<HTMLElement>(null);
+  const backdrop = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, backdrop, onClose);
+  if (typeof document === "undefined") return null;
+  return createPortal(<div ref={backdrop} className="mobile-folder-backdrop fixed inset-0 z-50">
+    <button type="button" className="mobile-folder-scrim" aria-hidden="true" tabIndex={-1} onClick={onClose} />
+    <aside id={id} ref={dialog} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className="mobile-folder-drawer">
+      <button type="button" className="mobile-folder-close icon-button" aria-label={t("common.close")} onClick={onClose}><X className="h-5 w-5" aria-hidden="true" /></button>
+      <FolderList
+        title={title}
+        allLabel={allLabel}
+        foldersLabel={foldersLabel}
+        categoriesLabel={categoriesLabel}
+        createFolderLabel={createFolderLabel}
+        folders={folders}
+        captures={captures}
+        expenses={expenses}
+        categories={categories}
+        selectedFolderId={selectedFolderId}
+        selectedCategoryId={selectedCategoryId}
+        onNavigate={onNavigate}
+        onSelectCategory={onSelectCategory}
+        onCreateFolder={onCreateFolder}
+        onRenameFolder={onRenameFolder}
+        onDeleteFolder={onDeleteFolder}
+      />
+    </aside>
+  </div>, document.body);
 }
 
 function FolderNameDialog({ titleLabel, initialName = "", onClose, onSave }: { titleLabel: string; initialName?: string; onClose: () => void; onSave: (name: string) => boolean }) {

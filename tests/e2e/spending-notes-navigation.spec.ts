@@ -109,7 +109,7 @@ test("spending notes navigate through folders, search, and detail on mobile and 
   await expect(page.locator(".spending-workspace.has-selected-capture .spending-list-pane")).toBeHidden();
 
   await page.goto("/");
-  await page.getByRole("link", { name: "Folders", exact: true }).click();
+  await page.getByRole("button", { name: "Folders", exact: true }).click();
   const mobileFolders = page.getByRole("navigation", { name: "Folders" });
   await expect(mobileFolders).toBeVisible();
   await mobileFolders.getByRole("link", { name: /^Lunch expenses(?: \d+)?$/ }).click();
