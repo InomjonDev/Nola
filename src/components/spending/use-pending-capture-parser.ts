@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAppStore } from "@/lib/app-store";
+import { captureParseIssueFromError, type CaptureParseIssue } from "@/lib/capture-parse-issue";
 import { supabase } from "@/lib/supabase";
 import type { ParsedCaptureItem, SpendingCapture } from "@/lib/types";
 
-type ParseIssue = "signIn" | "retry" | "sync";
 type ParseResponse = { captureId: string; parseRevision: number; items: ParsedCaptureItem[] };
 
 function currentLocalDate(value: string) {
@@ -27,7 +27,7 @@ function parseResponse(value: unknown): value is ParseResponse {
 
 export function usePendingCaptureParser() {
   const store = useAppStore();
-  const [issues, setIssues] = useState<Record<string, ParseIssue>>({});
+  const [issues, setIssues] = useState<Record<string, CaptureParseIssue>>({});
   const inFlight = useRef(new Set<string>());
   const latestCaptures = useRef(store.spendingCaptures);
   latestCaptures.current = store.spendingCaptures;
@@ -80,7 +80,7 @@ export function usePendingCaptureParser() {
       inFlight.current.add(flightKey);
 
       void (async () => {
-        const fail = (issue: ParseIssue) => {
+        const fail = (issue: CaptureParseIssue) => {
           const current = latestCaptures.current.find((item) => item.id === capture.id);
           if (current && !current.deletedAt && current.parseRevision === capture.parseRevision) {
             store.setCaptureParseStatus(capture.id, capture.parseRevision, issue === "sync" ? "pending" : "needs_retry");
@@ -118,7 +118,7 @@ export function usePendingCaptureParser() {
           if (!response.ok) {
             const failure: unknown = await response.json().catch(() => null);
             const errorCode = failure && typeof failure === "object" ? (failure as { error?: unknown }).error : null;
-            fail(response.status === 401 ? "signIn" : errorCode === "capture_not_synced" ? "sync" : "retry");
+            fail(response.status === 401 ? "signIn" : captureParseIssueFromError(errorCode));
             return;
           }
           const result: unknown = await response.json();

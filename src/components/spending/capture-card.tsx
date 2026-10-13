@@ -6,9 +6,10 @@ import { useI18n } from "@/lib/i18n-provider";
 import { formatMoney } from "@/lib/format";
 import { captureTotal } from "@/lib/spending-captures";
 import { categoryLabel } from "@/lib/display-labels";
+import { captureParseIssueMessage, type CaptureParseIssue } from "@/lib/capture-parse-issue";
 import type { Category, Expense, SpendingCapture, Tag } from "@/lib/types";
 
-export type CaptureParseIssue = "signIn" | "retry" | "sync";
+export type { CaptureParseIssue } from "@/lib/capture-parse-issue";
 
 export function CaptureCard({
   capture,
@@ -51,11 +52,7 @@ export function CaptureCard({
   const status = capture.parseStatus === "processing"
     ? t("capture.processing")
     : capture.parseStatus === "needs_retry"
-      ? issue === "signIn"
-        ? t("capture.needsSignIn")
-        : issue === "sync"
-          ? t("capture.syncPending")
-          : t("capture.retryDetail")
+      ? captureParseIssueMessage(issue, t)
       : capture.parseStatus === "parsed"
         ? t("capture.parseComplete").replace("{count}", String(linkedExpenses.length))
         : t("capture.saved");

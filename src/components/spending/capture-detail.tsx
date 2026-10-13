@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n-provider";
 import { formatMoney } from "@/lib/format";
 import { categoryLabel, paymentLabel } from "@/lib/display-labels";
 import { languageLocale } from "@/lib/i18n";
+import { captureParseIssueMessage } from "@/lib/capture-parse-issue";
 import type { Category, Expense, PaymentMethod, SpendingCapture, SpendingFolder, Tag } from "@/lib/types";
 
 export function CaptureDetail({
@@ -86,11 +87,7 @@ export function CaptureDetail({
     : capture.parseStatus === "parsed"
       ? t("capture.parseComplete").replace("{count}", String(activeExpenses.length))
       : capture.parseStatus === "needs_retry"
-        ? issue === "signIn"
-          ? t("capture.needsSignIn")
-          : issue === "sync"
-            ? t("capture.syncPending")
-            : t("capture.retryDetail")
+        ? captureParseIssueMessage(issue, t)
         : capture.parseStatus === "pending"
           ? issue === "sync" ? t("capture.syncPending") : t("capture.saved")
           : t("capture.saved");

@@ -132,18 +132,17 @@ export function openRouterBody(sourceText: string, context: ParseContext, model:
     properties: {
       items: {
         type: "array",
-        maxItems: MAX_ITEMS,
         items: {
           type: "object",
           additionalProperties: false,
           required: ITEM_KEYS,
           properties: {
-            amount: { type: "number", minimum: 0.01 },
+            amount: { type: "number" },
             currency: { anyOf: [{ type: "string" }, { type: "null" }] },
-            description: { type: "string", minLength: 1, maxLength: 160 },
-            quantity: { anyOf: [{ type: "number", exclusiveMinimum: 0 }, { type: "null" }] },
+            description: { type: "string" },
+            quantity: { anyOf: [{ type: "number" }, { type: "null" }] },
             date: { anyOf: [{ type: "string" }, { type: "null" }] },
-            category: { type: "string", minLength: 1 },
+            category: { type: "string" },
             paymentMethod: { anyOf: [{ type: "string" }, { type: "null" }] },
           },
         },

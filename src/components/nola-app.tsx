@@ -15,6 +15,7 @@ import { CaptureList } from "@/components/spending/capture-list";
 import { FolderList } from "@/components/spending/folder-list";
 import { SpendingSearch } from "@/components/spending/spending-search";
 import { usePendingCaptureParser } from "@/components/spending/use-pending-capture-parser";
+import { captureParseIssueMessage, type CaptureParseIssue } from "@/lib/capture-parse-issue";
 import { DisplayPreferences } from "@/components/display-preferences";
 import { categoryIconLabel, categoryLabel, paymentLabel } from "@/lib/display-labels";
 import { DatePicker } from "@/components/date-picker";
@@ -177,9 +178,7 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
   const feedbackIssue = captureFeedbackId ? captureParser.issues[captureFeedbackId] : undefined;
   const feedbackSyncPending = feedbackCapture ? store.syncQueue.some((operation) => operation.table === "spending_captures" && operation.recordId === feedbackCapture.id && operation.action === "upsert") : false;
   const captureFeedbackMessage = feedbackCapture
-    ? feedbackIssue === "signIn" ? t("capture.needsSignIn")
-      : feedbackIssue === "sync" ? t("capture.syncPending")
-      : feedbackIssue === "retry" ? t("capture.retryDetail")
+    ? feedbackIssue ? captureParseIssueMessage(feedbackIssue, t)
         : feedbackCapture.parseStatus === "parsed" ? t("capture.parseComplete").replace("{count}", String(feedbackCapture.parsedItems?.length ?? 0))
           : feedbackCapture.parseStatus === "needs_retry" ? t("capture.retryDetail")
             : feedbackCapture.parseStatus === "processing" ? t("capture.processing")
@@ -352,7 +351,7 @@ function SpendingWorkspace({
   mode: "home" | "capture" | "folders";
   captureId?: string;
   folderId?: string;
-  issues: Record<string, "signIn" | "retry" | "sync">;
+  issues: Record<string, CaptureParseIssue>;
   onCapture: (folderId?: string | null) => void;
   onEditExpense: (id: string) => void;
   onRetryCapture: (captureId: string) => void;

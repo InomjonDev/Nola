@@ -1,4 +1,5 @@
 import type { ParsedCaptureItem, SpendingCapture } from "./types.ts";
+import { OpenRouterHttpError } from "./openrouter-error.ts";
 import {
   openRouterBody,
   ParsedResponseError,
@@ -19,6 +20,10 @@ export type SpendingParseErrorCode =
   | "rate_limited"
   | "not_configured"
   | "provider_failure"
+  | "provider_auth"
+  | "provider_payment"
+  | "provider_rate_limited"
+  | "provider_model"
   | "invalid_model_response"
   | "empty_result"
   | "service_unavailable";
@@ -140,7 +145,21 @@ export async function parseSpendingCapture(
   let response: unknown;
   try {
     response = await deps.requestOpenRouter(openRouterBody(input.sourceText, context, deps.model));
-  } catch {
+  } catch (error) {
+    if (error instanceof OpenRouterHttpError) {
+      if (error.status === 401 || error.status === 403) {
+        throw new SpendingParseError("provider_auth", "OpenRouter rejected the server API key. Replace it in the server configuration.", 502);
+      }
+      if (error.status === 402) {
+        throw new SpendingParseError("provider_payment", "OpenRouter rejected this request for billing or credits. Check the account and free-model limits.", 502);
+      }
+      if (error.status === 429) {
+        throw new SpendingParseError("provider_rate_limited", "OpenRouter is rate limiting requests. Wait a little and retry.", 429);
+      }
+      if (error.status === 400 || error.status === 404 || error.status === 422) {
+        throw new SpendingParseError("provider_model", "The configured OpenRouter model could not accept this parser request. Check its structured-output support.", 502);
+      }
+    }
     throw new SpendingParseError("provider_failure", "The spending parser is temporarily unavailable. Try again.", 502);
   }
 

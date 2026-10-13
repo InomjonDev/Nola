@@ -3,6 +3,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { toSpendingCapture } from "./mappers.ts";
+import { OpenRouterHttpError } from "./openrouter-error.ts";
 import type { ParseContext, ParseDependencies } from "./spending-parser.ts";
 
 export function getBearerAccessToken(request: Request) {
@@ -127,7 +128,7 @@ export function createSupabaseParseDependencies(
         },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw new Error("OpenRouter returned an unsuccessful response.");
+      if (!response.ok) throw new OpenRouterHttpError(response.status);
       return await response.json() as unknown;
     },
     isOpenRouterConfigured: () => Boolean(apiKey && model),
