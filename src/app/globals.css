@@ -186,8 +186,8 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 
 @media (max-width: 1023px) {
   .mobile-sidebar-toggle { display: grid; }
-  .workspace-search-field { border-color: transparent; background: transparent; padding-inline: 0; }
-  .workspace-search-field:focus-within { outline-offset: 1px; }
+  .workspace-search-field { border-color: rgb(var(--color-line) / .8); background: rgb(var(--color-surface) / .96); padding-inline: 18px 14px; box-shadow: 0 8px 28px rgb(0 0 0 / .12); backdrop-filter: blur(20px) saturate(1.35); -webkit-backdrop-filter: blur(20px) saturate(1.35); }
+  .workspace-search-field:focus-within { outline-offset: 2px; }
   .spending-workspace:not(.has-selected-capture) .spending-detail-pane { display: none; }
   .spending-workspace.has-selected-capture .spending-list-pane { display: none; }
   .spending-workspace.has-selected-capture .spending-detail-pane { display: block; }
