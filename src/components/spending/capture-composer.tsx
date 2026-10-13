@@ -159,48 +159,50 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
     <section ref={dialog} tabIndex={-1} className="expense-sheet capture-editor" role="dialog" aria-modal="true" aria-labelledby="capture-composer-title">
       <header className="editor-toolbar capture-editor-toolbar">
         <button type="button" className="capture-editor-back" aria-label={t("common.back")} title={t("common.back")} onClick={closeComposer}><ChevronLeft size={28} aria-hidden="true" /></button>
-        <h2 id="capture-composer-title" className="editor-title">{showNotice ? t(store.user?.isDemo ? "capture.demoGateTitle" : "capture.privacyTitle") : t("capture.new")}</h2>
+        <div className="capture-editor-title-group">
+          <h2 id="capture-composer-title" className="editor-title">{showNotice ? t(store.user?.isDemo ? "capture.demoGateTitle" : "capture.privacyTitle") : t("history.today")}</h2>
+          {!showNotice && <div
+            className="capture-editor-help"
+            onMouseEnter={() => setHelpHovered(true)}
+            onMouseLeave={() => setHelpHovered(false)}
+            onFocus={() => setHelpHovered(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHelpHovered(false);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && helpOpen) {
+                event.preventDefault();
+                event.stopPropagation();
+                setHelpPinned(false);
+                setHelpHovered(false);
+              }
+            }}
+          >
+            <button
+              type="button"
+              className="capture-editor-help-button"
+              aria-label={t("capture.helpTitle")}
+              aria-expanded={helpOpen}
+              aria-controls="capture-help-popover"
+              aria-describedby={helpOpen ? "capture-help-popover" : undefined}
+              onClick={() => {
+                const pinned = !helpPinned;
+                setHelpPinned(pinned);
+                setHelpHovered(false);
+              }}
+            ><span aria-hidden="true">?</span></button>
+            {helpOpen && <div id="capture-help-popover" className="capture-editor-help-popover" role="tooltip">
+              <p>{t("capture.helper")}</p>
+              <p>{t("capture.autoSaveHint")}</p>
+              <p>{t("capture.privacyShort")}</p>
+            </div>}
+          </div>}
+        </div>
         <div className="capture-editor-actions">
           {!showNotice && <>
             <span className="capture-editor-save-status" id="capture-save-status" role="status" aria-live="polite">
               {saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : ""}
             </span>
-            <div
-              className="capture-editor-help"
-              onMouseEnter={() => setHelpHovered(true)}
-              onMouseLeave={() => setHelpHovered(false)}
-              onFocus={() => setHelpHovered(true)}
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHelpHovered(false);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Escape" && helpOpen) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setHelpPinned(false);
-                  setHelpHovered(false);
-                }
-              }}
-            >
-              <button
-                type="button"
-                className="capture-editor-help-button"
-                aria-label={t("capture.helpTitle")}
-                aria-expanded={helpOpen}
-                aria-controls="capture-help-popover"
-                aria-describedby={helpOpen ? "capture-help-popover" : undefined}
-                onClick={() => {
-                  const pinned = !helpPinned;
-                  setHelpPinned(pinned);
-                  setHelpHovered(false);
-                }}
-              ><span aria-hidden="true">?</span></button>
-              {helpOpen && <div id="capture-help-popover" className="capture-editor-help-popover" role="tooltip">
-                <p>{t("capture.helper")}</p>
-                <p>{t("capture.autoSaveHint")}</p>
-                <p>{t("capture.privacyShort")}</p>
-              </div>}
-            </div>
             <button type="button" className="toolbar-action capture-editor-done" onClick={submitCapture}>{t("common.done")}</button>
           </>}
         </div>

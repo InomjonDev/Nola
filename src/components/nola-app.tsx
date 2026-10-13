@@ -473,19 +473,20 @@ function SpendingWorkspace({
     </aside>
 
     <section className="spending-list-pane" aria-labelledby="spending-workspace-title">
-      <header className="spending-list-header">
-        <div className="spending-title-group">
+      <header className={`spending-list-header${mode === "home" ? " spending-list-header-home" : ""}`}>
+        <div className={`spending-title-group${mode === "home" ? " spending-title-group-home" : ""}`}>
           {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><SidebarLeft className="h-5 w-5" aria-hidden="true" /></button>}
-          <div className="min-w-0">
-            <h1 id="spending-workspace-title" className={`screen-title truncate${mode === "home" ? " spending-page-title" : ""}`}>{workspaceTitle}</h1>
-            <p className="mt-1 text-sm text-muted">{selectedCapture ? t("capture.linkedExpenses") : t("folders.itemCount").replace("{count}", String(visibleCaptureCount + visibleStandaloneCount))}</p>
-          </div>
+          {mode === "home"
+            ? <><h1 id="spending-workspace-title" className="sr-only">{t("nav.spending")}</h1><HomeSummary expenses={activeExpenses} /></>
+            : <div className="min-w-0">
+              <h1 id="spending-workspace-title" className="screen-title truncate">{workspaceTitle}</h1>
+              <p className="mt-1 text-sm text-muted">{selectedCapture ? t("capture.linkedExpenses") : t("folders.itemCount").replace("{count}", String(visibleCaptureCount + visibleStandaloneCount))}</p>
+            </div>}
         </div>
         <div className="spending-header-actions">
           {mode !== "capture" && <button type="button" className="control min-h-11 shrink-0 justify-center bg-accent px-3 text-sm font-semibold text-on-accent desktop-capture-action" aria-label={t("capture.open")} onClick={() => onCapture(mode === "folders" ? folderId ?? null : null)}><Pencil className="h-4 w-4" aria-hidden="true" /><span>{t("capture.open")}</span></button>}
         </div>
       </header>
-      {mode === "home" && <HomeSummary expenses={activeExpenses} />}
       <div className="spending-list-scroll">
         {searchQuery.trim() ? <SpendingSearch
           captures={searchCaptures}
@@ -730,8 +731,14 @@ function HomeSummary({ expenses }: { expenses: Expense[] }) {
   const total = (after: Date) => expenses.filter((expense) => expense.currency === currency && new Date(expense.spentAt) >= after).reduce((sum, expense) => sum + expense.amount, 0);
   return <section className="home-summary" aria-label={t("home.summary")}>
     <h2 className="sr-only">{t("home.summary")}</h2>
-    <div className="summary-row"><span className="flex min-w-0 items-center gap-2">{t("history.thisMonth")}<button className="icon-button !h-11 !w-11" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={16} /> : <EyeOff size={16} />}</button></span><span className="summary-row-amount">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span></div>
-    <div className="summary-row"><span>{t("home.thisWeek")}</span><span className="summary-row-amount">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span></div>
+    <div className="home-summary-period">
+      <div className="home-summary-label"><span>{t("history.thisMonth")}</span><button type="button" className="home-summary-visibility" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
+      <span className="home-summary-value">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span>
+    </div>
+    <div className="home-summary-period">
+      <span className="home-summary-label">{t("home.thisWeek")}</span>
+      <span className="home-summary-value">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span>
+    </div>
   </section>;
 }
 

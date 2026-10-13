@@ -38,13 +38,20 @@ export function CaptureCard({
 }) {
   const { language, t } = useI18n();
   const linkedExpenses = expenses.filter((expense) => expense.captureId === capture.id && !expense.deletedAt);
+  const categoriesById = new Map(categories.map((category) => [category.id, category]));
   const tagsById = new Map(tags.map((tag) => [tag.id, tag]));
   const captureTags = capture.tagIds.flatMap((id) => {
     const tag = tagsById.get(id);
     return tag ? [tag] : [];
   });
-  const categoriesById = new Map(categories.map((category) => [category.id, category]));
   const currencies = [...new Set(linkedExpenses.map((expense) => expense.currency))];
+  const seenCategoryIds = new Set<string>();
+  const linkedCategories = linkedExpenses.flatMap((expense) => {
+    if (seenCategoryIds.has(expense.categoryId)) return [];
+    seenCategoryIds.add(expense.categoryId);
+    const category = categoriesById.get(expense.categoryId);
+    return [{ id: expense.categoryId, category, label: category ? categoryLabel(category, t) : t("history.expense") }];
+  });
   const status = capture.parseStatus === "processing"
     ? t("capture.processing")
     : capture.parseStatus === "needs_retry"
@@ -53,6 +60,10 @@ export function CaptureCard({
         ? t("capture.parseComplete").replace("{count}", String(linkedExpenses.length))
         : t("capture.saved");
   const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
+  const capturedAt = new Date(capture.capturedAt);
+  const capturedLabel = Number.isFinite(capturedAt.getTime())
+    ? capturedAt.toLocaleDateString(languageLocale(language), { dateStyle: "medium" })
+    : capture.capturedAt;
 
   function renderSource() {
     if (!highlight || highlight.start < 0 || highlight.end <= highlight.start || highlight.start >= capture.sourceText.length) {
@@ -63,39 +74,46 @@ export function CaptureCard({
     return <>{capture.sourceText.slice(0, start)}<mark className="rounded-sm bg-accent/20 text-inherit">{capture.sourceText.slice(start, end)}</mark>{capture.sourceText.slice(end)}</>;
   }
 
-  return <article className="group min-w-0 border-b border-line py-4 first:pt-0 last:border-b-0">
+  const expenseCountLabel = `${linkedExpenses.length} ${linkedExpenses.length === 1 ? t("history.expense") : t("history.expenses")}`;
+  const categoryNames = [...new Set(linkedCategories.map((item) => item.label))];
+  const totalLabels = currencies.map((currency) => formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language)));
+  const accessibleName = `${t("capture.noteLabel")}: ${capture.sourceText.slice(0, 160)}. ${capturedLabel}. ${expenseCountLabel}${categoryNames.length ? `. ${t("expense.category")}: ${categoryNames.join(", ")}` : ""}${totalLabels.length ? `. ${t("capture.total")}: ${totalLabels.join(", ")}` : ""}`;
+
+  return <article className="capture-card group min-w-0 border-b border-line first:pt-0 last:border-b-0">
     <button
       type="button"
-      className="flex min-h-11 w-full min-w-0 flex-col items-start gap-2 rounded-xl text-left outline-none transition-colors hover:bg-raised/60 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
-      aria-label={`${t("capture.noteLabel")}: ${capture.sourceText.slice(0, 120)}`}
+      className="capture-card-open flex min-h-11 w-full min-w-0 flex-col items-start rounded-xl text-left outline-none transition-colors hover:bg-raised/40 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      aria-label={accessibleName}
       onClick={onOpen}
     >
-      <span className="w-full whitespace-pre-line break-words text-[17px] font-medium leading-6 text-text [overflow-wrap:anywhere]">{renderSource()}</span>
-      <span className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-        <time dateTime={capture.capturedAt}>{new Date(capture.capturedAt).toLocaleString(languageLocale(language), { dateStyle: "medium", timeStyle: "short" })}</time>
-        {folderName && <><span aria-hidden="true">·</span><span>{folderName}</span></>}
-        {linkedExpenses.length > 0 && <><span aria-hidden="true">·</span><span>{linkedExpenses.length} {linkedExpenses.length === 1 ? t("history.expense") : t("history.expenses")}</span></>}
+      <span className="capture-card-date">
+        <time dateTime={capture.capturedAt}>{capturedLabel}</time>
+        {folderName && <><span aria-hidden="true">·</span><span className="truncate">{folderName}</span></>}
         {capture.parseStatus === "processing" && <><span aria-hidden="true">·</span><span role="status">{status}</span></>}
       </span>
+
+      {highlight && <span className="capture-card-search-match">{renderSource()}</span>}
+
+      {linkedExpenses.length > 0
+        ? <span className="capture-card-expense-summary">
+          <span className="capture-card-category-stack" aria-hidden="true">
+            {linkedCategories.slice(0, 4).map(({ id, category }) => <span key={id} className="capture-card-category-badge">
+              <CategoryIcon name={category?.name} icon={category?.icon} className="h-4 w-4" size={16} />
+            </span>)}
+            {linkedCategories.length > 4 && <span className="capture-card-category-more">+{linkedCategories.length - 4}</span>}
+          </span>
+          <span className="capture-card-expense-count">{expenseCountLabel}</span>
+          <span className="capture-card-total-label">{t("capture.total")}</span>
+          <span className="capture-card-total-amounts">
+            {currencies.map((currency) => <span key={currency} className="capture-card-total-amount">{formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language))}</span>)}
+          </span>
+        </span>
+        : <span className="capture-card-status" role="status">{status}</span>}
+
+      {captureTags.length > 0 && <span className="capture-card-tags" aria-label={t("expense.tags")}>
+        {captureTags.map((tag) => <span key={tag.id} className="capture-card-tag">#{tag.name}</span>)}
+      </span>}
     </button>
-
-    {(linkedExpenses.length > 0 || captureTags.length > 0) && <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 pl-0.5">
-      {linkedExpenses.slice(0, 3).map((expense) => {
-        const category = categoriesById.get(expense.categoryId);
-        return <span key={expense.id} className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full bg-raised px-2.5 py-1 text-xs text-muted">
-          <CategoryIcon name={category?.name} icon={category?.icon} className="h-3.5 w-3.5" size={14} />
-          <span className="max-w-[12rem] truncate">{expense.note || (category ? categoryLabel(category, t) : t("history.expense"))}</span>
-          <span className="whitespace-nowrap font-medium tabular-nums text-text">{formatMoney(expense.amount, expense.currency, languageLocale(language))}</span>
-        </span>;
-      })}
-      {linkedExpenses.length > 3 && <span className="text-xs text-muted">+{linkedExpenses.length - 3}</span>}
-      {currencies.map((currency) => <span key={currency} className="ml-auto whitespace-nowrap text-sm font-semibold tabular-nums text-text">
-        {formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language))}
-      </span>)}
-      {captureTags.map((tag) => <span key={tag.id} className="rounded-full border border-line px-2 py-1 text-xs text-muted">#{tag.name}</span>)}
-    </div>}
-
-    {(capture.parseStatus === "needs_retry" || issue === "signIn" || issue === "sync") && <p className="mt-2 text-sm leading-5 text-muted" role={issue === "retry" || capture.parseStatus === "needs_retry" ? "status" : undefined}>{status}</p>}
 
     {(canRetry || (issue === "signIn" && onSignIn)) && <div className="mt-2 flex flex-wrap items-center gap-2">
       {canRetry && <button type="button" className="control min-h-11 justify-center bg-raised px-3 text-sm font-medium text-text" onClick={onRetry}>
