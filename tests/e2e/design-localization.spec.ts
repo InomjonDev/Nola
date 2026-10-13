@@ -43,7 +43,7 @@ test("every screen stays readable across themes and languages", async ({ page },
   await enterDemo(page);
   for (const [amount, note] of [["8", "Lunch"], ["14", "Market"], ["25", "Dinner"]]) await saveExpense(page, amount, note);
   const routes: Array<[string, TranslationKey]> = [
-    ["/", "nav.spending"], ["/history", "nav.search"], ["/insights", "nav.insights"],
+    ["/", "nav.spending"], ["/insights", "nav.insights"],
     ["/manage", "manage.title"], ["/profile", "nav.profile"], ["/settings", "settings.title"],
     ["/privacy", "legal.privacyTitle"], ["/terms", "legal.termsTitle"], ["/cookies", "legal.cookiesTitle"], ["/data-deletion", "legal.deletionTitle"],
   ];
@@ -62,13 +62,15 @@ test("every screen stays readable across themes and languages", async ({ page },
         await expect(page.locator("body")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
         await noPageOverflow(page);
         await checkVisibleTextContrast(page);
-        if (["/", "/history", "/settings", "/insights"].includes(path)) {
+        if (["/", "/settings", "/insights"].includes(path)) {
           await page.screenshot({ path: testInfo.outputPath(`${language}-${theme}-${path === "/" ? "home" : path.slice(1)}.png`), fullPage: true, animations: "disabled" });
         }
         if (path === "/") {
           const rows = await page.locator(".spending-list-scroll button").count();
           expect(rows).toBeGreaterThanOrEqual(3);
           await expect(page.getByRole("navigation", { name: t("nav.main") }).getByRole("link", { name: t("nav.spending"), exact: true })).toHaveAttribute("aria-current", "page");
+          await expect(page.getByRole("searchbox", { name: t("history.search") })).toBeVisible();
+          await expect(page.getByRole("navigation", { name: t("nav.main") }).getByRole("link", { name: "Search", exact: true })).toHaveCount(0);
         }
       }
       await page.goto("/add-expense");

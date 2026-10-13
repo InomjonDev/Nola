@@ -37,11 +37,10 @@ import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notificatio
 import { useAppStore } from "@/lib/app-store";
 import type { CategoryIconName, Expense, PersistedAppData, SpendingCapture, SpendingFolder } from "@/lib/types";
 
-type View = "home" | "add" | "history" | "capture" | "folders" | "insights" | "manage" | "profile" | "settings";
+type View = "home" | "add" | "capture" | "folders" | "insights" | "manage" | "profile" | "settings";
 
 const navItems = [
   { href: "/", view: "home", labelKey: "nav.spending", icon: Home },
-  { href: "/history", view: "history", labelKey: "nav.search", icon: Search },
   { href: "/insights", view: "insights", labelKey: "nav.insights", icon: LineChart },
   { href: "/profile", view: "profile", labelKey: "nav.profile", icon: User },
 ] as const;
@@ -224,8 +223,7 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
               void store.signOut();
             }}
           />}
-          {view === "add" && <ExpenseForm onSaved={() => router.push("/history")} />}
-          {view === "history" && <HistorySearchView onEditExpense={openExpenseSheet} />}
+          {view === "add" && <ExpenseForm onSaved={() => router.push("/")} />}
           {view === "insights" && <InsightsView onAddExpense={() => openExpenseSheet()} onEditExpense={openExpenseSheet} />}
           {view === "manage" && <ManageView />}
           {view === "profile" && <ProfileView />}
@@ -238,7 +236,7 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
       {captureComposerOpen && <CaptureComposer folderId={captureFolderId} initialText={captureDraftText} onSaved={(id) => { setCaptureFeedbackId(id); setCaptureDraftText(""); }} onClose={() => { setCaptureComposerOpen(false); setCaptureFolderId(null); setCaptureDraftText(""); restoreCaptureFocus(); }} onSignIn={(sourceText) => { saveCaptureResume({ draftText: sourceText }); setCaptureDraftText(sourceText); void store.signOut(); }} onManualEntry={(sourceText) => { setCaptureComposerOpen(false); setCaptureDraftText(sourceText); setExpenseInitialNote(sourceText); setReturnToCaptureAfterExpense(true); setExpenseSheet("new"); }} />}
       {feedbackCapture && <CaptureFeedback capture={feedbackCapture} message={captureFeedbackMessage} canRetry={(feedbackCapture.parseStatus === "needs_retry" || feedbackIssue === "sync") && feedbackIssue !== "signIn"} canRetrySync={feedbackCapture.parseStatus === "pending" && feedbackSyncPending} canSignIn={feedbackIssue === "signIn"} onRetry={() => captureParser.retryCapture(feedbackCapture.id)} onRetrySync={store.retrySync} onSignIn={() => { if (store.user?.isDemo) { saveCaptureResume({ draftText: feedbackCapture.sourceText }); setCaptureDraftText(feedbackCapture.sourceText); setCaptureComposerOpen(true); } else saveCaptureResume({ captureId: feedbackCapture.id }); void store.signOut(); }} onUndo={() => undoCapture(feedbackCapture.id)} />}
       <ConsentBanner />
-      <InstallPrompt />
+      <InstallPrompt visible={view === "profile" || view === "settings"} />
       <div className="sr-only" aria-live="polite">
         {!store.isOnline ? t("settings.offline") : store.isSyncing ? t("settings.syncing") : t("settings.upToDate")}
       </div>
@@ -364,6 +362,10 @@ function SpendingWorkspace({
   const searchParams = useSearchParams();
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [renamingFolder, setRenamingFolder] = useState<SpendingFolder | null>(null);
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") ?? "");
+  const [searchRange, setSearchRange] = useState<"all" | "week" | "month">("all");
+  const [searchCategory, setSearchCategory] = useState("all");
+  const [searchFocused, setSearchFocused] = useState(false);
   const selectedCategoryId = mode === "folders" ? searchParams.get("category") : null;
   const activeExpenses = visibleExpenses(store.expenses);
   const selectedCapture = mode === "capture"
@@ -382,6 +384,18 @@ function SpendingWorkspace({
   const visibleStandaloneCount = activeExpenses.filter((expense) => expense.captureId === null
     && (folderFilter === undefined || folderFilter === null)
     && (!selectedCategoryId || expense.categoryId === selectedCategoryId)).length;
+  const searchInRange = (value: string) => searchRange === "week" ? new Date(value) >= startOfWeek()
+    : searchRange === "month" ? new Date(value) >= startOfMonth() : true;
+  const effectiveSearchCategory = searchCategory === "all" ? selectedCategoryId : searchCategory;
+  const searchExpenses = activeExpenses.filter((expense) => searchInRange(expense.spentAt)
+    && (!effectiveSearchCategory || expense.categoryId === effectiveSearchCategory)
+    && (folderFilter === undefined || (expense.captureId
+      ? store.spendingCaptures.some((capture) => capture.id === expense.captureId && !capture.deletedAt && capture.folderId === folderFilter)
+      : folderFilter === null)));
+  const searchCaptures = store.spendingCaptures.filter((capture) => !capture.deletedAt && capture.parseStatus !== "undone"
+    && searchInRange(capture.capturedAt)
+    && (folderFilter === undefined || capture.folderId === folderFilter)
+    && (!effectiveSearchCategory || store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && expense.categoryId === effectiveSearchCategory)));
   const workspaceTitle = selectedCapture
     ? t("capture.noteLabel")
     : selectedFolder?.name ?? (selectedCategory ? categoryLabel(selectedCategory, t) : t("nav.spending"));
@@ -436,7 +450,31 @@ function SpendingWorkspace({
         </div>
       </header>
       <div className="spending-list-scroll">
-        <CaptureList
+        {searchFocused || searchQuery.trim() ? <div className="mb-4 grid gap-3" aria-label={t("history.searchFilters")}>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {(["week", "month", "all"] as const).map((item) => <button key={item} type="button" className={cx("chip shrink-0", searchRange === item && "chip-active")} aria-pressed={searchRange === item} onClick={() => setSearchRange(item)}>{item === "all" ? t("history.allTime") : item === "week" ? t("history.thisWeek") : t("history.thisMonth")}</button>)}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button type="button" className={cx("chip shrink-0", searchCategory === "all" && "chip-active")} aria-pressed={searchCategory === "all"} onClick={() => setSearchCategory("all")}>{t("history.allCategories")}</button>
+            {store.categories.filter((item) => !item.archivedAt).map((item) => <button key={item.id} type="button" className={cx("chip shrink-0", searchCategory === item.id && "chip-active")} aria-pressed={searchCategory === item.id} onClick={() => setSearchCategory(item.id)}>{categoryLabel(item, t)}</button>)}
+          </div>
+        </div> : null}
+        {searchQuery.trim() ? <SpendingSearch
+          captures={searchCaptures}
+          expenses={searchExpenses}
+          categories={store.categories}
+          paymentMethods={store.paymentMethods}
+          tags={store.tags}
+          folders={store.spendingFolders}
+          query={searchQuery}
+          hideInput
+          captureResultsLabel={t("capture.noteLabel")}
+          expenseResultsLabel={t("history.expenses")}
+          emptyLabel={t("history.nothingFound")}
+          resultCountLabel={(count) => t("history.resultCount").replace("{count}", String(count)).replace("{label}", count === 1 ? t("search.result") : t("search.results"))}
+          onOpenCapture={openCapture}
+          onOpenExpense={onEditExpense}
+        /> : <CaptureList
           captures={store.spendingCaptures}
           expenses={store.expenses}
           categories={store.categories}
@@ -452,7 +490,7 @@ function SpendingWorkspace({
           onRetryCapture={onRetryCapture}
           onSignInCapture={onSignInCapture}
           onUndoCapture={onUndoCapture}
-        />
+        />}
       </div>
     </section>
 
@@ -488,7 +526,16 @@ function SpendingWorkspace({
           : <div className="spending-detail-empty"><span className="spending-empty-mark" aria-hidden="true">N</span><p>{t("capture.selectNote")}</p></div>}
     </aside>
 
-    {mode !== "capture" && <WorkspaceDock onCapture={() => onCapture(mode === "folders" ? folderId ?? null : null)} />}
+    {mode !== "capture" && <WorkspaceDock
+      query={searchQuery}
+      onQueryChange={(value) => {
+        setSearchQuery(value);
+        router.replace(value ? `/?q=${encodeURIComponent(value)}` : "/", { scroll: false });
+      }}
+      onSearchFocus={() => setSearchFocused(true)}
+      onSearchBlur={() => setSearchFocused(false)}
+      onCapture={() => onCapture(mode === "folders" ? folderId ?? null : null)}
+    />}
     {folderDialogOpen && <FolderNameDialog titleLabel={t("folders.new")} onClose={() => setFolderDialogOpen(false)} onSave={(name) => {
       const id = store.saveSpendingFolder(name, "#D2AE32");
       if (!id) return false;
@@ -507,10 +554,20 @@ function SpendingWorkspace({
   </div>;
 }
 
-function WorkspaceDock({ onCapture }: { onCapture: () => void }) {
+function WorkspaceDock({ query, onQueryChange, onSearchFocus, onSearchBlur, onCapture }: {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSearchFocus: () => void;
+  onSearchBlur: () => void;
+  onCapture: () => void;
+}) {
   const { t } = useI18n();
   return <div className="workspace-dock">
-    <Link className="workspace-search-link" href="/history" aria-label={t("history.search")}><Search className="h-5 w-5 shrink-0" aria-hidden="true" /><span>{t("history.search")}</span></Link>
+    <label className="workspace-search-field">
+      <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <input type="search" aria-label={t("history.search")} placeholder={t("history.search")} value={query} onFocus={onSearchFocus} onBlur={onSearchBlur} onChange={(event) => onQueryChange(event.target.value)} />
+      {query && <button type="button" className="workspace-search-clear" aria-label={t("search.clear")} onClick={() => onQueryChange("")}><X size={18} aria-hidden="true" /></button>}
+    </label>
     <button type="button" className="workspace-compose-button" data-dialog-return-focus aria-label={t("capture.open")} title={t("capture.open")} onClick={onCapture}><Pencil className="h-5 w-5" aria-hidden="true" /></button>
   </div>;
 }
@@ -694,52 +751,6 @@ function ExpenseForm({ compact = false, editId: explicitEditId, initialNote, onS
       {!compact && <button type="submit" className="control justify-center text-accent">{editing ? t("expense.saveChanges") : t("expense.save")}</button>}
       {editing && <button type="button" className="control justify-center text-danger" onClick={() => { store.deleteExpense(editing.id); onSaved?.(); }}>{t("history.deleteExpense")}</button>}
     </form>
-  );
-}
-
-function HistorySearchView({ onEditExpense }: { onEditExpense: (id: string) => void }) {
-  const store = useAppStore();
-  const { t } = useI18n();
-  const router = useRouter();
-  const params = useSearchParams();
-  const query = params.get("q") ?? "";
-  const [range, setRange] = useState<"all" | "week" | "month">("all");
-  const [category, setCategory] = useState("all");
-  const inRange = (value: string) => range === "week" ? new Date(value) >= startOfWeek() : range === "month" ? new Date(value) >= startOfMonth() : true;
-  const filteredExpenses = visibleExpenses(store.expenses).filter((expense) => inRange(expense.spentAt) && (category === "all" || expense.categoryId === category));
-  const filteredCaptures = store.spendingCaptures.filter((capture) => !capture.deletedAt && capture.parseStatus !== "undone" && inRange(capture.capturedAt) && (category === "all" || store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && expense.categoryId === category)));
-  return (
-    <section className="spending-search-page">
-      <div className="grid gap-4 pb-5">
-        <div><h1 className="mt-1 screen-title">{t("nav.search")}</h1></div>
-        <div className="flex flex-wrap gap-2">
-          {(["week", "month", "all"] as const).map((item) => <button key={item} className={cx("chip", range === item && "chip-active")} aria-pressed={range === item} onClick={() => setRange(item)}>{item === "all" ? t("history.allTime") : item === "week" ? t("history.thisWeek") : t("history.thisMonth")}</button>)}
-        </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button className={cx("chip shrink-0", category === "all" && "chip-active")} aria-pressed={category === "all"} onClick={() => setCategory("all")}>{t("history.allCategories")}</button>
-          {store.categories.filter((item) => !item.archivedAt).map((item) => <button key={item.id} className={cx("chip shrink-0", category === item.id && "chip-active")} aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{categoryLabel(item, t)}</button>)}
-        </div>
-      </div>
-      <SpendingSearch
-        captures={filteredCaptures}
-        expenses={filteredExpenses}
-        categories={store.categories}
-        paymentMethods={store.paymentMethods}
-        tags={store.tags}
-        folders={store.spendingFolders}
-        initialQuery={query}
-        autoFocus
-        captureResultsLabel={t("capture.noteLabel")}
-        expenseResultsLabel={t("history.expenses")}
-        emptyLabel={t("history.nothingFound")}
-        promptLabel={t("search.prompt")}
-        clearLabel={t("search.clear")}
-        resultCountLabel={(count) => t("history.resultCount").replace("{count}", String(count)).replace("{label}", count === 1 ? t("search.result") : t("search.results"))}
-        onQueryChange={(next) => router.replace(next ? `/history?q=${encodeURIComponent(next)}` : "/history", { scroll: false })}
-        onOpenCapture={(id) => router.push(`/captures/${encodeURIComponent(id)}`)}
-        onOpenExpense={onEditExpense}
-      />
-    </section>
   );
 }
 
@@ -957,7 +968,7 @@ function ConsentBanner() {
   );
 }
 
-function InstallPrompt() {
+function InstallPrompt({ visible }: { visible: boolean }) {
   const { t } = useI18n();
   const [event, setEvent] = useState<Event | null>(null);
   useEffect(() => {
@@ -968,6 +979,6 @@ function InstallPrompt() {
     window.addEventListener("beforeinstallprompt", listener);
     return () => window.removeEventListener("beforeinstallprompt", listener);
   }, []);
-  if (!event) return null;
-  return <button className="control mx-auto flex w-fit text-accent" onClick={() => void (event as Event & { prompt?: () => Promise<void> }).prompt?.()}>{t("install.nola")}</button>;
+  if (!event || !visible) return null;
+  return <button className="control mx-auto mt-6 flex w-fit text-accent" onClick={() => void (event as Event & { prompt?: () => Promise<void> }).prompt?.()}>{t("install.nola")}</button>;
 }

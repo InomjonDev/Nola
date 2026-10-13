@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, Car, Clapperboard, Coffee, Dumbbell, Fuel, Gift, HeartPulse, Home, MoreHorizontal, Plane, Receipt, ShoppingBag, Ticket, Utensils, Wallet } from "@/components/icons";
+import { Briefcase, Car, Clapperboard, Coffee, Dumbbell, Fuel, Gift, HeartPulse, HomeFill, MoreHorizontal, Plane, Receipt, ShoppingBag, Ticket, Utensils, Wallet } from "@/components/icons";
 
 import type { CategoryIconName } from "@/lib/types";
 
@@ -12,7 +12,7 @@ const icons = {
   clapperboard: Clapperboard,
   dumbbell: Dumbbell,
   "heart-pulse": HeartPulse,
-  home: Home,
+  home: HomeFill,
   plane: Plane,
   briefcase: Briefcase,
   gift: Gift,

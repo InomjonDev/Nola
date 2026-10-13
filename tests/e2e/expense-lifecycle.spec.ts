@@ -5,7 +5,7 @@ import { enterDemo, saveExpense } from "./helpers";
 test("demo user can add, edit, filter, and delete an expense", async ({ page }) => {
   await enterDemo(page);
   await saveExpense(page, "12.50", "E2E lunch");
-  await page.goto("/history");
+  await page.goto("/");
   const search = page.getByRole("searchbox", { name: "Search notes or categories" });
   await search.fill("E2E lunch");
   const result = page.getByRole("button", { name: /Note \(optional\): E2E lunch/ });

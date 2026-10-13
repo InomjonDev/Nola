@@ -10,7 +10,6 @@ test("workspace screens fit mobile, tablet, and desktop in both themes", async (
   const sizes = [[320, 700], [375, 812], [390, 844], [768, 1024], [1280, 900]] as const;
   const routes = [
     ["/", "Spending"],
-    ["/history", "Search"],
     ["/insights", "Insights"],
     ["/manage", "Categories & tags"],
     ["/profile", "Profile"],
@@ -52,7 +51,7 @@ test("workspace screens fit mobile, tablet, and desktop in both themes", async (
             const navigationTop = await page.locator(".mobile-nav").evaluate((element) => element.getBoundingClientRect().top);
             expect(dockBottom).toBeLessThanOrEqual(navigationTop);
           }
-          await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search", exact: true })).toBeVisible();
+          await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search", exact: true })).toHaveCount(0);
           if (width <= 639) await expect(page.getByRole("region", { name: "Savings goals" })).toBeVisible();
         }
       }

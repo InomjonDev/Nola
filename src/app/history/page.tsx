@@ -1,8 +1,6 @@
-import { NolaApp } from "@/components/nola-app";
-import { privatePageMetadata } from "@/lib/seo";
+import { redirect } from "next/navigation";
 
-export const metadata = { ...privatePageMetadata, title: "Search" };
-
-export default function Page() {
-  return <NolaApp view="history" />;
+export default async function LegacySearchRedirect({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q } = await searchParams;
+  redirect(q ? `/?q=${encodeURIComponent(q)}` : "/");
 }

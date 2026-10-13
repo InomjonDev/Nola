@@ -90,10 +90,9 @@ test("spending notes navigate through folders, search, and detail on mobile and 
   await expect(page.getByRole("button", { name: /^expense: Transport,/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^expense: Groceries,/ })).toBeVisible();
 
-  await page.getByRole("link", { name: "Search", exact: true }).click();
   const search = page.getByRole("searchbox", { name: "Search notes or categories" });
   await search.fill("7000");
-  await expect(page).toHaveURL(/\/history\?q=7000$/);
+  await expect(page).toHaveURL(/\/\?q=7000$/);
   await expect(page.getByRole("button", { name: "Spending note: 7000 somsa 4x #lunch" })).toBeVisible();
   await expect(page.getByRole("button", { name: /Amount:.*Amount: \$7,000\.00, Category: Food, Payment method: Card, Date:/ })).toBeVisible();
   await search.fill("#lunch");

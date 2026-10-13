@@ -25,6 +25,8 @@ export function SpendingSearch({
   tags,
   folders = [],
   initialQuery = "",
+  query: controlledQuery,
+  hideInput = false,
   autoFocus = false,
   captureResultsLabel,
   expenseResultsLabel,
@@ -45,6 +47,8 @@ export function SpendingSearch({
   tags: Tag[];
   folders?: SpendingFolder[];
   initialQuery?: string;
+  query?: string;
+  hideInput?: boolean;
   autoFocus?: boolean;
   captureResultsLabel?: string;
   expenseResultsLabel?: string;
@@ -59,7 +63,8 @@ export function SpendingSearch({
   closeLabel?: string;
 }) {
   const { language, t } = useI18n();
-  const [query, setQuery] = useState(initialQuery);
+  const [internalQuery, setInternalQuery] = useState(initialQuery);
+  const query = controlledQuery ?? internalQuery;
   const results = useMemo(() => searchSpendingRecords(query, captures, expenses, categories, tags), [query, captures, expenses, categories, tags]);
   const captureResults = results.filter((result) => result.kind === "capture");
   const expenseResults = results.filter((result) => result.kind === "expense");
@@ -78,7 +83,7 @@ export function SpendingSearch({
   };
 
   function updateQuery(value: string) {
-    setQuery(value);
+    if (controlledQuery === undefined) setInternalQuery(value);
     onQueryChange?.(value);
   }
 
@@ -160,14 +165,14 @@ export function SpendingSearch({
   }
 
   return <section className="grid min-w-0 gap-5" aria-label={t("history.search")}>
-    <form role="search" className="flex min-w-0 items-center gap-2" onSubmit={submit}>
+    {!hideInput && <form role="search" className="flex min-w-0 items-center gap-2" onSubmit={submit}>
       <div className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-full border border-control-edge bg-surface px-4 focus-within:ring-2 focus-within:ring-accent">
         <Search className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
         <input type="search" className="min-h-11 min-w-0 flex-1 border-0 bg-transparent text-base text-text outline-none placeholder:text-muted" placeholder={t("history.search")} aria-label={t("history.search")} value={query} autoFocus={autoFocus} onChange={(event) => updateQuery(event.target.value)} />
         {query && clearLabel && <button type="button" className="icon-button min-h-11 min-w-11" aria-label={clearLabel} onClick={() => updateQuery("")}><X className="h-4 w-4" /></button>}
       </div>
       {onClose && <button type="button" className="icon-button min-h-11 min-w-11 shrink-0 bg-surface" aria-label={closeLabel ?? t("common.close")} onClick={onClose}><X className="h-5 w-5" /></button>}
-    </form>
+    </form>}
 
     {!query.trim() && promptLabel && <p className="px-1 text-sm leading-6 text-muted">{promptLabel}</p>}
     {query.trim() && results.length === 0 && <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-sm leading-6 text-muted">{emptyLabel ?? t("history.nothingFound")}</p>}
