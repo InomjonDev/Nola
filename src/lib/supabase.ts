@@ -27,9 +27,9 @@ export const supabase = isSupabaseConfigured
   : null;
 
 export function getAuthRedirectUri() {
+  if (typeof window !== "undefined") return `${window.location.origin}/auth/callback`;
   const explicit = process.env.NEXT_PUBLIC_AUTH_REDIRECT_URL?.trim();
   if (explicit) return explicit;
-  if (typeof window !== "undefined") return `${window.location.origin}/auth/callback`;
   return "http://localhost:3000/auth/callback";
 }
 

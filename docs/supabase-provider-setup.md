@@ -18,10 +18,11 @@ NEXT_PUBLIC_AUTH_REDIRECT_URL=http://localhost:3000/auth/callback
 ```
 
 Never use a secret key or `service_role` key in a `NEXT_PUBLIC_` variable.
+In a browser, Google sign-in returns to the current origin's `/auth/callback` so its PKCE verifier remains available. `NEXT_PUBLIC_AUTH_REDIRECT_URL` is a server-side fallback; it does not override the browser origin.
 
 ## 2. Redirect URLs
 
-In Supabase Dashboard, open **Authentication > URL Configuration**. Set the production Site URL and allow these exact application redirects:
+In Supabase Dashboard, open **Authentication > URL Configuration**. Set the hosted Site URL to `https://nolaapp.vercel.app/` while that is Nola's primary production domain. Add these application redirects:
 
 - `http://localhost:3000/auth/callback`
 - `http://localhost:3000/auth/confirm`
@@ -29,6 +30,8 @@ In Supabase Dashboard, open **Authentication > URL Configuration**. Set the prod
 - The Vercel preview origin followed by `/auth/confirm`
 - The final production origin followed by `/auth/callback`
 - The final production origin followed by `/auth/confirm`
+
+As of this configuration, Vercel has three valid production aliases: `nolaapp.vercel.app`, `nolapp.vercel.app`, and `nola-mauve.vercel.app`. Add `/auth/callback` and `/auth/confirm` for each alias that users can open. The browser starts and finishes PKCE on the same origin. Remove obsolete redirect entries only after confirming no users still need them.
 
 Google OAuth uses `/auth/callback`. Email confirmation and sign-in links use `/auth/confirm`; do not point email links at the OAuth callback.
 
