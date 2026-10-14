@@ -14,18 +14,6 @@ type ListEntry =
   | { kind: "capture"; capture: SpendingCapture; date: string }
   | { kind: "expense"; expense: Expense; date: string };
 
-function localDayKey(value: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value.slice(0, 10);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function shiftDay(date: Date, days: number) {
-  const shifted = new Date(date);
-  shifted.setDate(shifted.getDate() + days);
-  return shifted;
-}
-
 function StandaloneExpenseRow({ expense, categories, tags, onOpen }: { expense: Expense; categories: Category[]; tags: Tag[]; onOpen: () => void }) {
   const { language, t } = useI18n();
   const category = categories.find((item) => item.id === expense.categoryId);
@@ -89,10 +77,7 @@ export function CaptureList({
   onRetryCapture?: (captureId: string) => void;
   onSignInCapture?: (captureId: string) => void;
 }) {
-  const { language, t } = useI18n();
-  const today = new Date();
-  const todayKey = localDayKey(today.toISOString());
-  const yesterdayKey = localDayKey(shiftDay(today, -1).toISOString());
+  const { t } = useI18n();
   const folderNames = useMemo(() => new Map(folders.filter((folder) => !folder.deletedAt).map((folder) => [folder.id, folder.name])), [folders]);
   const expenseByCapture = useMemo(() => {
     const map = new Map<string, Expense[]>();
@@ -121,46 +106,23 @@ export function CaptureList({
   [expenses, categoryId, folderId, tagId]);
   const entries = useMemo(() => [...visibleCaptures, ...visibleStandaloneExpenses]
     .sort((left, right) => Date.parse(right.date) - Date.parse(left.date)), [visibleCaptures, visibleStandaloneExpenses]);
-  const groups = useMemo(() => {
-    const grouped = new Map<string, ListEntry[]>();
-    for (const entry of entries) {
-      const key = localDayKey(entry.date);
-      const dayEntries = grouped.get(key) ?? [];
-      dayEntries.push(entry);
-      grouped.set(key, dayEntries);
-    }
-    return [...grouped.entries()];
-  }, [entries]);
-
   if (entries.length === 0) return <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-sm leading-6 text-muted">{emptyLabel ?? t("history.nothingFound")}</p>;
 
-  return <div className="grid gap-7">
-    {groups.map(([dayKey, dayEntries]) => {
-      const heading = dayKey === todayKey
-        ? t("history.today")
-        : dayKey === yesterdayKey
-          ? t("history.yesterday")
-          : new Date(`${dayKey}T12:00:00`).toLocaleDateString(languageLocale(language), { weekday: "long", month: "long", day: "numeric" });
-      return <section key={dayKey} aria-labelledby={`capture-day-${dayKey}`}>
-        <h2 id={`capture-day-${dayKey}`} className="mb-2 px-1 text-base font-semibold tracking-tight text-text">{heading}</h2>
-        <div className="min-w-0 rounded-2xl bg-surface px-4 py-4 sm:px-5">
-          {dayEntries.map((entry) => entry.kind === "capture"
-            ? <CaptureCard
-              key={`capture:${entry.capture.id}`}
-              capture={entry.capture}
-              expenses={expenseByCapture.get(entry.capture.id) ?? []}
-              categories={categories}
-              tags={tags}
-              folderName={entry.capture.folderId ? folderNames.get(entry.capture.folderId) : undefined}
-              issue={issues[entry.capture.id]}
-              signInLabel={signInLabel}
-              onOpen={() => onOpenCapture(entry.capture.id)}
-              onRetry={onRetryCapture ? () => onRetryCapture(entry.capture.id) : undefined}
-              onSignIn={onSignInCapture ? () => onSignInCapture(entry.capture.id) : undefined}
-            />
-            : <StandaloneExpenseRow key={`expense:${entry.expense.id}`} expense={entry.expense} categories={categories} tags={tags} onOpen={() => onOpenExpense(entry.expense.id)} />)}
-        </div>
-      </section>;
-    })}
+  return <div className="capture-list rounded-2xl bg-surface px-4 py-4 sm:px-5">
+    {entries.map((entry) => entry.kind === "capture"
+      ? <CaptureCard
+        key={`capture:${entry.capture.id}`}
+        capture={entry.capture}
+        expenses={expenseByCapture.get(entry.capture.id) ?? []}
+        categories={categories}
+        tags={tags}
+        folderName={entry.capture.folderId ? folderNames.get(entry.capture.folderId) : undefined}
+        issue={issues[entry.capture.id]}
+        signInLabel={signInLabel}
+        onOpen={() => onOpenCapture(entry.capture.id)}
+        onRetry={onRetryCapture ? () => onRetryCapture(entry.capture.id) : undefined}
+        onSignIn={onSignInCapture ? () => onSignInCapture(entry.capture.id) : undefined}
+      />
+      : <StandaloneExpenseRow key={`expense:${entry.expense.id}`} expense={entry.expense} categories={categories} tags={tags} onOpen={() => onOpenExpense(entry.expense.id)} />)}
   </div>;
 }

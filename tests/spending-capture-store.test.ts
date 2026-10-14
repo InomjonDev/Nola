@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { applyCaptureParseData, captureTotal, editCaptureTextData, filterOwnedTagIds, hasActiveFolderName, undoCaptureData } from "../src/lib/spending-captures.ts";
+import { applyCaptureParseData, captureTotal, editCaptureTextData, filterOwnedTagIds, findDailyCapture, hasActiveFolderName, undoCaptureData } from "../src/lib/spending-captures.ts";
 import type { Expense, SpendingCapture } from "../src/lib/types.ts";
 
 const captureId = "10000000-0000-4000-8000-000000000001";
@@ -44,6 +44,23 @@ function expense(id: string, overrides: Partial<Expense> = {}): Expense {
     ...overrides,
   };
 }
+
+test("finds the newest active spending note for the local calendar day", () => {
+  const today = new Date(2026, 9, 14, 15);
+  const sameDay = new Date(2026, 9, 14, 9).toISOString();
+  const laterToday = new Date(2026, 9, 14, 12).toISOString();
+  const captures = [
+    capture({ id: "older", capturedAt: sameDay }),
+    capture({ id: "newest", capturedAt: laterToday }),
+    capture({ id: "deleted", capturedAt: laterToday, deletedAt: laterToday }),
+    capture({ id: "undone", capturedAt: laterToday, parseStatus: "undone" }),
+    capture({ id: "other-user", userId: "another-user", capturedAt: laterToday }),
+    capture({ id: "yesterday", capturedAt: new Date(2026, 9, 13, 23).toISOString() }),
+  ];
+
+  assert.equal(findDailyCapture(captures, userId, today)?.id, "newest");
+  assert.equal(findDailyCapture(captures, userId, new Date(2026, 9, 15, 8))?.id, undefined);
+});
 
 test("capture total sums amounts once and ignores quantity", () => {
   const expenses = [

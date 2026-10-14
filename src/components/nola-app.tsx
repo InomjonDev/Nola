@@ -31,6 +31,7 @@ import { parseAmountValue } from "@/lib/currency-input";
 import { exportNolaData } from "@/lib/export-data";
 import { exportSpendingPdf } from "@/lib/export-pdf";
 import { budgetStatus, monthKey } from "@/lib/budgeting";
+import { findDailyCapture } from "@/lib/spending-captures";
 import { extractHashtags } from "@/lib/spending-parser";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
@@ -158,6 +159,12 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
 
   function openCaptureComposer(targetFolderId: string | null = null) {
     captureReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const now = new Date();
+    const todayCapture = store.user ? findDailyCapture(store.spendingCaptures, store.user.id, now) : null;
+    if (todayCapture) {
+      router.push(`/captures/${encodeURIComponent(todayCapture.id)}`);
+      return;
+    }
     setCaptureFolderId(targetFolderId);
     setCaptureComposerOpen(true);
   }
@@ -731,14 +738,12 @@ function HomeSummary({ expenses }: { expenses: Expense[] }) {
   const total = (after: Date) => expenses.filter((expense) => expense.currency === currency && new Date(expense.spentAt) >= after).reduce((sum, expense) => sum + expense.amount, 0);
   return <section className="home-summary" aria-label={t("home.summary")}>
     <h2 className="sr-only">{t("home.summary")}</h2>
-    <div className="home-summary-period">
-      <div className="home-summary-label"><span>{t("history.thisMonth")}</span><button type="button" className="home-summary-visibility" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={16} /> : <EyeOff size={16} />}</button></div>
-      <span className="home-summary-value">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span>
+    <div className="home-summary-content">
+      <span className="home-summary-month-label">{t("history.thisMonth")}</span>
+      <span className="home-summary-month-value">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span>
+      <div className="home-summary-week"><span>{t("home.thisWeek")}</span><span className="home-summary-week-value">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span></div>
     </div>
-    <div className="home-summary-period">
-      <span className="home-summary-label">{t("home.thisWeek")}</span>
-      <span className="home-summary-value">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span>
-    </div>
+    <button type="button" className="home-summary-visibility" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={18} /> : <EyeOff size={18} />}</button>
   </section>;
 }
 

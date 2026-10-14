@@ -44,6 +44,16 @@ test("uses profile currency and local date when the model returns null", () => {
   assert.equal(parsed.quantity, null);
 });
 
+test("applies an explicit date only to its expense and defaults the next item to today", () => {
+  const [cinema, burgerKing] = validateParsedItems({ items: [
+    item({ amount: 150000, description: "cinema ticket", quantity: null, date: "2026-10-10" }),
+    item({ amount: 120000, description: "burger king", quantity: null, date: null }),
+  ] }, context, (() => { let id = 0; return () => `expense-${++id}`; })());
+
+  assert.equal(cinema.spentAt, "2026-10-10T07:00:00.000Z");
+  assert.equal(burgerKing.spentAt, "2026-10-12T07:00:00.000Z");
+});
+
 test("maps an unknown category to Other and null payment to the default method", () => {
   const [parsed] = validateParsedItems({ items: [item({ category: "Unlisted category", paymentMethod: null })] }, context, () => "fallback-id");
   assert.equal(parsed.categoryId, "other-id");
@@ -85,4 +95,5 @@ test("uses strict JSON Schema output without sending hashtags as model fields", 
   assert.deepEqual(responseFormat.json_schema.schema.required, ["items"]);
   assert.equal(messages.some((message) => message.content.includes('"hashtags"')), false);
   assert.match(messages[0].content, /amount 7000 and quantity 4/);
+  assert.match(messages[0].content, /A date at the end of a line applies only to that line's expense/);
 });

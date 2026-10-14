@@ -56,6 +56,7 @@ The local snapshot is user-scoped when read and written. The app merges local an
 ## Spending notes and expenses
 
 - A `spending_capture` retains the original note text, folder/tags, capture time, parser status/revisions, and parsed JSON result.
+- The home create-note action reopens the newest active capture for the user's current local calendar day; editing/appending changes that same capture instead of creating another one for the day.
 - Each accepted parsed item is also persisted as an `expenses` row with `capture_id`. `parsed_items` is a parse snapshot, not a second authoritative ledger.
 - An expense can exist without a capture (`capture_id IS NULL`) for manual entry. Deleting a note soft-deletes the note and its linked expenses; deleting one linked expense does not erase the source note.
 - `quantity` describes item count independently of `amount`. For example, “7000 somsa 4x” can store UZS 7,000 and quantity 4.

@@ -5,6 +5,20 @@ export type SpendingCaptureData = {
   expenses: Expense[];
 };
 
+function localCalendarDate(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+export function findDailyCapture(captures: SpendingCapture[], userId: string, date: Date) {
+  const targetDate = localCalendarDate(date);
+  if (!targetDate) return null;
+  return captures
+    .filter((capture) => capture.userId === userId && !capture.deletedAt && capture.parseStatus !== "undone" && localCalendarDate(capture.capturedAt) === targetDate)
+    .sort((left, right) => Date.parse(right.capturedAt) - Date.parse(left.capturedAt))[0] ?? null;
+}
+
 export function filterOwnedTagIds(tagIds: string[], tags: Pick<Tag, "id" | "userId">[], userId: string) {
   const ownedTagIds = new Set(tags.filter((tag) => tag.userId === userId).map((tag) => tag.id));
   return [...new Set(tagIds.filter((id) => ownedTagIds.has(id)))];
