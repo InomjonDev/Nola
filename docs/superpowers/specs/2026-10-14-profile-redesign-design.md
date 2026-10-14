@@ -29,6 +29,7 @@ Keep actions connected to existing features. Use a small number of grouped rows 
 - Use existing semantic color tokens so the current white light theme and black dark theme remain correct.
 - Use Nola's existing Remix icon family for controls and destination rows.
 - Keep the profile title and identity hierarchy compact; avoid landing-page hero effects, fake testimonials, carousels, or marquee content.
+- Omit the global floating add control on Profile so the settings rows remain unobscured; keep the app's bottom navigation.
 - Use restrained 150–250 ms opacity/position transitions for entry and press feedback. Respect `prefers-reduced-motion`.
 - Keep interactive targets at least 44 px high and icon-only controls labeled for assistive technology.
 - Preserve keyboard navigation and visible focus styles.
