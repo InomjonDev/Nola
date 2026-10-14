@@ -3,20 +3,22 @@
 import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 
-import { ChevronLeft, Plus } from "@/components/icons";
+import { Check, ChevronLeft, Plus } from "@/components/icons";
 import { AiProcessingNotice } from "@/components/spending/ai-processing-notice";
 import { useDialogFocus } from "@/components/use-dialog-focus";
+import { captureParseIssueMessage, type CaptureParseIssue } from "@/lib/capture-parse-issue";
 import { useAppStore } from "@/lib/app-store";
 import { useI18n } from "@/lib/i18n-provider";
 import { extractHashtags } from "@/lib/spending-parser";
 
 type SaveState = "idle" | "saving" | "saved";
 
-export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", onSignIn, onManualEntry }: {
+export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", issues = {}, onSignIn, onManualEntry }: {
   folderId: string | null;
   onSaved: (captureId: string) => void;
   onClose: () => void;
   initialText?: string;
+  issues?: Record<string, CaptureParseIssue>;
   onSignIn?: (sourceText: string) => void;
   onManualEntry?: (sourceText: string) => void;
 }) {
@@ -36,6 +38,20 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
   const [helpHovered, setHelpHovered] = useState(false);
   const [helpPinned, setHelpPinned] = useState(false);
   const helpOpen = helpHovered || helpPinned;
+  const savedCapture = captureIdRef.current
+    ? store.spendingCaptures.find((capture) => capture.id === captureIdRef.current)
+    : undefined;
+  const captureWaitingToSync = Boolean(savedCapture && store.syncQueue.some((operation) => operation.table === "spending_captures" && operation.recordId === savedCapture.id && operation.action === "upsert"));
+  const liveParseMessage = savedCapture && store.user && !store.user.isDemo && store.profile?.aiParsingEnabled
+    ? savedCapture.parseStatus === "processing" || (savedCapture.parseStatus === "pending" && saveState === "saved")
+      ? !store.isOnline ? t("capture.offline") : captureWaitingToSync ? t("capture.syncPending") : t("capture.processing")
+      : savedCapture.parseStatus === "parsed"
+        ? t("capture.parseComplete").replace("{count}", String(store.expenses.filter((expense) => expense.captureId === savedCapture.id && !expense.deletedAt).length))
+        : savedCapture.parseStatus === "needs_retry"
+          ? captureParseIssueMessage(issues[savedCapture.id], t)
+          : null
+    : null;
+  const liveParseComplete = savedCapture?.parseStatus === "parsed";
 
   useDialogFocus(dialog, backdrop, closeComposer);
 
@@ -222,6 +238,10 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
             aria-describedby={helpOpen ? "capture-character-count capture-help-popover" : "capture-character-count"}
             onChange={(event) => queueAutoSave(event.target.value)}
           />
+          {liveParseMessage && <div className="capture-editor-live-status" role="status" aria-live="polite" aria-atomic="true">
+            {liveParseComplete ? <Check className="h-4 w-4 shrink-0" aria-hidden="true" /> : <span className="capture-editor-live-spinner" aria-hidden="true" />}
+            <span className="truncate">{liveParseMessage}</span>
+          </div>}
           <span id="capture-character-count" className="capture-editor-character-count">{sourceText.length}/4000</span>
           {error && <p className="capture-editor-error" role="alert">{error}</p>}
           {onManualEntry && <button type="button" className="capture-editor-add-button" aria-label={t("capture.manualEntry")} onClick={startManualEntry}><Plus className="h-6 w-6" aria-hidden="true" /></button>}

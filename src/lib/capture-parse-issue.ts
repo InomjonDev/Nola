@@ -1,6 +1,6 @@
 import type { TranslationKey } from "./i18n";
 
-export type CaptureParseIssue = "signIn" | "retry" | "sync" | "key" | "credits" | "model" | "limit" | "unavailable" | "invalidResult" | "noAmount";
+export type CaptureParseIssue = "signIn" | "retry" | "sync" | "key" | "credits" | "model" | "limit" | "quotaLimit" | "unavailable" | "invalidResult" | "noAmount";
 
 export function captureParseIssueFromError(errorCode: unknown): CaptureParseIssue {
   switch (errorCode) {
@@ -8,8 +8,8 @@ export function captureParseIssueFromError(errorCode: unknown): CaptureParseIssu
     case "provider_auth": return "key";
     case "provider_payment": return "credits";
     case "provider_model": return "model";
-    case "provider_rate_limited":
-    case "rate_limited": return "limit";
+    case "provider_rate_limited": return "limit";
+    case "rate_limited": return "quotaLimit";
     case "provider_failure": return "unavailable";
     case "invalid_model_response": return "invalidResult";
     case "empty_result": return "noAmount";
@@ -25,6 +25,7 @@ export function captureParseIssueMessage(issue: CaptureParseIssue | undefined, t
     case "credits": return t("capture.providerCredits");
     case "model": return t("capture.providerModel");
     case "limit": return t("capture.providerLimit");
+    case "quotaLimit": return t("capture.quotaLimit");
     case "unavailable": return t("capture.providerUnavailable");
     case "invalidResult": return t("capture.invalidResult");
     case "noAmount": return t("capture.noAmount");

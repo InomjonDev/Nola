@@ -314,7 +314,7 @@ export function createSpendingParseHandler(deps: ParseDependencies) {
       } catch {
         return parseErrorResponse(new SpendingParseError("service_unavailable", "The spending note could not be marked for retry.", 503));
       }
-      return parseErrorResponse(new SpendingParseError("rate_limited", "Too many spending notes were parsed. Wait a minute and try again.", 429));
+      return parseErrorResponse(new SpendingParseError("rate_limited", "The AI spending limit has been reached. Try again later. Your note is safe.", 429));
     }
 
     let items: ParsedCaptureItem[];

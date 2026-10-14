@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 
 import { CategoryIcon } from "@/components/category-icon";
-import { ChevronLeft, Plus, RefreshCw, X } from "@/components/icons";
+import { ChevronLeft, Plus, RefreshCw, Trash2, X } from "@/components/icons";
 import type { CaptureParseIssue } from "@/components/spending/capture-card";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 import { captureParseIssueMessage } from "@/lib/capture-parse-issue";
@@ -24,6 +24,7 @@ export function CaptureDetail({
   tags,
   folders = [],
   issue,
+  titleLabel,
   sourceLabel,
   linkedExpensesLabel,
   emptyExpensesLabel,
@@ -33,13 +34,14 @@ export function CaptureDetail({
   reparseLabel,
   editExpenseLabel,
   signInLabel,
+  deleteLabel,
   onClose,
+  onDeleteCapture,
   onRetry,
   onSignIn,
   onReparse,
   onEditExpense,
   onSaveSourceText,
-  onPauseParsingChange,
   onMoveToFolder,
   onManualEntry,
 }: {
@@ -50,6 +52,7 @@ export function CaptureDetail({
   tags: Tag[];
   folders?: SpendingFolder[];
   issue?: CaptureParseIssue;
+  titleLabel?: string;
   sourceLabel?: string;
   linkedExpensesLabel?: string;
   emptyExpensesLabel?: string;
@@ -59,13 +62,14 @@ export function CaptureDetail({
   reparseLabel?: string;
   editExpenseLabel?: string;
   signInLabel?: string;
+  deleteLabel?: string;
   onClose: () => void;
+  onDeleteCapture?: (captureId: string) => void;
   onRetry?: () => void;
   onSignIn?: () => void;
   onReparse?: (sourceText: string) => void;
   onEditExpense?: (expense: Expense) => void;
   onSaveSourceText?: (captureId: string, sourceText: string) => boolean;
-  onPauseParsingChange?: (paused: boolean) => void;
   onMoveToFolder?: (captureId: string, folderId: string | null) => void;
   onManualEntry?: (sourceText: string) => void;
 }) {
@@ -88,13 +92,11 @@ export function CaptureDetail({
   const activeCaptureIdRef = useRef(capture.id);
   const latestRef = useRef({ captureId: capture.id, sourceText: capture.sourceText, editing: false });
   const saveSourceRef = useRef(onSaveSourceText);
-  const pauseParsingRef = useRef(onPauseParsingChange);
   const helpOpen = helpHovered || helpPinned;
 
   sourceTextRef.current = sourceText;
   latestRef.current = { captureId: activeCaptureIdRef.current, sourceText, editing };
   saveSourceRef.current = onSaveSourceText;
-  pauseParsingRef.current = onPauseParsingChange;
 
   useDialogFocus(dialog, backdrop, leaveNote);
 
@@ -107,7 +109,6 @@ export function CaptureDetail({
       if (draft.editing && trimmed && trimmed.length <= 4000 && trimmed !== lastSavedTextRef.current) {
         saveSourceRef.current?.(activeCaptureIdRef.current, trimmed);
       }
-      pauseParsingRef.current?.(false);
       activeCaptureIdRef.current = capture.id;
       setSourceText(capture.sourceText);
       sourceTextRef.current = capture.sourceText;
@@ -132,7 +133,6 @@ export function CaptureDetail({
     if (draft.editing && trimmed && trimmed.length <= 4000 && trimmed !== lastSavedTextRef.current) {
       saveSourceRef.current?.(draft.captureId, trimmed);
     }
-    pauseParsingRef.current?.(false);
   }, []);
 
   useEffect(() => {
@@ -166,6 +166,11 @@ export function CaptureDetail({
         : capture.parseStatus === "pending"
           ? issue === "sync" ? t("capture.syncPending") : t("capture.saved")
           : t("capture.saved");
+  const headerStatus = editing
+    ? saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : ""
+    : capture.parseStatus === "processing" || capture.parseStatus === "needs_retry" || issue
+      ? status
+      : "";
   const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const visibleFolders = folders.filter((folder) => !folder.deletedAt).sort((left, right) => left.name.localeCompare(right.name));
   const currencyTotals = [...new Set(activeExpenses.map((expense) => expense.currency))].map((currency) => ({
@@ -209,7 +214,6 @@ export function CaptureDetail({
     setEditing(true);
     setError("");
     setSaveState("saving");
-    pauseParsingRef.current?.(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       saveTimer.current = null;
@@ -221,14 +225,12 @@ export function CaptureDetail({
     if (!flushAutoSave()) return false;
     setEditing(false);
     latestRef.current = { captureId: activeCaptureIdRef.current, sourceText: sourceTextRef.current, editing: false };
-    pauseParsingRef.current?.(false);
     setError("");
     return true;
   }
 
   function leaveNote() {
     if (editing && !finishEditing()) return;
-    pauseParsingRef.current?.(false);
     onClose();
   }
 
@@ -265,11 +267,12 @@ export function CaptureDetail({
     <article ref={dialog} tabIndex={-1} className="expense-sheet capture-editor" role="dialog" aria-modal="true" aria-labelledby="capture-detail-title">
       <header className="editor-toolbar capture-editor-toolbar">
         <button type="button" className="capture-editor-back" aria-label={closeLabel ?? t("common.back")} title={closeLabel ?? t("common.back")} onClick={leaveNote}><ChevronLeft size={28} aria-hidden="true" /></button>
-        <h2 id="capture-detail-title" className="editor-title">{sourceLabel ?? t("capture.noteLabel")}</h2>
+        <h2 id="capture-detail-title" className="editor-title">{titleLabel ?? t("history.today")}</h2>
         <div className="capture-editor-actions">
           <span className="capture-editor-save-status capture-detail-status" role="status" aria-live="polite">
-            {editing ? saveState === "saving" ? t("capture.saving") : saveState === "saved" ? t("capture.autosaved") : "" : status}
+            {headerStatus}
           </span>
+          {onDeleteCapture && <button type="button" className="capture-editor-delete-button" aria-label={deleteLabel ?? t("trash.moveToTrash")} title={deleteLabel ?? t("trash.moveToTrash")} onClick={() => { if (editing && !finishEditing()) return; onDeleteCapture(capture.id); }}><Trash2 className="h-4 w-4" aria-hidden="true" /></button>}
           <div
             className="capture-editor-help"
             onMouseEnter={() => setHelpHovered(true)}

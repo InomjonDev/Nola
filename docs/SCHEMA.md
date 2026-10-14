@@ -193,7 +193,7 @@ The protect trigger rejects updates that change `id`, `goal_id`, `user_id`, `cur
 | `user_id` | Required FK to Auth user, cascade delete. |
 | `attempted_at` | Required `timestamptz`, default `now()`. |
 
-This internal quota table has no client grants. Users reach it only through `consume_spending_parse_quota()`.
+This internal quota table has no client grants. Users reach it only through `consume_spending_parse_quota()`, which enforces 10 attempts per minute and 30 attempts per rolling 24 hours per authenticated user.
 
 ### `accounts`
 

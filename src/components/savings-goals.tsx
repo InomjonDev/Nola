@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Archive, ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Target, Trash2, X } from "@/components/icons";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Archive, ArrowDownLeft, ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Pencil, Plus, RotateCcw, Trash2, X } from "@/components/icons";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 
@@ -21,13 +21,26 @@ import type { GoalContribution, SavingsGoal } from "@/lib/types";
 function GoalSheet({ title, onClose, children }: { title: string; onClose: () => void; children: (dismiss: () => void) => ReactNode }) {
   const { t } = useI18n();
   const titleId = useId();
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<number | null>(null);
   const dialog = useRef<HTMLElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
-  useDialogFocus(dialog, backdrop, onClose);
-  return createPortal(<div ref={backdrop} className="expense-sheet-backdrop goal-sheet-backdrop fixed inset-0 z-50 flex">
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+  }, []);
+  function dismiss() {
+    if (closeTimer.current !== null) return;
+    setClosing(true);
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null;
+      onClose();
+    }, 200);
+  }
+  useDialogFocus(dialog, backdrop, dismiss);
+  return createPortal(<div ref={backdrop} data-state={closing ? "closing" : "open"} className="expense-sheet-backdrop goal-sheet-backdrop fixed inset-0 z-50 flex">
     <section ref={dialog} className="expense-sheet goal-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-      <header className="editor-toolbar"><button type="button" className="toolbar-action" aria-label={t("goals.close")} onClick={onClose}>{t("common.close")}</button><h2 id={titleId} className="editor-title">{title}</h2><span className="w-11" aria-hidden="true" /></header>
-      <div className="goal-sheet-content">{children(onClose)}</div>
+      <header className="editor-toolbar"><button type="button" className="toolbar-action" aria-label={t("goals.close")} onClick={dismiss}>{t("common.close")}</button><h2 id={titleId} className="editor-title">{title}</h2><span className="w-11" aria-hidden="true" /></header>
+      <div className="goal-sheet-content">{children(dismiss)}</div>
     </section>
   </div>, document.body);
 }
@@ -144,24 +157,84 @@ function ContributionForm({ goal, kind, onSaved }: { goal: SavingsGoal; kind: Go
   </form>;
 }
 
+function GoalCelebration({ goalName }: { goalName: string }) {
+  const { t } = useI18n();
+  const colors = ["rgb(var(--color-accent))", "rgb(var(--color-success))", "var(--category-tangerine)", "var(--category-rose)", "var(--category-teal)"];
+  const pieces = Array.from({ length: 28 }, (_, index) => {
+    const angle = (index * 137.5 - 90) * Math.PI / 180;
+    const distance = 72 + (index % 4) * 20;
+    return {
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+      rotation: (index * 53) % 360,
+      delay: (index % 7) * 18,
+      color: colors[index % colors.length],
+    };
+  });
+
+  return <div className="goal-celebration" role="status" aria-live="polite">
+    {pieces.map((piece, index) => <span
+      key={index}
+      className={`goal-confetti-piece goal-confetti-piece--${index % 3}`}
+      aria-hidden="true"
+      style={{
+        "--goal-confetti-x": `${piece.x}px`,
+        "--goal-confetti-y": `${piece.y}px`,
+        "--goal-confetti-rotation": `${piece.rotation}deg`,
+        "--goal-confetti-delay": `${piece.delay}ms`,
+        "--goal-confetti-color": piece.color,
+      } as CSSProperties}
+    />)}
+    <div className="goal-celebration-toast">
+      <span className="goal-celebration-mark" aria-hidden="true"><Check className="h-5 w-5" /></span>
+      <span className="goal-celebration-copy">
+        <strong>{goalName}</strong>
+        <span>{t("goals.reached")}</span>
+      </span>
+    </div>
+  </div>;
+}
+
 type GoalPanel = { type: "new" } | { type: "detail" | "edit" | "deposit" | "withdrawal" | "delete"; goalId: string };
-type CompletionPanel = { type: "completion"; goalId: string };
+
+function GoalEmptyIllustration() {
+  return <svg className="goal-empty-illustration" viewBox="0 0 184 144" aria-hidden="true">
+    <circle cx="88" cy="72" r="58" fill="rgb(var(--color-accent-soft))" />
+    <circle cx="88" cy="72" r="38" fill="none" stroke="rgb(var(--color-accent) / .22)" strokeWidth="2" />
+    <circle cx="88" cy="72" r="23" fill="none" stroke="rgb(var(--color-accent) / .42)" strokeWidth="2" />
+    <circle cx="88" cy="72" r="8" fill="rgb(var(--color-accent))" />
+    <path d="M88 72 125 35m-11 2h11v11" fill="none" stroke="rgb(var(--color-accent-strong))" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+    <circle cx="139" cy="108" r="18" fill="rgb(var(--color-surface))" stroke="rgb(var(--color-line))" strokeWidth="2" />
+    <path d="M139 100v16m-8-8h16" stroke="rgb(var(--color-accent))" strokeLinecap="round" strokeWidth="2.5" />
+    <circle cx="42" cy="112" r="9" fill="rgb(var(--color-surface))" stroke="rgb(var(--color-line))" strokeWidth="2" />
+  </svg>;
+}
 
 export function SavingsGoalsView() {
   const store = useAppStore();
   const { t, language } = useI18n();
   const [archived, setArchived] = useState(false);
-  const [panel, setPanel] = useState<GoalPanel | CompletionPanel | null>(null);
+  const [panel, setPanel] = useState<GoalPanel | null>(null);
+  const [celebratingGoalId, setCelebratingGoalId] = useState<string | null>(null);
   const [completionQueue, setCompletionQueue] = useState<string[]>([]);
   const previousCompletion = useRef<Map<string, ReturnType<typeof goalCompletionSnapshot>> | null>(null);
   const activeCompletion = useRef<string | null>(null);
+  const latestStore = useRef(store);
+  const mounted = useRef(false);
   const restoreArchivedFocus = useRef(false);
   const archivedFilter = useRef<HTMLButtonElement>(null);
+  latestStore.current = store;
   const selectedGoalId = panel && "goalId" in panel ? panel.goalId : undefined;
   const goals = store.savingsGoals.filter((goal) => !goal.deletedAt && Boolean(goal.archivedAt) === archived);
   const selected = selectedGoalId ? store.savingsGoals.find((goal) => goal.id === selectedGoalId && !goal.deletedAt) : undefined;
   const entries = selected ? goalEntries(selected, store.goalContributions).sort((a, b) => b.occurredOn.localeCompare(a.occurredOn) || b.updatedAt.localeCompare(a.updatedAt)) : [];
-  const title = panel?.type === "new" ? t("goals.new") : panel?.type === "edit" ? t("goals.edit") : panel?.type === "delete" ? t("goals.deleteTitle") : panel?.type === "completion" ? t("goals.reached") : panel?.type === "deposit" ? t("goals.addSavings") : panel?.type === "withdrawal" ? t("goals.withdraw") : selected?.name ?? "";
+  const celebrationGoal = celebratingGoalId ? store.savingsGoals.find((goal) => goal.id === celebratingGoalId && !goal.deletedAt) : undefined;
+  const title = panel?.type === "new" ? t("goals.new") : panel?.type === "edit" ? t("goals.edit") : panel?.type === "delete" ? t("goals.deleteTitle") : panel?.type === "deposit" ? t("goals.addSavings") : panel?.type === "withdrawal" ? t("goals.withdraw") : selected?.name ?? "";
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
   useEffect(() => {
     const activeGoals = store.savingsGoals.filter((goal) => !goal.deletedAt && !goal.archivedAt);
@@ -183,8 +256,25 @@ export function SavingsGoalsView() {
     }
     activeCompletion.current = goalId;
     setCompletionQueue((current) => current.filter((id) => id !== goalId));
-    setPanel({ type: "completion", goalId });
+    setCelebratingGoalId(goalId);
   }, [panel, completionQueue, store.savingsGoals, store.goalContributions]);
+
+  useEffect(() => {
+    if (!celebratingGoalId) return;
+    window.setTimeout(() => {
+      const current = latestStore.current;
+      const goal = current.savingsGoals.find((item) => item.id === celebratingGoalId && !item.deletedAt);
+      if (goal && goalProgress(goal, current.goalContributions).reached) {
+        if (!goal.archivedAt) current.archiveGoal(goal.id, true);
+        if (mounted.current) {
+          restoreArchivedFocus.current = true;
+          setArchived(true);
+        }
+      }
+      if (activeCompletion.current === celebratingGoalId) activeCompletion.current = null;
+      if (mounted.current) setCelebratingGoalId((id) => id === celebratingGoalId ? null : id);
+    }, 1100);
+  }, [celebratingGoalId]);
 
   useLayoutEffect(() => {
     if (panel !== null || !restoreArchivedFocus.current) return;
@@ -193,9 +283,6 @@ export function SavingsGoalsView() {
   }, [panel, completionQueue.length]);
 
   function closePanel() {
-    if (panel?.type === "completion") {
-      activeCompletion.current = null;
-    }
     setPanel(null);
   }
 
@@ -203,19 +290,16 @@ export function SavingsGoalsView() {
     {store.cloudEnabled && store.syncError && <p role="status" className="text-sm text-warning">{t("goals.syncError")}</p>}
     <h3 className="section-title">{t("goals.savings")}</h3>
     <FloatingAddButton label={t("goals.new")} onClick={() => setPanel({ type: "new" })} />
-    <div className="flex flex-wrap gap-2">{[false, true].map((value) => <button key={String(value)} ref={value ? archivedFilter : undefined} type="button" className={`chip${archived === value ? " chip-active" : ""}`} aria-pressed={archived === value} onClick={() => setArchived(value)}>{t(value ? "goals.archived" : "goals.active")}</button>)}</div>
+    <div className="goal-filter-switch" role="group" aria-label={t("goals.title")}>{[false, true].map((value) => <button key={String(value)} ref={value ? archivedFilter : undefined} type="button" className={`goal-filter-button${archived === value ? " goal-filter-button-active" : ""}`} aria-pressed={archived === value} onClick={() => setArchived(value)}>{t(value ? "goals.archived" : "goals.active")}</button>)}</div>
     {goals.length ? <div className="grid gap-0">{goals.map((goal) => <article key={goal.id} className="goal-card min-w-0">
       <button type="button" className="mb-3 flex min-h-11 w-full items-center gap-3 rounded-lg text-left" aria-label={goal.name} onClick={() => setPanel({ type: "detail", goalId: goal.id })}><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><span className="min-w-0 flex-1 break-words font-semibold [overflow-wrap:anywhere]">{goal.name}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted" /></button>
       <GoalSummary goal={goal} />
       {!archived && <div className="mt-4 flex items-center gap-2"><button type="button" className="chip min-w-0 flex-1 justify-center !rounded-lg !px-2" onClick={() => setPanel({ type: "deposit", goalId: goal.id })}><Plus className="h-4 w-4 shrink-0" /><span>{t("goals.addSavings")}</span></button><button type="button" className="icon-button shrink-0" aria-label={t("goals.withdraw")} title={t("goals.withdraw")} onClick={() => setPanel({ type: "withdrawal", goalId: goal.id })}><ArrowUpRight className="h-5 w-5" /></button></div>}
-    </article>)}</div> : <div className="grid justify-items-center gap-3 py-10 text-center"><Target className="h-6 w-6 text-muted" /><p className="text-sm text-muted">{t(archived ? "goals.noArchived" : "goals.empty")}</p></div>}
+    </article>)}</div> : <div className="goal-empty-state"><GoalEmptyIllustration /><p>{t(archived ? "goals.noArchived" : "goals.empty")}</p></div>}
 
 
     {panel && (panel.type === "new" || selected) && <GoalSheet key={`${panel.type}-${selected?.id ?? "new"}`} title={title} onClose={closePanel}>
-      {(dismiss) => panel.type === "new" || panel.type === "edit" ? <GoalForm goal={selected} onSaved={dismiss} /> : selected && panel.type === "completion" ? <div className="grid gap-5">
-        <div className="grid justify-items-center gap-3 py-2 text-center"><span className="inline-flex items-center text-success"><Check className="h-6 w-6" /></span><p className="max-w-sm text-sm leading-6 text-muted">{t("goals.archivePrompt")}</p></div>
-        <div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={dismiss}>{t("goals.keepActive")}</button><button type="button" className="control justify-center text-accent" onClick={() => { store.archiveGoal(selected.id, true); setArchived(true); restoreArchivedFocus.current = true; dismiss(); }}><Archive className="h-4 w-4" />{t("goals.archive")}</button></div>
-      </div> : selected && (panel.type === "deposit" || panel.type === "withdrawal") ? <ContributionForm goal={selected} kind={panel.type === "deposit" ? "deposit" : "withdrawal"} onSaved={dismiss} /> : selected && panel.type === "delete" ? <div className="grid gap-5"><p className="text-sm leading-6 text-muted">{t("goals.deleteDetail")}</p><div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={() => setPanel({ type: "detail", goalId: selected.id })}>{t("common.cancel")}</button><button type="button" className="control goal-destructive justify-center" onClick={() => { store.deleteGoal(selected.id); setPanel(null); }}><Trash2 className="h-4 w-4" />{t("goals.delete")}</button></div></div> : selected && <div className="grid gap-5">
+      {(dismiss) => panel.type === "new" || panel.type === "edit" ? <GoalForm goal={selected} onSaved={dismiss} /> : selected && (panel.type === "deposit" || panel.type === "withdrawal") ? <ContributionForm goal={selected} kind={panel.type === "deposit" ? "deposit" : "withdrawal"} onSaved={dismiss} /> : selected && panel.type === "delete" ? <div className="grid gap-5"><p className="text-sm leading-6 text-muted">{t("goals.deleteDetail")}</p><div className="grid gap-2 sm:grid-cols-2"><button type="button" data-autofocus className="control justify-center bg-raised" onClick={() => setPanel({ type: "detail", goalId: selected.id })}>{t("common.cancel")}</button><button type="button" className="control goal-destructive justify-center" onClick={() => { store.deleteGoal(selected.id); setPanel(null); }}><Trash2 className="h-4 w-4" />{t("goals.delete")}</button></div></div> : selected && <div className="grid gap-5">
         <GoalSummary goal={selected} />
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="icon-button" aria-label={t("goals.edit")} title={t("goals.edit")} onClick={() => setPanel({ type: "edit", goalId: selected.id })}><Pencil className="h-4 w-4" /></button>
@@ -226,6 +310,7 @@ export function SavingsGoalsView() {
         <section className="grid gap-3"><h3 className="section-title">{t("goals.history")}</h3>{entries.length ? <ul className="grid gap-3">{entries.map((entry) => <li key={entry.id} className="flex items-start gap-3 border-b border-line pb-3"><span className={`mt-1 ${entry.kind === "deposit" ? "text-success" : "text-muted"}`}>{entry.kind === "deposit" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}</span><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{t(entry.kind === "deposit" ? "goals.deposit" : "goals.withdrawal")}</p><p className="text-xs text-muted">{new Date(`${entry.occurredOn}T12:00:00`).toLocaleDateString(languageLocale(language))}</p>{entry.note && <p className="mt-1 break-words text-sm text-muted [overflow-wrap:anywhere]">{entry.note}</p>}</div><span className="max-w-[45%] break-all text-right text-sm font-semibold tabular-nums">{entry.kind === "deposit" ? "+" : "-"}{formatMoney(entry.amount, entry.currency, languageLocale(language))}</span></li>)}</ul> : <p className="text-sm text-muted">{t("goals.noHistory")}</p>}</section>
       </div>}
     </GoalSheet>}
+    {celebrationGoal && <GoalCelebration goalName={celebrationGoal.name} />}
   </section>;
 }
 
@@ -237,7 +322,7 @@ export function SavingsGoalsPreview() {
     <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="section-title">{t("goals.savings")}</h2><Link className="flex min-h-11 items-center gap-1 text-sm font-semibold text-accent" href="/goals">{t(goals.length ? "goals.viewAll" : "goals.new")}<ChevronRight className="h-4 w-4" /></Link></div>
     {goals.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">{goals.map((goal) => {
       const status = goalProgress(goal, store.goalContributions);
-      return <Link key={goal.id} href="/insights?tab=goals" className="flex min-w-0 items-center gap-3 border-b border-line py-3"><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-semibold [overflow-wrap:anywhere]">{goal.name}</span><span className={`text-xs font-semibold tabular-nums ${status.reached ? "text-success" : "text-muted"}`}>{Math.round(status.percentage)}%</span></div><p className="mt-1 break-all text-xs text-muted">{formatMoney(status.saved, goal.currency, languageLocale(language))} / {formatMoney(goal.targetAmount, goal.currency, languageLocale(language))}</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-line"><div className={`goal-progress h-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div></div></Link>;
+      return <Link key={goal.id} href="/goals" className="flex min-w-0 items-center gap-3 border-b border-line py-3"><span className="goal-preview-icon"><CategoryIcon icon={goal.icon} /></span><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-2"><span className="min-w-0 break-words text-sm font-semibold [overflow-wrap:anywhere]">{goal.name}</span><span className={`text-xs font-semibold tabular-nums ${status.reached ? "text-success" : "text-muted"}`}>{Math.round(status.percentage)}%</span></div><p className="mt-1 break-all text-xs text-muted">{formatMoney(status.saved, goal.currency, languageLocale(language))} / {formatMoney(goal.targetAmount, goal.currency, languageLocale(language))}</p><div className="mt-2 h-1 overflow-hidden rounded-full bg-line"><div className={`goal-progress h-full ${status.reached ? "bg-success" : "bg-accent"}`} style={{ width: `${status.percentage}%` }} /></div></div></Link>;
     })}</div> : <p className="text-sm text-muted">{t("goals.empty")}</p>}
   </section>;
 }

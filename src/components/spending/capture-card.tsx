@@ -3,7 +3,7 @@
 import { CategoryIcon } from "@/components/category-icon";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
-import { formatCompactDate, formatMoney } from "@/lib/format";
+import { formatCompactDate, formatDayMonth, formatMoney } from "@/lib/format";
 import { captureTotal } from "@/lib/spending-captures";
 import { categoryLabel } from "@/lib/display-labels";
 import { captureParseIssueMessage, type CaptureParseIssue } from "@/lib/capture-parse-issue";
@@ -23,6 +23,7 @@ export function CaptureCard({
   onSignIn,
   signInLabel,
   highlight,
+  presentation = "standard",
 }: {
   capture: SpendingCapture;
   expenses: Expense[];
@@ -35,6 +36,7 @@ export function CaptureCard({
   onSignIn?: () => void;
   signInLabel?: string;
   highlight?: { start: number; end: number };
+  presentation?: "standard" | "timeline";
 }) {
   const { language, t } = useI18n();
   const linkedExpenses = expenses.filter((expense) => expense.captureId === capture.id && !expense.deletedAt);
@@ -61,9 +63,12 @@ export function CaptureCard({
         : t("capture.saved");
   const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const capturedAt = new Date(capture.capturedAt);
-  const capturedLabel = Number.isFinite(capturedAt.getTime())
-    ? formatCompactDate(capture.capturedAt)
-    : capture.capturedAt;
+  let capturedLabel = capture.capturedAt;
+  if (Number.isFinite(capturedAt.getTime())) {
+    capturedLabel = presentation === "timeline"
+      ? formatDayMonth(capture.capturedAt)
+      : formatCompactDate(capture.capturedAt);
+  }
 
   function renderSource() {
     if (!highlight || highlight.start < 0 || highlight.end <= highlight.start || highlight.start >= capture.sourceText.length) {
@@ -79,7 +84,7 @@ export function CaptureCard({
   const totalLabels = currencies.map((currency) => formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language)));
   const accessibleName = `${t("capture.noteLabel")}: ${capture.sourceText.slice(0, 160)}. ${capturedLabel}. ${expenseCountLabel}${categoryNames.length ? `. ${t("expense.category")}: ${categoryNames.join(", ")}` : ""}${totalLabels.length ? `. ${t("capture.total")}: ${totalLabels.join(", ")}` : ""}`;
 
-  return <article className="capture-card group min-w-0 border-b border-line first:pt-0 last:border-b-0">
+  return <article className={`capture-card group min-w-0 border-b border-line first:pt-0 last:border-b-0${presentation === "timeline" ? " capture-card--timeline" : ""}`}>
     <button
       type="button"
       className="capture-card-open flex min-h-11 w-full min-w-0 flex-col items-start rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
@@ -103,7 +108,7 @@ export function CaptureCard({
             {linkedCategories.length > 4 && <span className="capture-card-category-more">+{linkedCategories.length - 4}</span>}
           </span>
           <span className="capture-card-expense-count">{expenseCountLabel}</span>
-          <span className="capture-card-total-label">{t("capture.total")}</span>
+          {presentation !== "timeline" && <span className="capture-card-total-label">{t("capture.total")}</span>}
           <span className="capture-card-total-amounts">
             {currencies.map((currency) => <span key={currency} className="capture-card-total-amount">{formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language))}</span>)}
           </span>

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { CategoryIcon } from "@/components/category-icon";
 import { CaptureCard, type CaptureParseIssue } from "@/components/spending/capture-card";
 import { useI18n } from "@/lib/i18n-provider";
-import { formatCompactDate, formatMoney } from "@/lib/format";
+import { formatCompactDate, formatDayMonth, formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
 import { categoryLabel } from "@/lib/display-labels";
 import type { Category, Expense, SpendingCapture, SpendingFolder, Tag } from "@/lib/types";
@@ -14,7 +14,7 @@ type ListEntry =
   | { kind: "capture"; capture: SpendingCapture; date: string }
   | { kind: "expense"; expense: Expense; date: string };
 
-function StandaloneExpenseRow({ expense, categories, tags, onOpen }: { expense: Expense; categories: Category[]; tags: Tag[]; onOpen: () => void }) {
+function StandaloneExpenseRow({ expense, categories, tags, onOpen, compactDate = false }: { expense: Expense; categories: Category[]; tags: Tag[]; onOpen: () => void; compactDate?: boolean }) {
   const { language, t } = useI18n();
   const category = categories.find((item) => item.id === expense.categoryId);
   const tagsById = new Map(tags.map((tag) => [tag.id, tag]));
@@ -31,7 +31,7 @@ function StandaloneExpenseRow({ expense, categories, tags, onOpen }: { expense: 
         <span className="block break-words text-sm font-medium text-text [overflow-wrap:anywhere]">{title}</span>
         <span className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted">
           <span>{category ? categoryLabel(category, t) : t("history.expense")}</span>
-          <time dateTime={expense.spentAt}>{formatCompactDate(expense.spentAt)}</time>
+          <time dateTime={expense.spentAt}>{compactDate ? formatDayMonth(expense.spentAt) : formatCompactDate(expense.spentAt)}</time>
           {expense.quantity !== null && <span>{expense.quantity}×</span>}
         </span>
       </span>
@@ -53,6 +53,7 @@ export function CaptureList({
   categoryId,
   tagId,
   issues = {},
+  compactTimeline = false,
   emptyLabel,
   signInLabel,
   onOpenCapture,
@@ -70,6 +71,7 @@ export function CaptureList({
   categoryId?: string | null;
   tagId?: string | null;
   issues?: Record<string, CaptureParseIssue>;
+  compactTimeline?: boolean;
   emptyLabel?: string;
   signInLabel?: string;
   onOpenCapture: (captureId: string) => void;
@@ -77,7 +79,7 @@ export function CaptureList({
   onRetryCapture?: (captureId: string) => void;
   onSignInCapture?: (captureId: string) => void;
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const folderNames = useMemo(() => new Map(folders.filter((folder) => !folder.deletedAt).map((folder) => [folder.id, folder.name])), [folders]);
   const expenseByCapture = useMemo(() => {
     const map = new Map<string, Expense[]>();
@@ -106,10 +108,27 @@ export function CaptureList({
   [expenses, categoryId, folderId, tagId]);
   const entries = useMemo(() => [...visibleCaptures, ...visibleStandaloneExpenses]
     .sort((left, right) => Date.parse(right.date) - Date.parse(left.date)), [visibleCaptures, visibleStandaloneExpenses]);
+  const monthGroups = useMemo(() => {
+    if (!compactTimeline) return [];
+    const groups: { key: string; label: string; entries: ListEntry[] }[] = [];
+    const monthFormatter = new Intl.DateTimeFormat(languageLocale(language), { month: "long" });
+    for (const entry of entries) {
+      const date = new Date(entry.date);
+      const validDate = Number.isFinite(date.getTime());
+      const key = validDate ? `${date.getFullYear()}-${date.getMonth()}` : "undated";
+      let group = groups[groups.length - 1];
+      if (!group || group.key !== key) {
+        group = { key, label: validDate ? monthFormatter.format(date) : "", entries: [] };
+        groups.push(group);
+      }
+      group.entries.push(entry);
+    }
+    return groups;
+  }, [compactTimeline, entries, language]);
   if (entries.length === 0) return <p className="rounded-2xl border border-line bg-surface px-5 py-8 text-center text-sm leading-6 text-muted">{emptyLabel ?? t("history.nothingFound")}</p>;
 
-  return <div className="capture-list rounded-2xl bg-surface px-4 py-4 sm:px-5">
-    {entries.map((entry) => entry.kind === "capture"
+  function renderEntry(entry: ListEntry) {
+    return entry.kind === "capture"
       ? <CaptureCard
         key={`capture:${entry.capture.id}`}
         capture={entry.capture}
@@ -119,10 +138,20 @@ export function CaptureList({
         folderName={entry.capture.folderId ? folderNames.get(entry.capture.folderId) : undefined}
         issue={issues[entry.capture.id]}
         signInLabel={signInLabel}
+        presentation={compactTimeline ? "timeline" : "standard"}
         onOpen={() => onOpenCapture(entry.capture.id)}
         onRetry={onRetryCapture ? () => onRetryCapture(entry.capture.id) : undefined}
         onSignIn={onSignInCapture ? () => onSignInCapture(entry.capture.id) : undefined}
       />
-      : <StandaloneExpenseRow key={`expense:${entry.expense.id}`} expense={entry.expense} categories={categories} tags={tags} onOpen={() => onOpenExpense(entry.expense.id)} />)}
-  </div>;
+      : <StandaloneExpenseRow key={`expense:${entry.expense.id}`} expense={entry.expense} categories={categories} tags={tags} compactDate={compactTimeline} onOpen={() => onOpenExpense(entry.expense.id)} />;
+  }
+
+  return compactTimeline
+    ? <div className="capture-list capture-list--timeline">
+      {monthGroups.map((group) => <section key={group.key} className="capture-month-group" aria-labelledby={group.label ? `capture-month-${group.key}` : undefined}>
+        {group.label && <h2 id={`capture-month-${group.key}`} className="capture-month-heading">{group.label}</h2>}
+        <div className="capture-month-entries">{group.entries.map(renderEntry)}</div>
+      </section>)}
+    </div>
+    : <div className="capture-list rounded-2xl bg-surface px-4 py-4 sm:px-5">{entries.map(renderEntry)}</div>;
 }

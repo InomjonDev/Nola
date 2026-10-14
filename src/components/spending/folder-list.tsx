@@ -13,6 +13,8 @@ export function FolderList({
   foldersLabel,
   categoriesLabel,
   createFolderLabel,
+  trashLabel,
+  trashCount = 0,
   folders,
   captures,
   expenses,
@@ -30,6 +32,8 @@ export function FolderList({
   foldersLabel?: string;
   categoriesLabel?: string;
   createFolderLabel?: string;
+  trashLabel?: string;
+  trashCount?: number;
   folders: SpendingFolder[];
   captures: SpendingCapture[];
   expenses: Expense[];
@@ -101,6 +105,14 @@ export function FolderList({
           </li>;
         })}
       </ul>
+    </div>}
+
+    {trashLabel && <div className="border-t border-line pt-3">
+      <Link href="/trash" onClick={onNavigate} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm text-muted transition-colors hover:bg-raised/70 hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+        <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate">{trashLabel}</span>
+        {trashCount > 0 && <span className="text-xs tabular-nums text-muted">{trashCount}</span>}
+      </Link>
     </div>}
   </nav>;
 }

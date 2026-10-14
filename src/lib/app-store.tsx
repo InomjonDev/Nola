@@ -43,6 +43,9 @@ type StoreValue = PersistedAppData & {
   setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => boolean;
   replayCachedCaptureParse: (captureId: string, parseRevision: number) => boolean;
   setAiParsingEnabled: (enabled: boolean) => void;
+  trashSpendingCapture: (captureId: string) => void;
+  restoreSpendingCapture: (captureId: string) => void;
+  permanentlyDeleteSpendingCapture: (captureId: string) => void;
   saveSpendingFolder: (name: string, color: string) => string | undefined;
   renameSpendingFolder: (folderId: string, name: string) => void;
   deleteSpendingFolder: (folderId: string) => void;
@@ -770,6 +773,72 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     });
   };
 
+  const trashSpendingCapture = (captureId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && !item.deletedAt && item.parseStatus !== "undone");
+      if (!capture) return state;
+      const trashedCapture = { ...capture, deletedAt: now, updatedAt: now };
+      const linkedExpenses = state.expenses.map((expense) => expense.captureId === captureId && !expense.deletedAt
+        ? { ...expense, deletedAt: now, updatedAt: now }
+        : expense);
+      let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(trashedCapture) }, cloudEnabled);
+      for (const expense of linkedExpenses.filter((item) => item.captureId === captureId && item.deletedAt === now)) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+      }
+      return {
+        ...state,
+        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? trashedCapture : item),
+        expenses: linkedExpenses,
+        syncQueue,
+      };
+    });
+  };
+
+  const restoreSpendingCapture = (captureId: string) => {
+    if (!user) return;
+    const now = new Date().toISOString();
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && item.deletedAt && item.parseStatus !== "undone");
+      if (!capture) return state;
+      const trashedAt = capture.deletedAt;
+      const restoredCapture = { ...capture, deletedAt: null, updatedAt: now };
+      const restoredExpenses = state.expenses.map((expense) => expense.captureId === captureId && expense.deletedAt === trashedAt
+        ? { ...expense, deletedAt: null, updatedAt: now }
+        : expense);
+      let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(restoredCapture) }, cloudEnabled);
+      for (const expense of restoredExpenses.filter((item) => item.captureId === captureId && item.deletedAt === null && state.expenses.some((before) => before.id === item.id && before.deletedAt === trashedAt))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
+      }
+      return {
+        ...state,
+        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? restoredCapture : item),
+        expenses: restoredExpenses,
+        syncQueue,
+      };
+    });
+  };
+
+  const permanentlyDeleteSpendingCapture = (captureId: string) => {
+    if (!user) return;
+    commitData((state) => {
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && item.deletedAt && item.parseStatus !== "undone");
+      if (!capture) return state;
+      const linkedExpenses = state.expenses.filter((expense) => expense.captureId === captureId);
+      let syncQueue = queue(state, { table: "spending_captures", action: "delete", recordId: captureId }, cloudEnabled);
+      for (const expense of linkedExpenses) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "delete", recordId: expense.id }, cloudEnabled);
+      }
+      return {
+        ...state,
+        spendingCaptures: state.spendingCaptures.filter((item) => item.id !== captureId),
+        expenses: state.expenses.filter((expense) => expense.captureId !== captureId),
+        syncQueue,
+      };
+    });
+  };
+
   const saveIncome = (draft: IncomeEntryDraft, id?: string) => {
     if (!user) return "";
     const account = draft.accountId ? data.accounts.find((item) => item.id === draft.accountId && item.userId === user.id && !item.archivedAt && !item.deletedAt && item.currency === draft.currency) : undefined;
@@ -1067,6 +1136,9 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       setCaptureParseResult,
       replayCachedCaptureParse,
       setAiParsingEnabled,
+      trashSpendingCapture,
+      restoreSpendingCapture,
+      permanentlyDeleteSpendingCapture,
       saveSpendingFolder,
       renameSpendingFolder,
       deleteSpendingFolder,

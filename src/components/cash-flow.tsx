@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
-import { CategoryIcon } from "@/components/category-icon";
+import { CategoryIcon, categoryAccent } from "@/components/category-icon";
 import { CurrencyAmountInput } from "@/components/currency-amount-input";
 import { DatePicker, dateFromInput, dateInputValue } from "@/components/date-picker";
 import { FloatingAddButton } from "@/components/floating-add-button";
@@ -16,7 +16,7 @@ import { categoryLabel } from "@/lib/display-labels";
 import { formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
-import type { Expense, IncomeEntry } from "@/lib/types";
+import type { Category, Expense, IncomeEntry } from "@/lib/types";
 
 type Transaction = { kind: "expense"; date: string; entry: Expense } | { kind: "income"; date: string; entry: IncomeEntry };
 
@@ -24,6 +24,7 @@ export function CashFlowView({ onAddExpense, onEditExpense }: { onAddExpense: ()
   const store = useAppStore();
   const { t, language } = useI18n();
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [incomeEditor, setIncomeEditor] = useState<IncomeEntry | "new" | null>(null);
   const [addMenu, setAddMenu] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
@@ -67,11 +68,25 @@ export function CashFlowView({ onAddExpense, onEditExpense }: { onAddExpense: ()
       <p className="min-w-0 text-center text-sm font-medium">{month.toLocaleDateString(languageLocale(language), { month: "long", year: "numeric" })}</p>
       <button type="button" className="icon-button" aria-label={t("expense.nextMonth")} onClick={() => setMonth((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))}><ChevronRight size={20} /></button>
     </div>
-    <div className="cash-summary">
-      <div className="cash-summary-item cash-summary-item--income"><span className="transaction-badge transaction-badge--income">{t("insights.income")}</span><p className="cash-summary-amount">{money(earned)}</p></div>
-      <div className="cash-summary-item cash-summary-item--expense"><span className="transaction-badge transaction-badge--expense">{t("insights.expenses")}</span><p className="cash-summary-amount">{money(spent)}</p></div>
-    </div>
-    <div className="summary-row !min-h-0"><span>{t("insights.balance")}</span><span className="summary-row-amount">{money(earned - spent)}</span></div>
+    <SpendingCategoryChart expenses={expenses} categories={store.categories} currency={currency} selectedCategoryId={selectedCategoryId} onSelectCategory={setSelectedCategoryId} />
+    <section className="cash-flow-summary" aria-label={t("insights.overview")}>
+      <div className="cash-flow-summary-main">
+        <span className="cash-flow-summary-label">{t("insights.balance")}</span>
+        <p className="cash-flow-summary-balance">{money(earned - spent)}</p>
+      </div>
+      <div className="cash-flow-summary-metrics">
+        <div className="cash-flow-summary-metric">
+          <span className="cash-flow-summary-dot cash-flow-summary-dot--income" aria-hidden="true" />
+          <span className="cash-flow-summary-metric-label">{t("insights.income")}</span>
+          <span className="cash-flow-summary-metric-value">{money(earned)}</span>
+        </div>
+        <div className="cash-flow-summary-metric">
+          <span className="cash-flow-summary-dot cash-flow-summary-dot--expense" aria-hidden="true" />
+          <span className="cash-flow-summary-metric-label">{t("insights.expenses")}</span>
+          <span className="cash-flow-summary-metric-value">{money(spent)}</span>
+        </div>
+      </div>
+    </section>
     <section aria-label={t("insights.transactions")}>
       <h3 className="section-title mb-3">{t("insights.transactions")}</h3>
       {Array.from(groups, ([key, entries]) => <section key={key} className="transaction-group" aria-label={new Date(entries[0].date).toLocaleDateString(languageLocale(language), { day: "numeric", month: "short" })}>
@@ -79,17 +94,18 @@ export function CashFlowView({ onAddExpense, onEditExpense }: { onAddExpense: ()
         {entries.map((transaction) => {
           const category = transaction.kind === "expense" ? store.categories.find((item) => item.id === transaction.entry.categoryId) : undefined;
           const label = transaction.kind === "income" ? t("insights.income") : category ? categoryLabel(category, t) : t("activity.expense");
-          const title = transaction.entry.note.trim() || label;
+          const description = transaction.entry.note.trim();
+          const title = description || label;
+          const detail = description && description.toLocaleLowerCase(languageLocale(language)) !== label.toLocaleLowerCase(languageLocale(language)) ? label : "";
           return <button key={`${transaction.kind}-${transaction.entry.id}`} type="button" className="finance-row" data-kind={transaction.kind} aria-label={`${t("common.edit")}: ${title}, ${transaction.kind === "income" ? t("insights.income") : t("activity.expense")}, ${transaction.kind === "income" ? "+" : "−"}${money(transaction.entry.amount)}`} onClick={() => transaction.kind === "expense" ? onEditExpense(transaction.entry.id) : setIncomeEditor(transaction.entry)}>
             {transaction.kind === "expense" ? <CategoryIcon name={transaction.entry.note} icon={category?.icon} /> : <span className="income-icon-background"><ArrowDownLeft size={20} aria-hidden="true" /></span>}
-            <span className="min-w-0"><span className="expense-name">{title}</span><span className={`transaction-badge transaction-badge--${transaction.kind}`}>{transaction.kind === "income" ? t("insights.income") : t("activity.expense")}</span></span>
+            <span className="finance-row-copy"><span className="expense-name">{title}</span>{detail && <span className="finance-row-detail">{detail}</span>}</span>
             <span className="expense-amount">{transaction.kind === "income" ? "+" : "−"}{money(transaction.entry.amount)}</span>
           </button>;
         })}
       </section>)}
       {!transactions.length && <p className="py-4 text-sm text-muted">{t("insights.noTransactions")}</p>}
     </section>
-    <SpendingBreakdown expenses={expenses} income={income} currency={currency} />
     <BudgetControls month={selectedMonth} currency={currency} />
     {addMenu && <div ref={menu} id="cash-flow-add-menu" className="add-action-menu" role="group" aria-label={t("common.add")}>
       <button type="button" onClick={() => { setAddMenu(false); onAddExpense(); }}><span className="transaction-badge transaction-badge--expense"><Plus size={16} aria-hidden="true" /></span>{t("expense.addTitle")}</button>
@@ -137,34 +153,107 @@ function BudgetControls({ month, currency }: { month: string; currency: string }
   const [error, setError] = useState(false);
   const status = budgetStatus(store.budgets, store.expenses, currency, month);
   const money = (value: number) => formatMoney(value, currency, languageLocale(language));
-  return <section className="grid gap-4 border-t border-line pt-5" aria-label={t("insights.budget")}>
+  return <section className="budget-controls" aria-label={t("insights.budget")}>
     <h3 className="section-title">{t("insights.budget")}</h3>
     {status ? <>
       <div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words text-sm text-muted">{money(status.spent)} {t("insights.spentOf")} {money(status.budget.amount)}</p><button type="button" className="icon-button" aria-label={t("insights.removeBudget")} onClick={() => store.deleteBudget(status.budget.id)}><Trash2 size={18} /></button></div>
       <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-label={t("insights.budget")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100, Math.max(0, status.percentage)))}><div className={`h-full rounded-full ${status.remaining < 0 ? "bg-danger" : "bg-accent"}`} style={{ width: `${Math.min(100, Math.max(0, status.percentage))}%` }} /></div>
       <p className="text-sm text-muted">{status.remaining < 0 ? t("insights.overBudget").replace("{amount}", money(Math.abs(status.remaining))) : `${t("insights.remaining")}: ${money(status.remaining)}`}</p>
     </> : <p className="text-sm text-muted">{t("insights.noBudget")}</p>}
-    <form noValidate className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => { event.preventDefault(); const parsed = parseAmountValue(amount); if (parsed === null) { setError(true); return; } store.saveBudget({ amount: parsed, currency, month }); setAmount(""); setError(false); }}>
-      <CurrencyAmountInput locale={languageLocale(language)} className="input" aria-label={t("insights.addBudget")} aria-invalid={error} placeholder={t("insights.budgetPlaceholder")} value={amount} onValueChange={(value) => { setAmount(value); setError(false); }} />
-      <button type="submit" className="control justify-center text-accent">{t("common.saveChanges")}</button>
-      {error && <p role="alert" className="text-sm text-danger sm:col-span-2">{t("expense.amountError")}</p>}
+    <form noValidate className="budget-form" onSubmit={(event) => { event.preventDefault(); const parsed = parseAmountValue(amount); if (parsed === null) { setError(true); return; } store.saveBudget({ amount: parsed, currency, month }); setAmount(""); setError(false); }}>
+      <CurrencyAmountInput locale={languageLocale(language)} className="input budget-input" aria-label={t("insights.addBudget")} aria-invalid={error} placeholder={t("insights.budgetPlaceholder")} value={amount} onValueChange={(value) => { setAmount(value); setError(false); }} />
+      <button type="submit" className="control budget-save">{t("common.saveChanges")}</button>
+      {error && <p role="alert" className="budget-error text-sm text-danger">{t("expense.amountError")}</p>}
     </form>
   </section>;
 }
 
-function SpendingBreakdown({ expenses, income, currency }: { expenses: Expense[]; income: IncomeEntry[]; currency: string }) {
-  const store = useAppStore();
+function SpendingCategoryChart({ expenses, categories, currency, selectedCategoryId, onSelectCategory }: { expenses: Expense[]; categories: Category[]; currency: string; selectedCategoryId: string | null; onSelectCategory: (id: string | null) => void }) {
   const { t, language } = useI18n();
   const total = sumAmounts(expenses);
-  const categories = store.categories.map((category) => ({ category, amount: sumAmounts(expenses.filter((entry) => entry.categoryId === category.id)) })).filter((entry) => entry.amount > 0).sort((a,b) => b.amount - a.amount);
-  const weeks = Array.from({ length: 5 }, (_, index) => ({ label: `${t("insights.week")} ${index + 1}`, expense: sumAmounts(expenses.filter((entry) => Math.floor((new Date(entry.spentAt).getDate() - 1) / 7) === index)), income: sumAmounts(income.filter((entry) => Math.floor((new Date(entry.receivedAt).getDate() - 1) / 7) === index)) }));
-  const max = Math.max(1, ...weeks.flatMap((week) => [week.income, week.expense]));
-  return <details className="spending-breakdown"><summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">{t("insights.whereItWent")}</summary><div className="grid gap-3 pb-4">
-    <div className="flex gap-2"><span className="transaction-badge transaction-badge--income">{t("insights.income")}</span><span className="transaction-badge transaction-badge--expense">{t("insights.expenses")}</span></div>
-    <div className="chart-bars" role="img" aria-label={weeks.map((week) => `${week.label}: ${t("insights.income")} ${formatMoney(week.income,currency,languageLocale(language))}, ${t("insights.expenses")} ${formatMoney(week.expense,currency,languageLocale(language))}`).join("; ")}>
-      {weeks.map((week) => <div key={week.label} className="chart-column"><div className="flex h-24 items-end gap-1"><div className="w-3 rounded-t-md" style={{backgroundColor:"var(--category-green)",height:`${week.income ? Math.max(3,week.income/max*96) : 1}px`}} /><div className="w-3 rounded-t-md" style={{backgroundColor:"var(--category-tangerine)",height:`${week.expense ? Math.max(3,week.expense/max*96) : 1}px`}} /></div><span className="break-words text-center text-xs text-muted">{week.label}</span></div>)}
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const amounts = new Map<string, number>();
+  for (const expense of expenses) {
+    const id = categoryById.has(expense.categoryId) ? expense.categoryId : "uncategorized";
+    amounts.set(id, (amounts.get(id) ?? 0) + expense.amount);
+  }
+  const slices = [...amounts].map(([id, amount]) => {
+    const category = categoryById.get(id);
+    return { id, amount, category, label: category ? categoryLabel(category, t) : t("activity.expense"), icon: category?.icon };
+  }).sort((a, b) => b.amount - a.amount);
+  const selected = slices.find((slice) => slice.id === selectedCategoryId);
+  const centerLabel = selected?.label ?? t("insights.expenses");
+  const centerAmount = selected?.amount ?? total;
+  const centerShare = selected && total > 0 ? new Intl.NumberFormat(languageLocale(language), { style: "percent", maximumFractionDigits: 0 }).format(selected.amount / total) : null;
+  const radius = 82;
+  const circumference = 2 * Math.PI * radius;
+  const segmentGap = 8;
+  let offset = 0;
+  const money = (value: number) => formatMoney(value, currency, languageLocale(language));
+
+  function toggleSlice(id: string) {
+    onSelectCategory(selectedCategoryId === id ? null : id);
+  }
+
+  function handleSliceKeyDown(event: ReactKeyboardEvent<SVGCircleElement>, id: string) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleSlice(id);
+  }
+
+  return <section className="spending-category-chart" aria-label={t("insights.whereItWent")}>
+    <div className="category-donut">
+      <svg viewBox="0 0 220 220" role="group" aria-label={t("insights.whereItWent")}>
+        <circle className="category-donut-track" cx="110" cy="110" r={radius} fill="none" stroke="rgb(var(--color-line))" strokeWidth="18" aria-hidden="true" />
+        {total > 0 && slices.map((slice, index) => {
+          const length = circumference * slice.amount / total;
+          const segmentOffset = offset;
+          offset += length;
+          const active = selectedCategoryId === slice.id;
+          const strokeWidth = Math.min(active ? 23 : 18, length * 0.42);
+          const gap = Math.min(segmentGap, length * 0.16);
+          const dashLength = Math.max(0, length - gap - strokeWidth);
+          if (dashLength <= 0) return null;
+          const dashOffset = -(segmentOffset + gap / 2 + strokeWidth / 2);
+          return <circle
+            key={slice.id}
+            className={`category-donut-segment${active ? " category-donut-segment-active" : ""}${selected && !active ? " category-donut-segment-dimmed" : ""}`}
+            cx="110"
+            cy="110"
+            r={radius}
+            fill="none"
+            stroke={categoryAccent(slice.icon)}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 110 110)"
+            style={{ animationDelay: `${index * 32}ms` }}
+            role="button"
+            tabIndex={0}
+            aria-label={`${slice.label}: ${money(slice.amount)}, ${centerShareLabel(slice.amount, total, languageLocale(language))}`}
+            aria-pressed={active}
+            onClick={() => toggleSlice(slice.id)}
+            onKeyDown={(event) => handleSliceKeyDown(event, slice.id)}
+          />;
+        })}
+      </svg>
+      <div className="category-donut-center" aria-live="polite">
+        <span className="category-donut-label">{centerLabel}</span>
+        <span className="category-donut-amount">{money(centerAmount)}</span>
+        {centerShare && <span className="category-donut-share">{centerShare} {t("insights.shareOfSpending")}</span>}
+      </div>
     </div>
-    {categories.map(({category,amount}) => <div key={category.id} className="flex min-w-0 items-center gap-3"><CategoryIcon icon={category.icon} /><div className="min-w-0 flex-1"><p className="text-sm">{categoryLabel(category,t)}</p><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-accent" style={{width:`${total ? amount / total * 100 : 0}%`}} /></div></div><span className="max-w-[45%] break-words text-right text-sm tabular-nums">{formatMoney(amount,currency,languageLocale(language))}</span></div>)}
-    {!categories.length && <p className="text-sm text-muted">{t("insights.empty")}</p>}
-  </div></details>;
+    {slices.length ? <div className="category-chart-legend">
+      {slices.map((slice) => <button key={slice.id} type="button" className={`category-chart-legend-row${selectedCategoryId === slice.id ? " category-chart-legend-row-active" : ""}`} aria-pressed={selectedCategoryId === slice.id} onClick={() => toggleSlice(slice.id)}>
+        <span className="category-chart-swatch" style={{ backgroundColor: categoryAccent(slice.icon) }} aria-hidden="true" />
+        <span className="min-w-0 flex-1 truncate text-left">{slice.label}</span>
+        <span className="shrink-0 text-right tabular-nums">{money(slice.amount)}</span>
+      </button>)}
+    </div> : <p className="category-chart-empty">{t("insights.empty")}</p>}
+  </section>;
+}
+
+function centerShareLabel(amount: number, total: number, locale: string) {
+  return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(total > 0 ? amount / total : 0);
 }

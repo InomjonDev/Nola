@@ -18,7 +18,7 @@ export const palettes = {
     accent: "#2457C5", accentStrong: "#1743AF", accentSoft: "#E8F0FF", onAccent: "#FFFFFF",
     destructive: "#B42332", onDestructive: "#FFFFFF", destructiveSoft: "#FCEFF0",
     success: "#16753D", warning: "#925500", overlay: "rgba(0, 0, 0, 0.6)",
-    chart: ["#B45F00", "#0064D9", "#16753D", "#B72A6B", "#16753D"],
+    chart: ["#E87500", "#0064D9", "#16753D", "#B72A6B", "#16753D"],
     chartBackground: ["#FFF1E2", "#EAF2FE", "#EAF7EE", "#FBEAF1", "#EAF7EE"],
   },
   dark: {

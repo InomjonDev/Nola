@@ -14,6 +14,7 @@ Apply these files in lexical/filename order:
 6. `20261005160939_savings_goals.sql` — savings goals, contributions, ownership/currency relationship, and contribution immutability.
 7. `20261012220000_nola_spending_notes.sql` — folders, spending captures, expense links/quantity, AI consent, parse quota, and related RLS.
 8. `20261013080113_cloud_finance_sync_entities.sql` — accounts, category budgets, recurring rules, account adjustments, and related expense/income integrity policies.
+9. `20261014000100_spending_parse_daily_quota.sql` — caps authenticated AI parsing at 10 attempts per minute and 30 attempts per rolling 24 hours.
 
 Do not edit an already-applied migration to change deployed state. Add a new forward migration; production rollback is another reviewed migration, not editing history or resetting the database.
 

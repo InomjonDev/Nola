@@ -37,7 +37,7 @@ This is the policy map for the schema currently represented by `supabase/migrati
 
 ## Privileged functions and internal tables
 
-- `public.consume_spending_parse_quota()` is the only app entry point to the private `spending_parse_attempts` table. It requires `auth.uid()`, takes a per-user advisory lock, prunes attempts older than 60 seconds, and allows at most 10 attempts per 60 seconds. Direct table privileges are revoked from `public`, `anon`, and `authenticated`; execution is granted to `authenticated`.
+- `public.consume_spending_parse_quota()` is the only app entry point to the private `spending_parse_attempts` table. It requires `auth.uid()`, takes a per-user advisory lock, prunes attempts older than 24 hours, and allows at most 10 attempts per 60 seconds and 30 attempts per rolling 24 hours. Direct table privileges are revoked from `public`, `anon`, and `authenticated`; execution is granted to `authenticated`.
 - `public.delete_own_account()` is `SECURITY DEFINER`, requires a non-null `auth.uid()`, and deletes only that Auth user. Execute is revoked from `public` and `anon`, and granted to `authenticated`.
 - `public.keep_latest_client_write()` and `public.protect_goal_contribution()` are trigger functions. Direct execute is revoked; they are not application APIs.
 - The `daily-reminders` Supabase Edge Function uses a server-side service-role key to read due reminders and send pushes. That key bypasses RLS and must never be used by browser code.

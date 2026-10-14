@@ -20,6 +20,10 @@ export function formatCompactDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(new Date(value));
 }
 
+export function formatDayMonth(value: string) {
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit" }).format(new Date(value));
+}
+
 export function isThisMonth(value: string) {
   const date = new Date(value);
   const now = new Date();
