@@ -59,5 +59,5 @@ export function CategoryIcon({ name, icon, className = "h-5 w-5", color, size }:
   const normalizedName = name?.trim().toLowerCase();
   const iconName = (normalizedName ? categoryNameIcons[normalizedName] : undefined) ?? normalizedIcon ?? "more-horizontal";
   const Icon = icons[iconName] ?? MoreHorizontal;
-  return <span className="category-icon-background" style={{ backgroundColor: `var(--category-${accentFamilies[iconName]}-bg)` }} aria-hidden="true"><Icon className={`category-glyph ${className}`} color={color ?? categoryAccent(iconName)} size={size ?? 20} /></span>;
+  return <span className="category-icon-background" style={{ backgroundColor: categoryAccent(iconName) }} aria-hidden="true"><Icon className={`category-glyph ${className}`} color={color ?? "rgb(var(--color-bg))"} size={size ?? 20} /></span>;
 }

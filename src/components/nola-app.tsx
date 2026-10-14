@@ -23,7 +23,7 @@ import { FloatingAddButton } from "@/components/floating-add-button";
 import { CashFlowView } from "@/components/cash-flow";
 import { CurrencyAmountInput } from "@/components/currency-amount-input";
 import { GoogleLogo } from "@/components/google-logo";
-import { SavingsGoalsPreview, SavingsGoalsView } from "@/components/savings-goals";
+import { SavingsGoalsView } from "@/components/savings-goals";
 import { consumeRollingWindow, formatShortCountdown } from "@/lib/action-rate-limit";
 import { CONSENT_KEY, COOKIE_CONSENT_KEY, DEFAULT_PAYMENT_METHODS, SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { formatMoney } from "@/lib/format";
@@ -39,11 +39,16 @@ import { notificationsEnabled, setDailyReminderEnabled } from "@/lib/notificatio
 import { useAppStore } from "@/lib/app-store";
 import type { Category, CategoryIconName, Expense, PersistedAppData, SpendingCapture, SpendingFolder } from "@/lib/types";
 
-type View = "home" | "add" | "capture" | "folders" | "insights" | "manage" | "profile" | "settings";
+type View = "home" | "add" | "capture" | "folders" | "insights" | "goals" | "manage" | "profile" | "settings";
+
+function GoalsNavIcon({ size = 22 }: { size?: number }) {
+  return <span className="goals-nav-emoji" style={{ fontSize: size }} aria-hidden="true">🎯</span>;
+}
 
 const navItems = [
   { href: "/", view: "home", labelKey: "nav.spending", icon: Home },
   { href: "/insights", view: "insights", labelKey: "nav.insights", icon: LineChart },
+  { href: "/goals", view: "goals", labelKey: "nav.goals", icon: GoalsNavIcon },
   { href: "/profile", view: "profile", labelKey: "nav.profile", icon: User },
 ] as const;
 
@@ -235,13 +240,14 @@ export function NolaApp({ view, overlay, captureId, folderId }: { view: View; ov
           />}
           {view === "add" && <ExpenseForm onSaved={() => router.push("/")} />}
           {view === "insights" && <InsightsView onAddExpense={() => openExpenseSheet()} onEditExpense={openExpenseSheet} />}
+          {view === "goals" && <GoalsView />}
           {view === "manage" && <ManageView />}
           {view === "profile" && <ProfileView />}
           {view === "settings" && <SettingsView />}
         </section>
       </main>
       <MobileNav active={activeNavView} />
-      {!workspaceView && view !== "insights" && <FloatingAddButton label={t("capture.open")} onClick={() => openCaptureComposer()} />}
+      {!workspaceView && view !== "insights" && view !== "goals" && <FloatingAddButton label={t("capture.open")} onClick={() => openCaptureComposer()} />}
       {expenseSheet && <ExpenseSheet editId={expenseSheet === "new" ? undefined : expenseSheet} initialNote={expenseInitialNote} onClose={closeExpenseSheet} onSaved={completeExpenseSheet} />}
       {captureComposerOpen && <CaptureComposer folderId={captureFolderId} initialText={captureDraftText} onSaved={(id) => { setCaptureFeedbackId(id); setCaptureDraftText(""); }} onClose={() => { setCaptureComposerOpen(false); setCaptureFolderId(null); setCaptureDraftText(""); restoreCaptureFocus(); }} onSignIn={(sourceText) => { saveCaptureResume({ draftText: sourceText }); setCaptureDraftText(sourceText); void store.signOut(); }} onManualEntry={(sourceText) => { setCaptureComposerOpen(false); setCaptureDraftText(sourceText); setExpenseInitialNote(sourceText); setReturnToCaptureAfterExpense(true); setExpenseSheet("new"); }} />}
       {feedbackCapture && <CaptureFeedback capture={feedbackCapture} message={captureFeedbackMessage} canRetry={(feedbackCapture.parseStatus === "needs_retry" || feedbackIssue === "sync") && feedbackIssue !== "signIn"} canRetrySync={feedbackCapture.parseStatus === "pending" && feedbackSyncPending} canSignIn={feedbackIssue === "signIn"} onRetry={() => captureParser.retryCapture(feedbackCapture.id)} onRetrySync={store.retrySync} onSignIn={() => { if (store.user?.isDemo) { saveCaptureResume({ draftText: feedbackCapture.sourceText }); setCaptureDraftText(feedbackCapture.sourceText); setCaptureComposerOpen(true); } else saveCaptureResume({ captureId: feedbackCapture.id }); void store.signOut(); }} onUndo={() => undoCapture(feedbackCapture.id)} />}
@@ -561,7 +567,7 @@ function SpendingWorkspace({
           onMoveToFolder={(id, targetFolderId) => store.moveCaptureToFolder(id, targetFolderId)}
           onManualEntry={onAddManualExpense}
         />
-        : mode === "home" ? <div className="spending-overview"><SavingsGoalsPreview /><BudgetPreview /></div>
+        : mode === "home" ? <div className="spending-overview"><BudgetPreview /></div>
           : <div className="spending-detail-empty"><span className="spending-empty-mark" aria-hidden="true">N</span><p>{t("capture.selectNote")}</p></div>}
     </aside>
 
@@ -738,12 +744,14 @@ function HomeSummary({ expenses }: { expenses: Expense[] }) {
   const total = (after: Date) => expenses.filter((expense) => expense.currency === currency && new Date(expense.spentAt) >= after).reduce((sum, expense) => sum + expense.amount, 0);
   return <section className="home-summary" aria-label={t("home.summary")}>
     <h2 className="sr-only">{t("home.summary")}</h2>
-    <div className="home-summary-content">
-      <span className="home-summary-month-label">{t("history.thisMonth")}</span>
-      <span className="home-summary-month-value">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span>
-      <div className="home-summary-week"><span>{t("home.thisWeek")}</span><span className="home-summary-week-value">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span></div>
+    <div className="home-summary-top">
+      <div className="home-summary-content">
+        <span className="home-summary-month-label">{t("history.thisMonth")}</span>
+        <span className="home-summary-month-value">{visible ? formatMoney(total(startOfMonth()), currency, languageLocale(language)) : "••••"}</span>
+      </div>
+      <button type="button" className="home-summary-visibility" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={18} /> : <EyeOff size={18} />}</button>
     </div>
-    <button type="button" className="home-summary-visibility" aria-label={visible ? t("home.hideTotal") : t("home.showTotal")} onClick={() => setVisible((value) => !value)}>{visible ? <Eye size={18} /> : <EyeOff size={18} />}</button>
+    <div className="home-summary-week"><span>{t("home.spentThisWeek")}</span><span className="home-summary-week-value">{visible ? formatMoney(total(startOfWeek()), currency, languageLocale(language)) : "••••"}</span></div>
   </section>;
 }
 
@@ -890,6 +898,11 @@ function ExpenseForm({ compact = false, editId: explicitEditId, initialNote, onS
       {editing && <button type="button" className="control justify-center text-danger" onClick={() => { store.deleteExpense(editing.id); onSaved?.(); }}>{t("history.deleteExpense")}</button>}
     </form>
   );
+}
+
+function GoalsView() {
+  const { t } = useI18n();
+  return <section className="grid gap-6"><h2 className="screen-title">{t("nav.goals")}</h2><SavingsGoalsView /></section>;
 }
 
 function InsightsView({ onAddExpense, onEditExpense }: { onAddExpense: () => void; onEditExpense: (id: string) => void }) {
