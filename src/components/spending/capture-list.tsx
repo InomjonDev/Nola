@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { CategoryIcon } from "@/components/category-icon";
 import { CaptureCard, type CaptureParseIssue } from "@/components/spending/capture-card";
 import { useI18n } from "@/lib/i18n-provider";
-import { formatMoney } from "@/lib/format";
+import { formatCompactDate, formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
 import { categoryLabel } from "@/lib/display-labels";
 import type { Category, Expense, SpendingCapture, SpendingFolder, Tag } from "@/lib/types";
@@ -25,13 +25,13 @@ function StandaloneExpenseRow({ expense, categories, tags, onOpen }: { expense: 
   const title = expense.note || (category ? categoryLabel(category, t) : t("history.expense"));
 
   return <article className="border-b border-line py-1 last:border-b-0">
-    <button type="button" className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl px-1 py-2 text-left transition-colors hover:bg-raised/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={`${t("history.expense")}: ${title}, ${formatMoney(expense.amount, expense.currency, languageLocale(language))}`} onClick={onOpen}>
+    <button type="button" className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl px-1 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label={`${t("history.expense")}: ${title}, ${formatMoney(expense.amount, expense.currency, languageLocale(language))}`} onClick={onOpen}>
       <CategoryIcon name={category?.name} icon={category?.icon} className="h-5 w-5" />
       <span className="min-w-0 flex-1">
         <span className="block break-words text-sm font-medium text-text [overflow-wrap:anywhere]">{title}</span>
         <span className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted">
           <span>{category ? categoryLabel(category, t) : t("history.expense")}</span>
-          <time dateTime={expense.spentAt}>{new Date(expense.spentAt).toLocaleDateString(languageLocale(language), { dateStyle: "medium" })}</time>
+          <time dateTime={expense.spentAt}>{formatCompactDate(expense.spentAt)}</time>
           {expense.quantity !== null && <span>{expense.quantity}×</span>}
         </span>
       </span>

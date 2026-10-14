@@ -9,7 +9,7 @@ import type { CaptureParseIssue } from "@/components/spending/capture-card";
 import { useDialogFocus } from "@/components/use-dialog-focus";
 import { captureParseIssueMessage } from "@/lib/capture-parse-issue";
 import { categoryLabel, paymentLabel } from "@/lib/display-labels";
-import { formatMoney } from "@/lib/format";
+import { formatCompactDate, formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
 import type { Category, Expense, PaymentMethod, SpendingCapture, SpendingFolder, Tag } from "@/lib/types";
@@ -364,7 +364,7 @@ export function CaptureDetail({
                 const category = categoryById.get(expense.categoryId);
                 const payment = paymentById.get(expense.paymentMethodId);
                 const expenseName = expense.note || (category ? categoryLabel(category, t) : t("history.expense"));
-                const expenseDate = new Date(expense.spentAt).toLocaleDateString(languageLocale(language), { dateStyle: "medium" });
+                const expenseDate = formatCompactDate(expense.spentAt);
                 const expenseAccessibleName = [
                   `${editExpenseLabel ?? t("common.edit")}: ${expenseName}`,
                   expense.quantity !== null ? `${expense.quantity}×` : null,

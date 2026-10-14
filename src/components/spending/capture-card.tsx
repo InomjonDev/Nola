@@ -3,7 +3,7 @@
 import { CategoryIcon } from "@/components/category-icon";
 import { languageLocale } from "@/lib/i18n";
 import { useI18n } from "@/lib/i18n-provider";
-import { formatMoney } from "@/lib/format";
+import { formatCompactDate, formatMoney } from "@/lib/format";
 import { captureTotal } from "@/lib/spending-captures";
 import { categoryLabel } from "@/lib/display-labels";
 import { captureParseIssueMessage, type CaptureParseIssue } from "@/lib/capture-parse-issue";
@@ -62,7 +62,7 @@ export function CaptureCard({
   const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const capturedAt = new Date(capture.capturedAt);
   const capturedLabel = Number.isFinite(capturedAt.getTime())
-    ? capturedAt.toLocaleDateString(languageLocale(language), { dateStyle: "medium" })
+    ? formatCompactDate(capture.capturedAt)
     : capture.capturedAt;
 
   function renderSource() {
@@ -82,7 +82,7 @@ export function CaptureCard({
   return <article className="capture-card group min-w-0 border-b border-line first:pt-0 last:border-b-0">
     <button
       type="button"
-      className="capture-card-open flex min-h-11 w-full min-w-0 flex-col items-start rounded-xl text-left outline-none transition-colors hover:bg-raised/40 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      className="capture-card-open flex min-h-11 w-full min-w-0 flex-col items-start rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       aria-label={accessibleName}
       onClick={onOpen}
     >

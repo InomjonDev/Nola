@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import { Search, X } from "@/components/icons";
 import { useI18n } from "@/lib/i18n-provider";
-import { formatMoney } from "@/lib/format";
+import { formatCompactDate, formatMoney } from "@/lib/format";
 import { languageLocale } from "@/lib/i18n";
 import { searchSpendingRecords, type SpendingSearchResult } from "@/lib/capture-search";
 import { categoryLabel, paymentLabel } from "@/lib/display-labels";
@@ -121,7 +121,7 @@ export function SpendingSearch({
       : matchedExpense ? [matchedExpense] : [];
     const linkedFolder = result.captureId ? folderById.get(captureById.get(result.captureId)?.folderId ?? "") : undefined;
     const title = resultTitle(result);
-    const dateText = new Date(result.displayDate).toLocaleDateString(languageLocale(language), { dateStyle: "medium" });
+    const dateText = formatCompactDate(result.displayDate);
     const accessibleParts = [`${fieldLabel[result.matchField]}: ${title.slice(0, 160)}`];
     for (const expense of linkedExpenses) {
       const linkedCategory = categoryById.get(expense.categoryId);
@@ -129,7 +129,7 @@ export function SpendingSearch({
       accessibleParts.push(`${t("expense.amount")}: ${formatMoney(expense.amount, expense.currency, languageLocale(language))}`);
       if (linkedCategory) accessibleParts.push(`${t("expense.category")}: ${categoryLabel(linkedCategory, t)}`);
       if (linkedPayment) accessibleParts.push(`${t("expense.paymentMethod")}: ${paymentLabel(linkedPayment.name, t)}`);
-      accessibleParts.push(`${t("expense.date")}: ${new Date(expense.spentAt).toLocaleDateString(languageLocale(language), { dateStyle: "medium" })}`);
+      accessibleParts.push(`${t("expense.date")}: ${formatCompactDate(expense.spentAt)}`);
     }
     if (linkedFolder) accessibleParts.push(`${t("folders.title")}: ${linkedFolder}`);
     if (result.kind === "capture" || !matchedExpense) accessibleParts.push(`${t("expense.date")}: ${dateText}`);

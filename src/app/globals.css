@@ -59,10 +59,10 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 .desktop-nav { display: none; }
 .home-layout, .home-secondary { display: grid; gap: 24px; }
 .home-summary { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: 10px; }
-.home-summary-content { display: grid; min-width: 0; align-content: center; gap: 1px; }
+.home-summary-content { display: grid; min-width: 0; align-content: center; gap: 4px; }
 .home-summary-month-label { color: rgb(var(--color-muted)); font-size: .875rem; line-height: 1.25rem; }
 .home-summary-month-value { min-width: 0; overflow: hidden; color: rgb(var(--color-text)); font-size: 1.25rem; line-height: 1.625rem; font-weight: 650; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.home-summary-week { display: flex; min-width: 0; align-items: baseline; gap: 6px; color: rgb(var(--color-muted)); font-size: .75rem; line-height: 1rem; }
+.home-summary-week { display: flex; min-width: 0; align-items: baseline; gap: 6px; margin-top: 4px; color: rgb(var(--color-muted)); font-size: .75rem; line-height: 1rem; }
 .home-summary-week-value { min-width: 0; overflow: hidden; font-size: .75rem; font-weight: 500; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .home-summary-visibility { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: rgb(var(--color-muted)); }
 .home-summary-visibility:hover { background: rgb(var(--color-raised)); color: rgb(var(--color-text)); }
@@ -181,7 +181,6 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 .mobile-sidebar-toggle:hover { background: rgb(var(--color-raised)); }
 .mobile-sidebar-toggle[aria-expanded="true"] { background: rgb(var(--color-accent-soft)); color: rgb(var(--color-accent)); }
 .mobile-sidebar-toggle svg { transition: transform 220ms cubic-bezier(.25,.1,.25,1); }
-.mobile-sidebar-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
 .desktop-capture-action { display: none; }
 .spending-list-scroll { min-width: 0; }
 .spending-overview { display: grid; gap: 28px; }

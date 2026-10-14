@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bell, CalendarDays, Check, ChevronRight, Cloud, Download, Eye, EyeOff, Home, LineChart, LogOut, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SidebarLeft, SlidersHorizontal, Tags, Trash2, User, X } from "@/components/icons";
+import { Bell, CalendarDays, Check, ChevronRight, Cloud, Download, Eye, EyeOff, Home, LineChart, LogOut, Menu, Pencil, Plus, RefreshCw, Search, Settings, Shield, ShieldCheck, SlidersHorizontal, Tags, Trash2, User, X } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -482,7 +482,7 @@ function SpendingWorkspace({
     <section className="spending-list-pane" aria-labelledby="spending-workspace-title">
       <header className={`spending-list-header${mode === "home" ? " spending-list-header-home" : ""}`}>
         <div className={`spending-title-group${mode === "home" ? " spending-title-group-home" : ""}`}>
-          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><SidebarLeft className="h-5 w-5" aria-hidden="true" /></button>}
+          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><Menu className="h-5 w-5" aria-hidden="true" /></button>}
           {mode === "home"
             ? <><h1 id="spending-workspace-title" className="sr-only">{t("nav.spending")}</h1><HomeSummary expenses={activeExpenses} /></>
             : <div className="min-w-0">
