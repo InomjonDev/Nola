@@ -488,7 +488,6 @@ function SpendingWorkspace({
     <section className="spending-list-pane" aria-labelledby="spending-workspace-title">
       <header className={`spending-list-header${mode === "home" ? " spending-list-header-home" : ""}`}>
         <div className={`spending-title-group${mode === "home" ? " spending-title-group-home" : ""}`}>
-          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><Menu className="h-5 w-5" aria-hidden="true" /></button>}
           {mode === "home"
             ? <><h1 id="spending-workspace-title" className="sr-only">{t("nav.spending")}</h1><HomeSummary expenses={activeExpenses} /></>
             : <div className="min-w-0">
@@ -497,6 +496,7 @@ function SpendingWorkspace({
             </div>}
         </div>
         <div className="spending-header-actions">
+          {mode !== "capture" && <button type="button" className="mobile-sidebar-toggle" aria-label={t("folders.browse")} aria-expanded={mobileFoldersOpen} aria-controls={mobileFoldersMounted ? "mobile-folder-sidebar" : undefined} onClick={openMobileFolders}><Menu className="h-5 w-5" aria-hidden="true" /></button>}
           {mode !== "capture" && <button type="button" className="control min-h-11 shrink-0 justify-center bg-accent px-3 text-sm font-semibold text-on-accent desktop-capture-action" aria-label={t("capture.open")} onClick={() => onCapture(mode === "folders" ? folderId ?? null : null)}><Pencil className="h-4 w-4" aria-hidden="true" /><span>{t("capture.open")}</span></button>}
         </div>
       </header>

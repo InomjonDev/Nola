@@ -59,7 +59,7 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 .goals-nav-emoji { display: grid; place-items: center; line-height: 1; }
 .desktop-nav { display: none; }
 .home-layout, .home-secondary { display: grid; gap: 24px; }
-.home-summary { display: grid; min-width: 0; flex: 1; gap: 14px; border-radius: 20px; background: rgb(var(--color-raised)); padding: 16px; }
+.home-summary { display: grid; min-width: 0; flex: 1; gap: 20px; padding: 8px 0; }
 .home-summary-top { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .home-summary-content { display: grid; min-width: 0; align-content: center; gap: 2px; }
 .home-summary-month-label { color: rgb(var(--color-muted)); font-size: .875rem; line-height: 1.25rem; }
@@ -179,7 +179,6 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 .spending-header-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
 .spending-title-group { display: flex; min-width: 0; align-items: center; gap: 8px; }
 .spending-title-group-home { min-width: 0; flex: 1; align-items: stretch; gap: 8px; }
-.spending-title-group-home .mobile-sidebar-toggle { align-self: flex-start; margin-top: 8px; }
 .mobile-sidebar-toggle { display: none; min-height: 44px; min-width: 44px; flex-shrink: 0; place-items: center; border-radius: 14px; color: rgb(var(--color-text)); transition: background-color 180ms ease, color 180ms ease, transform 220ms cubic-bezier(.25,.1,.25,1); }
 .mobile-sidebar-toggle:hover { background: rgb(var(--color-raised)); }
 .mobile-sidebar-toggle[aria-expanded="true"] { background: rgb(var(--color-accent-soft)); color: rgb(var(--color-accent)); }
@@ -197,11 +196,11 @@ input::placeholder, textarea::placeholder { color: rgb(var(--color-muted)); opac
 .workspace-search-clear { display: grid; min-height: 40px; min-width: 40px; place-items: center; border-radius: 999px; color: rgb(var(--color-muted)); }
 .workspace-compose-button { display: grid; min-height: 52px; min-width: 52px; place-items: center; border: 0; border-radius: 18px; background: rgb(var(--color-accent)); color: rgb(var(--color-on-accent)); }
 .workspace-compose-button:hover { filter: brightness(.96); }
-.mobile-folder-backdrop { display: flex; align-items: stretch; justify-content: flex-start; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 220ms ease, visibility 0s linear 240ms; }
+.mobile-folder-backdrop { display: flex; align-items: stretch; justify-content: flex-end; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 220ms ease, visibility 0s linear 240ms; }
 .mobile-folder-backdrop[data-open="true"] { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 220ms ease; }
 .mobile-folder-scrim { position: absolute; inset: 0; width: 100%; border: 0; background: rgb(0 0 0 / .42); opacity: 0; transition: opacity 220ms ease; }
 .mobile-folder-backdrop[data-open="true"] .mobile-folder-scrim { opacity: 1; }
-.mobile-folder-drawer { position: relative; z-index: 1; width: min(88vw, 360px); height: 100dvh; overflow-y: auto; overscroll-behavior: contain; background: rgb(var(--color-bg)); padding: max(16px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); box-shadow: 16px 0 48px rgb(0 0 0 / .2); transform: translateX(-100%); transition: transform 240ms cubic-bezier(.25,.1,.25,1); will-change: transform; }
+.mobile-folder-drawer { position: relative; z-index: 1; width: min(88vw, 360px); height: 100dvh; overflow-y: auto; overscroll-behavior: contain; background: rgb(var(--color-bg)); padding: max(16px, env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); box-shadow: -16px 0 48px rgb(0 0 0 / .2); transform: translateX(100%); transition: transform 240ms cubic-bezier(.25,.1,.25,1); will-change: transform; }
 .mobile-folder-backdrop[data-open="true"] .mobile-folder-drawer { transform: translateX(0); }
 .mobile-folder-close { position: absolute; top: max(8px, env(safe-area-inset-top)); right: 10px; z-index: 2; border-radius: 999px; background: rgb(var(--color-raised)); }
 .mobile-folder-drawer > nav { padding-top: 52px; }
