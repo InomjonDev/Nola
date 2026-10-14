@@ -259,6 +259,11 @@ textarea::placeholder {
 	margin-inline: auto;
 	padding: 32px 0 8px;
 }
+@media (max-width: 767px) {
+	.home-summary {
+		gap: 24px;
+	}
+}
 .home-summary-top {
 	display: flex;
 	min-width: 0;
