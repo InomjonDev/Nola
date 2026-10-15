@@ -32,7 +32,7 @@ for (const { deletionSucceeds, cleanupFails } of [{ deletionSucceeds: true, clea
     await page.goto("/");
     await page.getByRole("button", { name: "Continue with Google" }).click();
     await page.getByRole("button", { name: "Enter Nola" }).click();
-    await page.getByRole("button", { name: "Accept", exact: true }).click();
+    await page.getByRole("button", { name: "Continue without analytics", exact: true }).click();
     await page.goto("/settings");
     await page.getByRole("button", { name: "Delete account" }).click();
     const dialog = page.getByRole("dialog", { name: "Delete your Nola account?" });

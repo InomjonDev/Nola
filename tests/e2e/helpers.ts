@@ -23,17 +23,20 @@ export function oauthSession() {
 
 export async function enterDemo(page: Page) {
   await page.goto("/");
-  const composeButton = page.locator(".workspace-compose-button");
-  if (await composeButton.isVisible().catch(() => false)) return;
   const demoButton = page.getByRole("button", { name: "Try local demo" });
-  await expect(demoButton).toBeVisible({ timeout: 15_000 });
-  await demoButton.click();
-  await expect(page.getByRole("button", { name: "Enter Nola" })).toBeVisible({ timeout: 10_000 });
   const enterButton = page.getByRole("button", { name: "Enter Nola" });
-  await enterButton.click();
-  const acceptButton = page.getByRole("button", { name: "Accept" });
-  if (await acceptButton.isVisible().catch(() => false)) await acceptButton.click();
-  await expect(composeButton).toBeVisible({ timeout: 10_000 });
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(demoButton.or(enterButton).or(navigation).first()).toBeVisible({ timeout: 15_000 });
+  if (await demoButton.isVisible().catch(() => false)) {
+    await demoButton.click();
+    await expect(enterButton).toBeVisible({ timeout: 10_000 });
+    await enterButton.click();
+  } else if (await enterButton.isVisible().catch(() => false)) {
+    await enterButton.click();
+  }
+  const analyticsDeclineButton = page.getByRole("button", { name: "Continue without analytics" });
+  if (await analyticsDeclineButton.isVisible().catch(() => false)) await analyticsDeclineButton.click();
+  await expect(navigation).toBeVisible({ timeout: 10_000 });
 }
 
 export async function saveExpense(page: Page, amount: string, note: string) {

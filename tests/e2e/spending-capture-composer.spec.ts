@@ -16,8 +16,8 @@ async function enterAuthenticatedApp(page: Page, baseURL: string) {
   await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await page.getByRole("button", { name: "UZS", exact: true }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  const cookieAccept = page.getByRole("button", { name: "Accept", exact: true });
-  if (await cookieAccept.isVisible().catch(() => false)) await cookieAccept.click();
+  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
+  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
   await expect(page.locator(".workspace-compose-button")).toBeVisible();
   await page.waitForFunction((key) => {
     const data = JSON.parse(localStorage.getItem(key) ?? "{}");
@@ -29,8 +29,8 @@ async function enterLocalDemo(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Try local demo" }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  const cookieAccept = page.getByRole("button", { name: "Accept", exact: true });
-  if (await cookieAccept.isVisible().catch(() => false)) await cookieAccept.click();
+  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
+  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
   await expect(page.locator(".workspace-compose-button")).toBeVisible();
 }
 
@@ -101,8 +101,8 @@ test("the demo cannot opt into AI, and sign-in keeps the typed draft", async ({ 
   await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await page.getByRole("button", { name: "UZS", exact: true }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  const cookieAccept = page.getByRole("button", { name: "Accept", exact: true });
-  if (await cookieAccept.isVisible().catch(() => false)) await cookieAccept.click();
+  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
+  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
   await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x");
   expect(parseRequests).toBe(0);
 });

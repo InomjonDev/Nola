@@ -195,7 +195,7 @@ test("cloud goals recover offline changes with parent ordering and idempotent re
   await page.goto("/");
   await page.getByRole("button", { name: "Continue with Google" }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  await page.getByRole("button", { name: "Accept", exact: true }).click();
+  await page.getByRole("button", { name: "Continue without analytics", exact: true }).click();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("walletly.app-data.v2-11111111-1111-4111-8111-111111111111") ?? "{}").syncQueue?.length)).toBe(0);
   await page.goto("/goals");
   await context.setOffline(true);

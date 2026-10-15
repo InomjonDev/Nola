@@ -106,7 +106,7 @@ test("large UZS amounts, keyboard focus, and responsive text stay usable", async
   await page.getByRole("button", { name: "Try local demo" }).click();
   await page.getByRole("button", { name: "UZS", exact: true }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  await page.getByRole("button", { name: "Accept", exact: true }).click();
+  await page.getByRole("button", { name: "Continue without analytics", exact: true }).click();
   const add = page.getByRole("button", { name: "Write a spending note", exact: true });
   await add.click();
   await page.getByRole("button", { name: "Add expense manually", exact: true }).click();

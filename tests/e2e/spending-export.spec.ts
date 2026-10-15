@@ -18,8 +18,8 @@ async function enterAuthenticatedApp(page: Page, baseURL: string) {
   await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
   await page.getByRole("button", { name: "UZS", exact: true }).click();
   await page.getByRole("button", { name: "Enter Nola" }).click();
-  const accept = page.getByRole("button", { name: "Accept", exact: true });
-  if (await accept.isVisible().catch(() => false)) await accept.click();
+  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
+  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
   await expect(page.locator(".workspace-compose-button")).toBeVisible();
   await page.waitForFunction((key) => {
     const data = JSON.parse(localStorage.getItem(key) ?? "{}");
