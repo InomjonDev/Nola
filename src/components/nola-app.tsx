@@ -2739,7 +2739,7 @@ function ConsentBanner() {
 		() =>
 			setVisible(
 				localStorage.getItem(CONSENT_KEY) !== 'true' ||
-					localStorage.getItem(COOKIE_CONSENT_KEY) !== 'true',
+					localStorage.getItem(COOKIE_CONSENT_KEY) === null,
 			),
 		[],
 	)
@@ -2747,16 +2747,30 @@ function ConsentBanner() {
 	return (
 		<div className='consent-notice text-text'>
 			<p className='text-xs leading-5 sm:text-sm'>{t('consent.message')}</p>
-			<div className='mt-2 flex gap-2 sm:mt-3'>
+			<div className='mt-2 flex flex-wrap gap-2 sm:mt-3'>
 				<button
+					type='button'
 					className='control min-h-11 bg-accent px-4 py-1.5 text-on-accent'
 					onClick={() => {
 						localStorage.setItem(CONSENT_KEY, 'true')
 						localStorage.setItem(COOKIE_CONSENT_KEY, 'true')
+						window.dispatchEvent(new Event('nola:analytics-consent'))
 						setVisible(false)
 					}}
 				>
-					{t('common.accept')}
+					{t('consent.acceptAnalytics')}
+				</button>
+				<button
+					type='button'
+					className='control min-h-11 bg-raised px-4 py-1.5 text-text'
+					onClick={() => {
+						localStorage.setItem(CONSENT_KEY, 'true')
+						localStorage.setItem(COOKIE_CONSENT_KEY, 'false')
+						window.dispatchEvent(new Event('nola:analytics-consent'))
+						setVisible(false)
+					}}
+				>
+					{t('consent.rejectAnalytics')}
 				</button>
 				<Link
 					href='/privacy'

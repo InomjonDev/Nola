@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 
 import { Providers } from "@/components/providers";
+import { VercelAnalytics } from "@/components/vercel-analytics";
 import { siteDescription, siteName, siteUrl } from "@/lib/seo";
 import { themeInitScript, themeStyles } from "@/theme";
 import "./globals.css";
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       </head>
       <body>
         <Providers>{children}</Providers>
+        <VercelAnalytics />
       </body>
     </html>
   );
