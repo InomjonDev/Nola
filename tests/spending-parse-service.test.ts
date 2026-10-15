@@ -56,6 +56,13 @@ function makeCapture(overrides: Partial<SpendingCapture> = {}): SpendingCapture 
   };
 }
 
+function geminiResponse(items: unknown) {
+  return { candidates: [{ content: { parts: [
+    { text: "internal thought", thought: true },
+    { text: JSON.stringify({ items }) },
+  ] } }] };
+}
+
 function makeDependencies(overrides: Partial<ParseDependencies> = {}, initialCapture: SpendingCapture | null = makeCapture()) {
   const saved = new Map<string, SpendingCapture>();
   if (initialCapture) saved.set(initialCapture.id, { ...initialCapture });
@@ -63,7 +70,6 @@ function makeDependencies(overrides: Partial<ParseDependencies> = {}, initialCap
   let quotaCalls = 0;
   let providerCalls = 0;
   const deps: ParseDependencies = {
-    model: "test/model",
     authenticate: async (token) => token === "valid-token" ? { userId } : null,
     readAiConsent: async () => true,
     readCapture: async (_owner, id) => saved.get(id) ?? null,
@@ -78,11 +84,11 @@ function makeDependencies(overrides: Partial<ParseDependencies> = {}, initialCap
     },
     readParseContext: async () => context,
     consumeQuota: async () => { quotaCalls += 1; return true; },
-    requestOpenRouter: async () => {
+    requestGemini: async () => {
       providerCalls += 1;
-      return { items: [{ amount: 7000, currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }] };
+      return geminiResponse([{ amount: 7000, currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]);
     },
-    isOpenRouterConfigured: () => true,
+    isGeminiConfigured: () => true,
     createId: () => `expense-${++generatedId}`,
     now: () => now,
     ...overrides,
@@ -198,7 +204,7 @@ test("returns 429 and retains retryable source text when the user quota is exhau
 test("marks a provider failure retryable without replacing the last validated result", async () => {
   const oldCapture = makeCapture({ parseStatus: "parsed", parsedRevision: 1, parsedItems: [previousItem()] });
   const { deps, saved } = makeDependencies({
-    requestOpenRouter: async () => { throw new Error("provider unavailable"); },
+    requestGemini: async () => { throw new Error("provider unavailable"); },
   }, oldCapture);
   const nextInput = { ...input, parseRevision: 2, sourceText: "8000 somsa 4x" };
   const response = await createSpendingParseHandler(deps)(request(nextInput));
@@ -213,10 +219,10 @@ test("marks a provider failure retryable without replacing the last validated re
 test("rejects an invalid model result as a whole and keeps existing items", async () => {
   const oldCapture = makeCapture({ parseStatus: "parsed", parsedRevision: 1, parsedItems: [previousItem()] });
   const { deps, saved } = makeDependencies({
-    requestOpenRouter: async () => ({ items: [
+    requestGemini: async () => geminiResponse([
       { amount: 7000, currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null },
       { amount: -1, currency: null, description: "tea", quantity: null, date: null, category: "Food", paymentMethod: null },
-    ] }),
+    ]),
   }, oldCapture);
   const response = await createSpendingParseHandler(deps)(request({ ...input, parseRevision: 2 }));
   const capture = saved.get(captureId);
@@ -230,7 +236,7 @@ test("rejects an invalid model result as a whole and keeps existing items", asyn
 test("returns a retryable no-amount response without discarding previous expenses", async () => {
   const oldCapture = makeCapture({ parseStatus: "parsed", parsedRevision: 1, parsedItems: [previousItem()] });
   const { deps, saved } = makeDependencies({
-    requestOpenRouter: async () => ({ items: [] }),
+    requestGemini: async () => geminiResponse([]),
   }, oldCapture);
   const response = await createSpendingParseHandler(deps)(request({ ...input, parseRevision: 2, sourceText: "a nice afternoon" }));
   const body = await responseBody(response);
@@ -272,8 +278,8 @@ test("rejects over-limit text before authentication or provider work", async () 
   assert.deepEqual(counts(), { quotaCalls: 0, providerCalls: 0 });
 });
 
-test("returns 503 before consuming quota when OpenRouter configuration is missing", async () => {
-  const { deps, saved, counts } = makeDependencies({ isOpenRouterConfigured: () => false });
+test("returns 503 before consuming quota when Gemini configuration is missing", async () => {
+  const { deps, saved, counts } = makeDependencies({ isGeminiConfigured: () => false });
   const response = await createSpendingParseHandler(deps)(request());
   assert.equal(response.status, 503);
   assert.equal(saved.get(captureId)?.parseStatus, "needs_retry");
@@ -307,7 +313,7 @@ test("discards a delayed success when a newer revision is persisted", async () =
   const provider = deferred<unknown>();
   const providerStarted = waitFor<void>();
   const { deps, saved } = makeDependencies({
-    requestOpenRouter: async () => {
+    requestGemini: async () => {
       providerStarted.resolve();
       return await provider.promise;
     },
@@ -323,7 +329,7 @@ test("discards a delayed success when a newer revision is persisted", async () =
     updatedAt: "2026-10-12T12:01:00.000Z",
   };
   saved.set(captureId, newerCapture);
-  provider.resolve({ items: [{ amount: 7000, currency: "UZS", description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }] });
+  provider.resolve(geminiResponse([{ amount: 7000, currency: "UZS", description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]));
 
   const response = await pending;
   assert.equal(response.status, 409);
@@ -334,7 +340,7 @@ test("does not mark a newer revision retryable after an older provider call fail
   const provider = deferred<unknown>();
   const providerStarted = waitFor<void>();
   const { deps, saved } = makeDependencies({
-    requestOpenRouter: async () => {
+    requestGemini: async () => {
       providerStarted.resolve();
       return await provider.promise;
     },

@@ -21,8 +21,8 @@ export async function POST(request: Request) {
   const accessToken = getBearerAccessToken(request);
   if (!accessToken) return response(401, "unauthenticated", "Sign in to parse spending text.");
 
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim() ?? "";
-  const networkFingerprint = parseNetworkFingerprint(request, openRouterApiKey, process.env.VERCEL === "1");
+  const geminiApiKey = process.env.GEMINI_API_KEY?.trim() ?? "";
+  const networkFingerprint = parseNetworkFingerprint(request, geminiApiKey, process.env.VERCEL === "1");
   if (!networkFingerprint) return response(503, "service_unavailable", "Spending parsing is not available right now.");
 
   let client;
@@ -33,8 +33,8 @@ export async function POST(request: Request) {
   }
 
   const dependencies = createSupabaseParseDependencies(client, {
-    openRouterApiKey,
-    model: process.env.OPENROUTER_MODEL,
+    geminiApiKey,
+    model: process.env.GEMINI_MODEL,
     networkFingerprint,
   });
   return createSpendingParseHandler(dependencies)(request);

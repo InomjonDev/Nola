@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractHashtags, openRouterBody, ParsedResponseError, validateParsedItems } from "../src/lib/spending-parser.ts";
+import { extractHashtags, geminiBody, ParsedResponseError, validateParsedItems } from "../src/lib/spending-parser.ts";
 
 const context = {
   profileCurrency: "UZS",
@@ -85,15 +85,18 @@ test("extracts normalized hashtags once", () => {
   assert.deepEqual(extractHashtags("Taxi #Work, snacks #work and #Ташкент #Work"), ["work", "ташкент"]);
 });
 
-test("uses strict JSON Schema output without sending hashtags as model fields", () => {
-  const body = openRouterBody("7000 somsa #food", context, "test/model");
-  const responseFormat = body.response_format as { type: string; json_schema: { strict: boolean; schema: Record<string, unknown> } };
-  const messages = body.messages as Array<{ role: string; content: string }>;
-  assert.equal(body.model, "test/model");
-  assert.equal(responseFormat.type, "json_schema");
-  assert.equal(responseFormat.json_schema.strict, true);
-  assert.deepEqual(responseFormat.json_schema.schema.required, ["items"]);
-  assert.equal(messages.some((message) => message.content.includes('"hashtags"')), false);
-  assert.match(messages[0].content, /amount 7000 and quantity 4/);
-  assert.match(messages[0].content, /A date at the end of a line applies only to that line's expense/);
+test("builds a Gemini structured-output request without adding hashtags as model fields", () => {
+  const body = geminiBody("7000 somsa #food", context);
+  const generationConfig = body.generationConfig as { responseMimeType: string; responseJsonSchema: Record<string, unknown> };
+  const systemInstruction = body.systemInstruction as { parts: Array<{ text: string }> };
+  const contents = body.contents as Array<{ parts: Array<{ text: string }> }>;
+  const schema = generationConfig.responseJsonSchema;
+  const userContent = JSON.parse(contents[0].parts[0].text) as Record<string, unknown>;
+
+  assert.equal(generationConfig.responseMimeType, "application/json");
+  assert.deepEqual(schema.required, ["items"]);
+  assert.equal("hashtags" in (schema.properties as Record<string, unknown>), false);
+  assert.equal(userContent.sourceText, "7000 somsa #food");
+  assert.match(systemInstruction.parts[0].text, /amount 7000 and quantity 4/);
+  assert.match(systemInstruction.parts[0].text, /A date at the end of a line applies only to that line's expense/);
 });

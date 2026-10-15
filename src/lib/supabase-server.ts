@@ -3,7 +3,7 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { toSpendingCapture } from "./mappers.ts";
-import { OpenRouterHttpError } from "./openrouter-error.ts";
+import { GeminiHttpError } from "./gemini-error.ts";
 import type { ParseContext, ParseDependencies } from "./spending-parser.ts";
 
 export function getBearerAccessToken(request: Request) {
@@ -28,13 +28,12 @@ export function createRequestSupabaseClient(accessToken: string): SupabaseClient
 
 export function createSupabaseParseDependencies(
   client: SupabaseClient,
-  configuration: { openRouterApiKey?: string; model?: string; networkFingerprint: string },
+  configuration: { geminiApiKey?: string; model?: string; networkFingerprint: string },
 ): ParseDependencies {
-  const apiKey = configuration.openRouterApiKey?.trim() ?? "";
-  const model = configuration.model?.trim() ?? "";
+  const apiKey = configuration.geminiApiKey?.trim() ?? "";
+  const model = configuration.model?.trim() || "gemini-3.1-flash-lite";
 
   return {
-    model,
     authenticate: async (accessToken) => {
       const { data, error } = await client.auth.getUser(accessToken);
       if (error || !data.user) return null;
@@ -117,22 +116,22 @@ export function createSupabaseParseDependencies(
       if (error) throw error;
       return data === true;
     },
-    requestOpenRouter: async (body) => {
-      if (!apiKey || !model) throw new Error("OpenRouter is not configured.");
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    requestGemini: async (body) => {
+      if (!apiKey) throw new Error("Gemini is not configured.");
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: "POST",
         cache: "no-store",
         signal: AbortSignal.timeout(20_000),
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          "x-goog-api-key": apiKey,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
       });
-      if (!response.ok) throw new OpenRouterHttpError(response.status);
+      if (!response.ok) throw new GeminiHttpError(response.status);
       return await response.json() as unknown;
     },
-    isOpenRouterConfigured: () => Boolean(apiKey && model),
+    isGeminiConfigured: () => Boolean(apiKey),
     createId: () => globalThis.crypto.randomUUID(),
     now: () => new Date().toISOString(),
   };

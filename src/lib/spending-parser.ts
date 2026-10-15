@@ -28,11 +28,10 @@ export type ParseDependencies = {
   ): Promise<boolean>;
   readParseContext(userId: string, localDate: string, timeZone: string): Promise<ParseContext>;
   consumeQuota(userId: string): Promise<boolean>;
-  requestOpenRouter(body: Record<string, unknown>): Promise<unknown>;
-  isOpenRouterConfigured(): boolean;
+  requestGemini(body: Record<string, unknown>): Promise<unknown>;
+  isGeminiConfigured(): boolean;
   createId(): string;
   now(): string;
-  model: string;
 };
 
 export type ParseValidationCode = "empty_result" | "invalid_response" | "invalid_context";
@@ -124,7 +123,7 @@ export function extractHashtags(sourceText: string): string[] {
   return tags;
 }
 
-export function openRouterBody(sourceText: string, context: ParseContext, model: string): Record<string, unknown> {
+export function geminiBody(sourceText: string, context: ParseContext): Record<string, unknown> {
   const schema = {
     type: "object",
     additionalProperties: false,
@@ -151,18 +150,9 @@ export function openRouterBody(sourceText: string, context: ParseContext, model:
   };
 
   return {
-    model,
-    temperature: 0,
-    max_tokens: 1800,
-    provider: { require_parameters: true },
-    response_format: {
-      type: "json_schema",
-      json_schema: { name: "nola_spending_capture", strict: true, schema },
-    },
-    messages: [
-      {
-        role: "system",
-        content: [
+    systemInstruction: {
+      parts: [{
+        text: [
           "Extract only expense items explicitly described in the user's text.",
           "Return no items when there is no clear positive total amount; never invent an amount.",
           "The amount is the total paid, not a per-unit price. Quantity never multiplies the amount.",
@@ -175,10 +165,12 @@ export function openRouterBody(sourceText: string, context: ParseContext, model:
           "Use a supplied payment method name when stated; otherwise return null.",
           "Keep each description concise and preserve the user's wording.",
         ].join(" "),
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
+      }],
+    },
+    contents: [{
+      role: "user",
+      parts: [{
+        text: JSON.stringify({
           sourceText,
           localDate: context.localDate,
           timeZone: context.timeZone,
@@ -186,8 +178,14 @@ export function openRouterBody(sourceText: string, context: ParseContext, model:
           categories: context.categories.map((category) => category.name),
           paymentMethods: context.paymentMethods.map((method) => method.name),
         }),
-      },
-    ],
+      }],
+    }],
+    generationConfig: {
+      temperature: 0,
+      maxOutputTokens: 1800,
+      responseMimeType: "application/json",
+      responseJsonSchema: schema,
+    },
   };
 }
 

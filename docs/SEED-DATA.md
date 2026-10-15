@@ -38,7 +38,7 @@ Verify create/edit/soft-delete/restore, retry with stable IDs, offline queue rep
 
 - Use reserved synthetic UUIDs and addresses such as `oauth-test@example.com` only inside tests.
 - Keep test rows in transactions that roll back, or create them in per-test browser contexts / disposable projects.
-- Mock Google OAuth, token exchange, OpenRouter parse results, and Data API rows in browser tests. Do not send real emails or real user notes from CI.
+- Mock Google OAuth, token exchange, Gemini parse results, and Data API rows in browser tests. Do not send real emails or real user notes from CI.
 - Any database test requiring service-role access must point at a dedicated disposable Supabase project or the local stack, never production.
 - Use the same stable global category IDs as the migrations when fixtures need global categories. Custom fixture rows must set the test user's `user_id`.
 - Keep fixtures representative of constraints: same-currency account relations, capture-linked expenses, separate amount and quantity, archived versus soft-deleted state, and cross-user RLS denials.

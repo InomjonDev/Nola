@@ -5,7 +5,7 @@ This inventory covers dependencies and external services used by the active Next
 | Dependency or service | Purpose | Data involved | Release handling |
 | --- | --- | --- | --- |
 | Supabase Auth and Postgres | Sign-in and cloud sync | Account identity and user-owned financial records | Required for signed-in sync; owner access is enforced with RLS |
-| OpenRouter | Optional spending-note parsing | User-provided note text and parsing context, only after AI parsing is enabled | Server-side API key; disclose external processing and allow the user to disable parsing |
+| Google Gemini API | Optional spending-note parsing | User-provided note text and parsing context, only after AI parsing is enabled | Keep the key server-side and disclose that free-tier prompts and responses may be used to improve Google products and reviewed by humans; do not send sensitive or personal information on the free tier |
 | PostHog | Optional product analytics | Coarse workflow events and booleans | Disabled until analytics consent; do not send amounts, notes, names, tags, or payment details |
 | Error-reporting collector | Optional sanitized application errors | Redacted message, name, short stack, surface, and release | Configure access control, rate limits, retention, and alerting |
 | Noto Sans | Local font files | None | Bundled with the app; license notice is in `public/fonts/OFL.txt` |

@@ -5,7 +5,8 @@ Nola is the Next.js/PWA application deployed at `https://nolapp.vercel.app`.
 ## Verified for the current release candidate
 
 - Vercel production project `nola` is linked to `InomjonDev/nola`; `NEXT_PUBLIC_SITE_URL` and the auth callback origin use `https://nolapp.vercel.app`.
-- The OpenRouter API key is stored as a server-side Vercel production secret. The app uses the free model route and the key has a provider-side limit.
+- Local parsing uses the server-only `GEMINI_API_KEY` with `gemini-3.1-flash-lite` by default. The production Vercel secret must be configured and verified separately before AI parsing is available there.
+- Gemini free-tier requests may be used to improve Google products and processed by human reviewers. Do not send sensitive or personal spending notes through the free tier.
 - Supabase migrations are applied through `20261015072927_production_integrity_indexes`.
 - AI parsing has bounded JSON input, authenticated requests, per-user and per-network quotas, and a 20-request-per-minute Vercel Firewall rule for `/api/spending-captures/parse`.
 - Production response headers include HTTPS HSTS, clickjacking protection, MIME sniffing protection, a referrer policy, permissions restrictions, and CSP.

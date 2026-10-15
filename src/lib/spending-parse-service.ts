@@ -1,7 +1,7 @@
 import type { ParsedCaptureItem, SpendingCapture } from "./types.ts";
-import { OpenRouterHttpError } from "./openrouter-error.ts";
+import { GeminiHttpError } from "./gemini-error.ts";
 import {
-  openRouterBody,
+  geminiBody,
   ParsedResponseError,
   validateParsedItems,
   type ParseContext,
@@ -151,18 +151,22 @@ function cachedItems(value: unknown): value is ParsedCaptureItem[] {
   });
 }
 
-function providerItems(value: unknown): unknown {
-  if (!value || typeof value !== "object") return value;
-  const result = value as Record<string, unknown>;
-  if ("items" in result) return result;
-  const choices = result.choices;
-  if (!Array.isArray(choices) || !choices.length || !choices[0] || typeof choices[0] !== "object") return value;
-  const message = (choices[0] as Record<string, unknown>).message;
-  if (!message || typeof message !== "object") return value;
-  const content = (message as Record<string, unknown>).content;
-  if (typeof content !== "string") return value;
+function geminiItems(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const candidates = (value as Record<string, unknown>).candidates;
+  if (!Array.isArray(candidates) || !candidates[0] || typeof candidates[0] !== "object") return value;
+  const content = (candidates[0] as Record<string, unknown>).content;
+  if (!content || typeof content !== "object") return value;
+  const parts = (content as Record<string, unknown>).parts;
+  if (!Array.isArray(parts)) return value;
+  const text = parts.flatMap((part) => {
+    if (!part || typeof part !== "object" || Array.isArray(part)) return [];
+    const responsePart = part as Record<string, unknown>;
+    return responsePart.thought !== true && typeof responsePart.text === "string" ? [responsePart.text] : [];
+  }).join("");
+  if (!text) return value;
   try {
-    return JSON.parse(content) as unknown;
+    return JSON.parse(text) as unknown;
   } catch {
     throw new ParsedResponseError("invalid_response", "The model returned malformed JSON.");
   }
@@ -175,27 +179,27 @@ export async function parseSpendingCapture(
 ): Promise<ParsedCaptureItem[]> {
   let response: unknown;
   try {
-    response = await deps.requestOpenRouter(openRouterBody(input.sourceText, context, deps.model));
+    response = await deps.requestGemini(geminiBody(input.sourceText, context));
   } catch (error) {
-    if (error instanceof OpenRouterHttpError) {
+    if (error instanceof GeminiHttpError) {
       if (error.status === 401 || error.status === 403) {
-        throw new SpendingParseError("provider_auth", "OpenRouter rejected the server API key. Replace it in the server configuration.", 502);
+        throw new SpendingParseError("provider_auth", "Gemini rejected the server API key. Replace it in the server configuration.", 502);
       }
       if (error.status === 402) {
-        throw new SpendingParseError("provider_payment", "OpenRouter rejected this request for billing or credits. Check the account and free-model limits.", 502);
+        throw new SpendingParseError("provider_payment", "Gemini rejected this request for billing. Check the project tier.", 502);
       }
       if (error.status === 429) {
-        throw new SpendingParseError("provider_rate_limited", "OpenRouter is rate limiting requests. Wait a little and retry.", 429);
+        throw new SpendingParseError("provider_rate_limited", "Gemini is rate limiting requests. Wait a little and retry.", 429);
       }
       if (error.status === 400 || error.status === 404 || error.status === 422) {
-        throw new SpendingParseError("provider_model", "The configured OpenRouter model could not accept this parser request. Check its structured-output support.", 502);
+        throw new SpendingParseError("provider_model", "Gemini could not accept this parser request. Check the configured model and response schema.", 502);
       }
     }
     throw new SpendingParseError("provider_failure", "The spending parser is temporarily unavailable. Try again.", 502);
   }
 
   try {
-    return validateParsedItems(providerItems(response), context, deps.createId);
+    return validateParsedItems(geminiItems(response), context, deps.createId);
   } catch (error) {
     if (error instanceof ParsedResponseError && error.code === "empty_result") {
       throw new SpendingParseError("empty_result", error.message, 422);
@@ -313,7 +317,7 @@ export function createSpendingParseHandler(deps: ParseDependencies) {
       return parseErrorResponse(new SpendingParseError("service_unavailable", "This spending note could not be prepared for parsing. Try again.", 503));
     }
 
-    if (!deps.isOpenRouterConfigured()) {
+    if (!deps.isGeminiConfigured()) {
       try {
         if (!await markRetryIfCurrent(userId, capture, deps)) return conflictResponse();
       } catch {
