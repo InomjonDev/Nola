@@ -2701,50 +2701,6 @@ textarea::placeholder {
 		display: block;
 	}
 }
-@media (max-width: 360px) {
-	.workspace-dock {
-		position: static;
-		inset: auto;
-		grid-column: 1;
-		grid-row: 2;
-		width: 100%;
-		height: 56px;
-		margin: 0;
-		border-top: 0;
-		background: transparent;
-		padding: 0;
-	}
-	.workspace-compose-button {
-		display: none;
-	}
-	.workspace-search-field {
-		grid-column: 1;
-	}
-	.spending-workspace {
-		padding-bottom: calc(2rem + env(safe-area-inset-bottom));
-	}
-	.spending-workspace:not(.has-selected-capture):not(.folders-mode)
-		.spending-detail-pane {
-		grid-row: 3;
-	}
-	.spending-workspace.folders-mode:not(.has-selected-capture)
-		.spending-sidebar {
-		grid-row: 1;
-	}
-	.spending-workspace.folders-mode:not(.has-selected-capture)
-		.spending-list-pane {
-		grid-row: 2;
-	}
-	.spending-workspace.folders-mode:not(.has-selected-capture) .workspace-dock {
-		grid-row: 3;
-	}
-	.desktop-capture-action {
-		display: inline-flex;
-	}
-	.desktop-capture-action span {
-		display: none;
-	}
-}
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) body {
 		color-scheme: dark;
