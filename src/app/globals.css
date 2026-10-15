@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config "../../tailwind.config.js";
 
 :root {
 	--font-sans:
@@ -533,20 +532,40 @@ textarea::placeholder {
 	animation: goal-sheet-leave 180ms ease-in both;
 }
 @keyframes goal-backdrop-enter {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 @keyframes goal-backdrop-leave {
-	from { opacity: 1; }
-	to { opacity: 0; }
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
 }
 @keyframes goal-sheet-enter {
-	from { opacity: 0.8; transform: translateY(14px); }
-	to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0.8;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 @keyframes goal-sheet-leave {
-	from { opacity: 1; transform: translateY(0); }
-	to { opacity: 0.8; transform: translateY(10px); }
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0.8;
+		transform: translateY(10px);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	.goal-sheet-backdrop[data-state] {
@@ -641,7 +660,8 @@ textarea::placeholder {
 	border-radius: 2px;
 	background: var(--goal-confetti-color);
 	opacity: 0;
-	animation: goal-confetti-burst 1000ms cubic-bezier(0.16, 0.72, 0.24, 1) var(--goal-confetti-delay) both;
+	animation: goal-confetti-burst 1000ms cubic-bezier(0.16, 0.72, 0.24, 1)
+		var(--goal-confetti-delay) both;
 }
 .goal-confetti-piece--1 {
 	width: 8px;
@@ -654,19 +674,35 @@ textarea::placeholder {
 	border-radius: 999px;
 }
 @keyframes goal-confetti-burst {
-	0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(0.55); }
-	12% { opacity: 1; }
-	100% { opacity: 0; transform: translate(var(--goal-confetti-x), var(--goal-confetti-y)) rotate(var(--goal-confetti-rotation)) scale(0.9); }
+	0% {
+		opacity: 0;
+		transform: translate(0, 0) rotate(0) scale(0.55);
+	}
+	12% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0;
+		transform: translate(var(--goal-confetti-x), var(--goal-confetti-y))
+			rotate(var(--goal-confetti-rotation)) scale(0.9);
+	}
 }
 @keyframes goal-celebration-enter {
-	from { opacity: 0; transform: translateY(8px) scale(0.98); }
-	to { opacity: 1; transform: translateY(0) scale(1); }
+	from {
+		opacity: 0;
+		transform: translateY(8px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	.goal-confetti-piece {
 		opacity: 0.8;
 		animation: none;
-		transform: translate(var(--goal-confetti-x), var(--goal-confetti-y)) rotate(var(--goal-confetti-rotation));
+		transform: translate(var(--goal-confetti-x), var(--goal-confetti-y))
+			rotate(var(--goal-confetti-rotation));
 	}
 	.goal-celebration-toast {
 		animation: none;
@@ -695,7 +731,9 @@ textarea::placeholder {
 	color: rgb(var(--color-muted));
 	font-weight: 600;
 	text-align: center;
-	transition: background-color 160ms ease, color 160ms ease;
+	transition:
+		background-color 160ms ease,
+		color 160ms ease;
 }
 .goal-filter-button-active {
 	background: rgb(var(--color-accent-soft));
@@ -1016,7 +1054,9 @@ textarea::placeholder {
 	padding: 8px 10px;
 	color: rgb(var(--color-muted));
 	font-size: 0.875rem;
-	transition: background-color 160ms ease, color 160ms ease;
+	transition:
+		background-color 160ms ease,
+		color 160ms ease;
 }
 .category-chart-legend-row:hover,
 .category-chart-legend-row-active {
@@ -1035,8 +1075,12 @@ textarea::placeholder {
 	font-size: 0.875rem;
 }
 @keyframes category-chart-arc-in {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	.category-donut-segment {
@@ -1148,7 +1192,7 @@ textarea::placeholder {
 	width: 38px;
 	height: 38px;
 	place-items: center;
-	border-radius: 13px;
+	border-radius: 50%;
 }
 .finance-row-copy {
 	display: grid;
@@ -1210,7 +1254,7 @@ textarea::placeholder {
 		border-right: 1px solid rgb(var(--color-line));
 		border-bottom: 0;
 		padding: 0 24px 0 0;
-    }
+	}
 }
 @media (max-width: 360px) {
 	.budget-form {
@@ -1783,10 +1827,15 @@ textarea::placeholder {
 	animation: capture-thinking-spin 800ms linear infinite;
 }
 @keyframes capture-thinking-spin {
-	to { transform: rotate(360deg); }
+	to {
+		transform: rotate(360deg);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
-	.capture-editor-live-spinner { animation: none; border-top-color: rgb(var(--color-accent)); }
+	.capture-editor-live-spinner {
+		animation: none;
+		border-top-color: rgb(var(--color-accent));
+	}
 }
 .capture-editor-error {
 	position: absolute;
@@ -2387,11 +2436,15 @@ textarea::placeholder {
 		width: 22px;
 		height: 22px;
 	}
-	.capture-card--timeline .capture-card-category-badge + .capture-card-category-badge,
+	.capture-card--timeline
+		.capture-card-category-badge
+		+ .capture-card-category-badge,
 	.capture-card--timeline .capture-card-category-more {
 		margin-left: -6px;
 	}
-	.capture-card--timeline .capture-card-category-badge .category-icon-background {
+	.capture-card--timeline
+		.capture-card-category-badge
+		.category-icon-background {
 		width: 18px;
 		height: 18px;
 	}
@@ -2778,7 +2831,7 @@ textarea::placeholder {
 	transition:
 		background-color 180ms ease,
 		color 180ms ease,
-	border-color 180ms ease;
+		border-color 180ms ease;
 }
 .profile-edit-button:hover {
 	border-color: rgb(var(--color-line));
@@ -2829,7 +2882,7 @@ textarea::placeholder {
 	transition:
 		background-color 180ms ease,
 		color 180ms ease,
-	opacity 180ms ease;
+		opacity 180ms ease;
 }
 .profile-save-button {
 	background: rgb(var(--color-accent));

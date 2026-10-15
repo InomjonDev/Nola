@@ -22,7 +22,7 @@ In a browser, Google sign-in returns to the current origin's `/auth/callback` so
 
 ## 2. Redirect URLs
 
-In Supabase Dashboard, open **Authentication > URL Configuration**. Set the hosted Site URL to `https://nolaapp.vercel.app/` while that is Nola's primary production domain. Add these application redirects:
+In Supabase Dashboard, open **Authentication > URL Configuration**. Set the hosted Site URL to `https://nolapp.vercel.app/`. Add these application redirects:
 
 - `http://localhost:3000/auth/callback`
 - `http://localhost:3000/auth/confirm`
@@ -31,7 +31,7 @@ In Supabase Dashboard, open **Authentication > URL Configuration**. Set the host
 - The final production origin followed by `/auth/callback`
 - The final production origin followed by `/auth/confirm`
 
-As of this configuration, Vercel has three valid production aliases: `nolaapp.vercel.app`, `nolapp.vercel.app`, and `nola-mauve.vercel.app`. Add `/auth/callback` and `/auth/confirm` for each alias that users can open. The browser starts and finishes PKCE on the same origin. Remove obsolete redirect entries only after confirming no users still need them.
+The canonical Nola production origin is `https://nolapp.vercel.app`. Add `/auth/callback` and `/auth/confirm` for that origin and each active Vercel preview origin. Keep historical redirect entries only while their aliases still serve Nola or old one-time sign-in links need them. The browser starts and finishes PKCE on the same origin.
 
 Google OAuth uses `/auth/callback`. Email confirmation and sign-in links use `/auth/confirm`; do not point email links at the OAuth callback.
 

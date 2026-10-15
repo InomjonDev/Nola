@@ -81,7 +81,8 @@ test("spending notes navigate through folders, search, and detail on mobile and 
   await expect(duplicateRenameDialog).toBeHidden();
   await folderNavigation.getByRole("link", { name: /^Lunch expenses(?: \d+)?$/ }).click();
   await expect(page).toHaveURL(new RegExp(`/folders/${folderId}$`));
-  await expect(page.getByText("7000 somsa 4x #lunch", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spending note: 7000 somsa 4x #lunch/ })).toBeVisible();
+  await expect(page.getByText("#lunch", { exact: true })).toBeVisible();
   await expect(page.getByText("Coffee", { exact: true })).toHaveCount(0);
 
   await folderNavigation.getByRole("link", { name: "All spending" }).click();
@@ -93,18 +94,22 @@ test("spending notes navigate through folders, search, and detail on mobile and 
   const search = page.getByRole("searchbox", { name: "Search notes or categories" });
   await search.fill("7000");
   await expect(page).toHaveURL(/\/\?q=7000$/);
-  await expect(page.getByRole("button", { name: "Spending note: 7000 somsa 4x #lunch" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spending note: 7000 somsa 4x #lunch/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Amount:.*Amount: \$7,000\.00, Category: Food, Payment method: Card, Date:/ })).toBeVisible();
   await search.fill("#lunch");
   const taggedCapture = page.getByRole("button", { name: /Tags: 7000 somsa 4x #lunch/ }).first();
   await expect(taggedCapture).toBeVisible();
   await taggedCapture.click();
   await expect(page).toHaveURL(new RegExp(`/captures/${captureId}$`));
-  await expect(page.getByRole("complementary", { name: "Spending note" }).getByText("7000 somsa 4x #lunch", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Edit: somsa.*Amount: \$7,000\.00, Category: Food, Payment method: Card, Date:/ })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x #lunch");
+  await page.getByRole("button", { name: /1 expense, \$7,000\.00\. Linked expenses/ }).click();
+  const linkedExpenses = page.getByRole("dialog", { name: "Linked expenses" });
+  await expect(linkedExpenses.getByRole("button", { name: /Edit: somsa.*Amount: \$7,000\.00, Category: Food, Payment method: Card, Date:/ })).toBeVisible();
+  await linkedExpenses.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(linkedExpenses).toBeHidden();
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole("complementary", { name: "Spending note" }).getByText("7000 somsa 4x #lunch", { exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x #lunch");
   await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Spending", exact: true })).toBeVisible();
   await expect(page.locator(".spending-workspace.has-selected-capture .spending-list-pane")).toBeHidden();
 
@@ -114,5 +119,5 @@ test("spending notes navigate through folders, search, and detail on mobile and 
   await expect(mobileFolders).toBeVisible();
   await mobileFolders.getByRole("link", { name: /^Lunch expenses(?: \d+)?$/ }).click();
   await expect(page).toHaveURL(new RegExp(`/folders/${folderId}$`));
-  await expect(page.getByRole("button", { name: "Spending note: 7000 somsa 4x #lunch" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spending note: 7000 somsa 4x #lunch/ })).toBeVisible();
 });

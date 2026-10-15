@@ -6,10 +6,10 @@ import { ArrowLeft } from "@/components/icons";
 import { useI18n } from "@/lib/i18n-provider";
 
 const copyKeys = {
-  privacy: ["legal.privacy1", "legal.privacy2", "legal.privacy3"],
-  terms: ["legal.terms1", "legal.terms2", "legal.terms3"],
-  cookies: ["legal.cookies1", "legal.cookies2"],
-  deletion: ["legal.deletion1", "legal.deletion2"],
+  privacy: ["legal.privacy1", "legal.privacy2", "legal.privacy3", "legal.privacy4", "legal.privacy5"],
+  terms: ["legal.terms1", "legal.terms2", "legal.terms3", "legal.terms4"],
+  cookies: ["legal.cookies1", "legal.cookies2", "legal.cookies3"],
+  deletion: ["legal.deletion1", "legal.deletion2", "legal.deletion3"],
 } as const;
 
 const titleKeys = {
@@ -31,6 +31,10 @@ export function LegalPage({ title: _title, kind }: { title: string; kind: keyof 
         <h1 className="mt-3 screen-title">{t(titleKeys[kind])}</h1>
         <div className="mt-8 grid gap-6 text-base leading-7 text-muted ">
           {copyKeys[kind].map((key) => <p key={key}>{t(key)}</p>)}
+        </div>
+        <div className="mt-10 grid gap-2 border-t border-line pt-6 text-sm text-muted">
+          <p>{t("legal.updated")}</p>
+          <a className="w-fit text-text underline underline-offset-4" href="mailto:inomjonismanaliev@gmail.com">{t("legal.contact")}: inomjonismanaliev@gmail.com</a>
         </div>
       </article>
     </main>

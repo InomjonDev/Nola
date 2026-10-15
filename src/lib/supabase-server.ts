@@ -28,7 +28,7 @@ export function createRequestSupabaseClient(accessToken: string): SupabaseClient
 
 export function createSupabaseParseDependencies(
   client: SupabaseClient,
-  configuration: { openRouterApiKey?: string; model?: string },
+  configuration: { openRouterApiKey?: string; model?: string; networkFingerprint: string },
 ): ParseDependencies {
   const apiKey = configuration.openRouterApiKey?.trim() ?? "";
   const model = configuration.model?.trim() ?? "";
@@ -113,7 +113,7 @@ export function createSupabaseParseDependencies(
       };
     },
     consumeQuota: async () => {
-      const { data, error } = await client.rpc("consume_spending_parse_quota");
+      const { data, error } = await client.rpc("consume_spending_parse_quota_v2", { p_ip_hash: configuration.networkFingerprint });
       if (error) throw error;
       return data === true;
     },
@@ -122,6 +122,7 @@ export function createSupabaseParseDependencies(
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         cache: "no-store",
+        signal: AbortSignal.timeout(20_000),
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",

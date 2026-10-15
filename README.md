@@ -1,8 +1,8 @@
 # Nola
 
-Nola is now a responsive Next.js PWA for private, local-first expense tracking. It keeps Supabase Auth/Postgres/RLS as the backend, preserves the Nola domain model, and replaces the Expo UI with web-native responsive screens.
+Nola is a responsive Next.js PWA for private, local-first expense tracking. It uses Supabase Auth, Postgres, and row-level security for cloud sync, with web-native responsive screens.
 
-The rebrand keeps existing `walletly.*` browser storage keys and Supabase project/deep-link identifiers intact so existing data and hosted integrations continue to work.
+The Nola rebrand retains existing browser storage and hosted integration identifiers to preserve compatibility with saved data. Daily push reminders stay disabled until a sender and schedule are configured.
 
 ## Run Locally
 
@@ -35,9 +35,9 @@ On Chrome or Edge, use the browser install button or Nola's install prompt. On i
 Copy the Supabase publishable key into `.env.local`. Add these Supabase Auth redirect URLs:
 
 - `http://localhost:3000/auth/callback`
-- `https://YOUR_DOMAIN/auth/callback`
+- `https://nolapp.vercel.app/auth/callback`
 
-Run the migrations in `supabase/migrations/` before testing cloud sync. The Expo implementation is preserved in `expo-retired/` until the PWA is fully verified.
+Apply the migrations in `supabase/migrations/` to the Supabase project before enabling cloud sync.
 
 ## SEO and production URL
 
@@ -46,10 +46,10 @@ Set `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin users will visit in product
 ## Documentation
 
 - Deployment: `docs/next-pwa-deployment.md`
-- Migration note: `docs/migration-note-next-pwa.md`
+- Architecture: `docs/pwa-architecture.md`
 - Provider setup: `docs/supabase-provider-setup.md`
 
 ## Current Limitations
 
-Browser notifications can show from the service worker and route clicks to `/add-expense`, but reliable reminders while the PWA is closed require backend Web Push scheduling. The starter Supabase Edge Function is in `supabase/functions/daily-reminders/`.
+Daily reminders are disabled in the current release because production push delivery is not configured. Settings explains this and lets an existing subscription be removed. The sender implementation is in `supabase/functions/daily-reminders/`.
 # Nola

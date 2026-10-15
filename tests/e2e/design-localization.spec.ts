@@ -59,7 +59,7 @@ test("every screen stays readable across themes and languages", async ({ page },
       for (const [path, title] of routes) {
         await page.goto(path);
         await expect(page.getByRole("heading", { name: t(title), exact: true }).first()).toBeVisible();
-        await expect(page.locator("body")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+        await expect(page.locator("body")).toHaveCSS("background-color", theme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)");
         await noPageOverflow(page);
         await checkVisibleTextContrast(page);
         if (["/", "/settings", "/insights"].includes(path)) {
@@ -80,11 +80,11 @@ test("every screen stays readable across themes and languages", async ({ page },
       await checkVisibleTextContrast(page);
       await expect(page.locator(".expense-sheet")).toHaveCSS("box-shadow", "none");
       await expect(page.locator(".expense-sheet")).toHaveCSS("border-radius", "0px");
-      await expect(page.locator(".expense-sheet-backdrop")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+      await expect(page.locator(".expense-sheet-backdrop")).toHaveCSS("background-color", theme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)");
       await page.screenshot({ path: testInfo.outputPath(`${language}-${theme}-expense.png`), fullPage: true, animations: "disabled" });
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
-      await page.goto("/insights?tab=goals");
+      await page.goto("/goals");
       await page.getByRole("button", { name: t("goals.new"), exact: true }).click();
       const goal = page.getByRole("dialog", { name: t("goals.new"), exact: true });
       await expect(goal).toBeVisible();

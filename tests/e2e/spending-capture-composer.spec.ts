@@ -37,7 +37,7 @@ async function enterLocalDemo(page: Page) {
 async function openComposer(page: Page, sourceText: string) {
   await page.locator(".workspace-compose-button").click();
   await page.getByRole("textbox", { name: "Spending note" }).fill(sourceText);
-  await page.getByRole("button", { name: "Save note", exact: true }).last().click();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
   await expect(page.getByRole("heading", { name: "Allow AI parsing?", level: 3 })).toBeVisible();
 }
 
@@ -59,7 +59,7 @@ async function completeOneParse(routeBody: { captureId: string; parseRevision: n
   };
 }
 
-test("Not now keeps the source text in the composer and sends no parse request", async ({ page, baseURL }) => {
+test("Not now returns to the autosaved composer and sends no parse request", async ({ page, baseURL }) => {
   await enterAuthenticatedApp(page, baseURL!);
   let parseRequests = 0;
   await page.route("**/api/spending-captures/parse", async (route) => {
@@ -72,7 +72,9 @@ test("Not now keeps the source text in the composer and sends no parse request",
   await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x");
   expect(parseRequests).toBe(0);
   const state = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}"), appDataKey);
-  expect(state.spendingCaptures ?? []).toHaveLength(0);
+  expect(state.spendingCaptures).toHaveLength(1);
+  expect(state.spendingCaptures[0]).toMatchObject({ sourceText: "7000 somsa 4x", parseStatus: "pending" });
+  expect(state.expenses ?? []).toHaveLength(0);
 });
 
 test("the demo cannot opt into AI, and sign-in keeps the typed draft", async ({ page, baseURL }) => {
@@ -89,7 +91,7 @@ test("the demo cannot opt into AI, and sign-in keeps the typed draft", async ({ 
 
   await page.locator(".workspace-compose-button").click();
   await page.getByRole("textbox", { name: "Spending note" }).fill("7000 somsa 4x");
-  await page.getByRole("button", { name: "Save note", exact: true }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.getByRole("heading", { name: "AI parsing needs an account", level: 3 })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Sign in to parse", exact: true }).click();

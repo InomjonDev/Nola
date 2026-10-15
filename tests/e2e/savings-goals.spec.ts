@@ -6,7 +6,7 @@ import { formatAmountDraft } from "../../src/lib/currency-input";
 import { enterDemo, oauthSession } from "./helpers";
 
 async function createGoal(page: Page, name = "Emergency fund", target = "100") {
-  await page.goto("/insights?tab=goals");
+  await page.goto("/goals");
   await page.getByRole("button", { name: "New goal", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "New goal", exact: true });
   await dialog.getByRole("textbox", { name: "Goal name" }).fill(name);
@@ -25,7 +25,7 @@ async function contribute(page: Page, amount: string, kind: "deposit" | "withdra
   return dialog;
 }
 
-test("goals support lifecycle, history, withdrawals, exports, and home preview", async ({ page }) => {
+test("goals support lifecycle, history, withdrawals, exports, and navigation", async ({ page }) => {
   test.setTimeout(90_000);
   await enterDemo(page);
   await createGoal(page);
@@ -41,15 +41,20 @@ test("goals support lifecycle, history, withdrawals, exports, and home preview",
 
   dialog = await contribute(page, "125");
   await expect(dialog).toBeHidden();
-  let completion = page.getByRole("dialog", { name: "Goal reached" });
-  await expect(completion.getByText("You reached your target.")).toBeVisible();
-  await expect(page.getByTestId("goal-confetti")).toHaveCount(0);
-  await expect(completion.getByRole("button", { name: "Archive goal", exact: true })).toBeVisible();
+  const celebration = page.locator(".goal-celebration");
+  await expect(celebration).toContainText("Travel fund");
+  await expect(celebration).toContainText("Goal reached");
+  await expect(page.locator(".goal-confetti-piece")).toHaveCount(28);
+  await expect(page.locator(".goal-confetti-piece[aria-hidden='true']")).toHaveCount(28);
+  await expect(page.getByRole("button", { name: "Archived", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("progressbar", { name: "Travel fund" })).toHaveAttribute("aria-valuenow", "100");
-  await completion.getByRole("button", { name: "Keep active" }).click();
-  await expect(completion).toBeHidden();
+  await page.getByRole("button", { name: "Travel fund", exact: true }).click();
+  const archivedGoal = page.getByRole("dialog", { name: "Travel fund", exact: true });
+  await expect(archivedGoal.getByRole("button", { name: "Add savings" })).toHaveCount(0);
+  await archivedGoal.getByRole("button", { name: "Reopen goal" }).click();
+  await expect(page.getByRole("button", { name: "Active", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.reload();
-  await expect(page.getByRole("dialog", { name: "Goal reached" })).toHaveCount(0);
+  await expect(page.locator(".goal-celebration")).toHaveCount(0);
   dialog = await contribute(page, "126", "withdrawal");
   await expect(dialog.getByRole("alert")).toContainText("exceeds");
   await dialog.getByRole("textbox", { name: /Amount/ }).fill("25");
@@ -68,26 +73,23 @@ test("goals support lifecycle, history, withdrawals, exports, and home preview",
   await expect(page.getByRole("progressbar", { name: "Travel fund" })).toHaveAttribute("aria-valuenow", "50");
   dialog = await contribute(page, "100");
   await expect(dialog).toBeHidden();
-  completion = page.getByRole("dialog", { name: "Goal reached" });
-  await expect(page.getByTestId("goal-confetti")).toHaveCount(0);
-  await completion.getByRole("button", { name: "Archive goal", exact: true }).click();
-  await expect(completion).toBeHidden();
+  await expect(page.locator(".goal-celebration")).toContainText("Travel fund");
   await expect(page.getByRole("button", { name: "Archived", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("progressbar", { name: "Travel fund" })).toHaveAttribute("aria-valuenow", "100");
   await expect(page.getByRole("button", { name: "Archived", exact: true })).toBeFocused();
   await page.reload();
+  await expect(page.locator(".goal-celebration")).toHaveCount(0);
   await page.getByRole("button", { name: "Archived", exact: true }).click();
   await expect(page.getByRole("button", { name: "Travel fund", exact: true })).toBeVisible();
-  await page.goto("/");
-  await expect(page.getByRole("region", { name: "Savings goals" }).getByText("Travel fund", { exact: true })).toHaveCount(0);
-  await page.goto("/insights?tab=goals");
-  await expect(page.getByRole("button", { name: "Goals", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/goals");
+  await expect(page.getByRole("link", { name: "Goals", exact: true })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Archived", exact: true }).click();
   await page.getByRole("button", { name: "Travel fund", exact: true }).click();
   await expect(page.getByRole("dialog").getByRole("button", { name: "Add savings" })).toHaveCount(0);
   await page.getByRole("button", { name: "Reopen goal" }).click();
   await expect(page.getByRole("button", { name: "Active", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await page.goto("/");
-  await expect(page.getByRole("region", { name: "Savings goals" }).getByText("Travel fund")).toBeVisible();
+  await page.goto("/goals");
+  await expect(page.getByRole("button", { name: "Travel fund", exact: true })).toBeVisible();
 
   await page.goto("/settings");
   const jsonDownload = page.waitForEvent("download");
@@ -104,7 +106,7 @@ test("goals support lifecycle, history, withdrawals, exports, and home preview",
   const csv = await readFile((await (await csvDownload).path())!, "utf8");
   expect(csv).toContain('"savings_goal"');
   expect(csv).toContain('"withdrawal"');
-  await page.goto("/insights?tab=goals");
+  await page.goto("/goals");
   await page.getByRole("button", { name: "Travel fund", exact: true }).click();
   await page.getByRole("button", { name: "Delete goal" }).click();
   dialog = page.getByRole("dialog", { name: "Delete this savings goal?" });
@@ -128,8 +130,8 @@ test("goal sheets are keyboard accessible, localized, themed and responsive", as
       await page.reload();
       await expect(page.getByRole("heading", { name: t("goals.savings") })).toBeVisible();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
-      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
-      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("color", theme === "light" ? "rgb(27, 27, 31)" : "rgb(245, 244, 247)");
+      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)");
+      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("color", theme === "light" ? "rgb(27, 27, 31)" : "rgb(242, 242, 247)");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await page.screenshot({ animations: "disabled", path: testInfo.outputPath(`goals-${language}-${theme}.png`), fullPage: true });
       await page.getByRole("button", { name: t("goals.new"), exact: true }).click();
@@ -195,7 +197,7 @@ test("cloud goals recover offline changes with parent ordering and idempotent re
   await page.getByRole("button", { name: "Enter Nola" }).click();
   await page.getByRole("button", { name: "Accept", exact: true }).click();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem("walletly.app-data.v2-11111111-1111-4111-8111-111111111111") ?? "{}").syncQueue?.length)).toBe(0);
-  await page.goto("/insights?tab=goals");
+  await page.goto("/goals");
   await context.setOffline(true);
   // The route is already mounted; offline mutations must not require navigation.
   await page.getByRole("button", { name: "New goal", exact: true }).click();
@@ -237,7 +239,7 @@ test("cached PWA goals survive a fully offline reload and new contributions", as
   await expect.poll(async () => page.evaluate(async () => {
     const cache = await caches.open("nola-shell-v2");
     const keys = (await cache.keys()).map((request) => request.url);
-    return keys.some((url) => url.includes("/insights?tab=goals") && !url.includes("_rsc")) && keys.some((url) => url.includes("/_next/static/"));
+    return keys.some((url) => url.includes("/goals") && !url.includes("_rsc")) && keys.some((url) => url.includes("/_next/static/"));
   })).toBe(true);
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -280,7 +282,7 @@ test("all financial amount fields live-format by locale and preserve the edit ca
     await budgetAmount.fill("1234567.89");
     await expect(budgetAmount).toHaveValue(formatted);
 
-    await page.goto("/insights?tab=goals");
+    await page.goto("/goals");
     await page.getByRole("button", { name: "Formatting goal", exact: true }).click();
     await page.getByRole("dialog", { name: "Formatting goal" }).getByRole("button", { name: t("goals.edit") }).click();
     const targetAmount = page.getByRole("dialog", { name: t("goals.edit") }).getByRole("textbox", { name: t("goals.target") });

@@ -39,7 +39,10 @@ import { DatePicker } from '@/components/date-picker'
 import { DisplayPreferences } from '@/components/display-preferences'
 import { FloatingAddButton } from '@/components/floating-add-button'
 import { GoogleLogo } from '@/components/google-logo'
-import { SavingsGoalsView } from '@/components/savings-goals'
+import {
+	SavingsGoalsPreview,
+	SavingsGoalsView,
+} from '@/components/savings-goals'
 import { AiProcessingNotice } from '@/components/spending/ai-processing-notice'
 import { CaptureComposer } from '@/components/spending/capture-composer'
 import { CaptureDetail } from '@/components/spending/capture-detail'
@@ -83,6 +86,7 @@ import {
 	totalSpendingForCurrency,
 } from '@/lib/profile-metrics'
 import {
+	dailyRemindersAvailable,
 	notificationsEnabled,
 	setDailyReminderEnabled,
 } from '@/lib/notifications'
@@ -1155,6 +1159,7 @@ function SpendingWorkspace({
 				) : mode === 'home' ? (
 					<div className='spending-overview'>
 						<BudgetPreview />
+						<SavingsGoalsPreview />
 					</div>
 				) : (
 					<div className='spending-detail-empty'>
@@ -2378,6 +2383,7 @@ function SettingsView() {
 	const store = useAppStore()
 	const { t } = useI18n()
 	const [reminders, setReminders] = useState(false)
+	const [remindersAvailable, setRemindersAvailable] = useState(false)
 	const [aiNoticeOpen, setAiNoticeOpen] = useState(false)
 	const [reminderMessage, setReminderMessage] = useState<string | null>(null)
 	const [exportMessage, setExportMessage] = useState<string | null>(null)
@@ -2386,6 +2392,7 @@ function SettingsView() {
 	const [deleting, setDeleting] = useState(false)
 	const exportEvents = useRef<number[]>([])
 	useEffect(() => {
+		setRemindersAvailable(dailyRemindersAvailable())
 		void notificationsEnabled(
 			store.user?.isDemo ? undefined : store.user?.id,
 		).then(setReminders)
@@ -2457,7 +2464,9 @@ function SettingsView() {
 					<div className='mt-0 grid gap-3'>
 						<DisplayPreferences />
 						<button
-							className='control justify-between border-b border-line !rounded-none !px-0'
+							disabled={!remindersAvailable && !reminders}
+							aria-pressed={reminders}
+							className='control justify-between border-b border-line !rounded-none !px-0 disabled:cursor-not-allowed disabled:opacity-60'
 							onClick={async () => {
 								setReminderMessage(null)
 								try {
@@ -2487,7 +2496,7 @@ function SettingsView() {
 							<span>{reminders ? t('settings.on') : t('settings.off')}</span>
 						</button>
 						<p className='text-xs leading-5 text-muted'>
-							{t('settings.reminderHelp')}
+							{t(remindersAvailable ? 'settings.reminderHelp' : 'settings.reminderUnavailable')}
 						</p>
 						{reminderMessage && (
 							<p

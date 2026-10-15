@@ -19,6 +19,8 @@ test("PWA metadata and service worker are available", async ({ page }) => {
 test("demo reminder opt-in does not claim closed-app delivery is active", async ({ page }) => {
   await enterDemo(page);
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Daily check-in" }).click();
-  await expect(page.locator("p[role='alert']")).toContainText("signed-in account");
+  const reminder = page.getByRole("button", { name: /Daily check-in/ });
+  await expect(reminder).toBeDisabled();
+  await expect(page.getByText(/Daily reminders are unavailable in this release/)).toBeVisible();
+  await expect(page.locator("p[role='alert']")).toHaveCount(0);
 });

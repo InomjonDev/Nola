@@ -6,7 +6,7 @@ test("icon-only navigation and contextual add controls stay flat and reachable",
   await enterDemo(page);
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await expect(navigation.getByRole("link")).toHaveCount(4);
-  for (const name of ["Spending", "Search", "Insights", "Profile"]) await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
+  for (const name of ["Spending", "Insights", "Goals", "Profile"]) await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
   const add = page.getByRole("button", { name: "Write a spending note", exact: true });
   const position = await add.boundingBox();
   const navPosition = await navigation.boundingBox();
@@ -17,16 +17,13 @@ test("icon-only navigation and contextual add controls stay flat and reachable",
   await expect(add).toHaveCSS("box-shadow", "none");
   await expect(page.locator(".category-icon-background").first()).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await page.goto("/insights");
-  await expect(page.locator(".cash-summary").getByText("Income", { exact: true })).toBeVisible();
-  await expect(page.locator(".cash-summary").getByText("Expenses", { exact: true })).toBeVisible();
+  const overview = page.getByRole("region", { name: "Overview" });
+  await expect(overview.getByText("Income", { exact: true })).toBeVisible();
+  await expect(overview.getByText("Expenses", { exact: true })).toBeVisible();
   await expect(page.locator('.finance-row[data-kind="income"]').first()).toBeVisible();
   await expect(page.locator('.finance-row[data-kind="expense"]').first()).toBeVisible();
-  for (const button of await page.locator(".insights-switch button").all()) {
-    await expect(button).toHaveCSS("box-shadow", "none");
-    await expect(button).toHaveCSS("border-bottom-width", "0px");
-  }
-  await page.getByRole("button", { name: "Goals", exact: true }).click();
-  await expect(page.getByRole("button", { name: "New goal", exact: true })).toHaveClass("primary-add");
+  await page.goto("/goals");
+  await expect(page.getByRole("button", { name: "New goal", exact: true })).toHaveClass(/primary-add/);
   await page.getByRole("button", { name: "New goal", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "New goal", exact: true })).toBeVisible();
 });
@@ -34,7 +31,7 @@ test("icon-only navigation and contextual add controls stay flat and reachable",
 test("combined overview can create, edit, and delete income without changing expense totals", async ({ page }) => {
   await enterDemo(page);
   await page.goto("/insights");
-  const expenseTotal = page.locator(".cash-summary-item--expense .cash-summary-amount");
+  const expenseTotal = page.locator(".cash-flow-summary-metric").filter({ hasText: "Expenses" }).locator(".cash-flow-summary-metric-value");
   const initialExpenses = await expenseTotal.innerText();
   const add = page.getByRole("button", { name: "Add", exact: true });
   await add.click();
@@ -48,15 +45,16 @@ test("combined overview can create, edit, and delete income without changing exp
   await editor.getByRole("textbox", { name: "Note (optional)", exact: true }).fill("Pay day");
   await editor.getByRole("button", { name: "Add income", exact: true }).click();
   await expect(editor).toBeHidden();
-  await expect(page.locator(".cash-summary-item--income .cash-summary-amount")).toHaveText("$2,050.00");
+  const incomeTotal = page.locator(".cash-flow-summary-metric").filter({ hasText: "Income" }).locator(".cash-flow-summary-metric-value");
+  await expect(incomeTotal).toHaveText("$2,050.00");
   const row = page.locator('.finance-row[data-kind="income"]').filter({ hasText: "Pay day" });
   await row.click();
   editor = page.getByRole("dialog", { name: "Edit income", exact: true });
   await editor.getByRole("textbox", { name: "Add income", exact: true }).fill("300");
   await editor.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(page.locator(".cash-summary-item--income .cash-summary-amount")).toHaveText("$2,100.00");
+  await expect(incomeTotal).toHaveText("$2,100.00");
   await row.click();
   await editor.getByRole("button", { name: "Delete income", exact: true }).click();
-  await expect(page.locator(".cash-summary-item--income .cash-summary-amount")).toHaveText("$1,800.00");
+  await expect(incomeTotal).toHaveText("$1,800.00");
   await expect(expenseTotal).toHaveText(initialExpenses);
 });

@@ -15,7 +15,7 @@ export const DEFAULT_PAYMENT_METHODS = ["Card", "Cash", "Bank transfer"] as cons
 export const TAG_SUGGESTIONS = ["Work", "Personal", "Travel", "Recurring", "Shared"] as const;
 export const APP_STORAGE_PREFIX = "walletly.app-data.v2";
 export function appStorageKey(userId: string) {
-  // SecureStore only accepts alphanumeric characters, dots, underscores, and hyphens.
+  // Keep the existing prefix and separators so saved browser data remains compatible.
   return `${APP_STORAGE_PREFIX}-${userId}`;
 }
 export function legacyAppStorageKey(userId: string) {

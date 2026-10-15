@@ -1,4 +1,4 @@
-# Walletly Savings Goals Implementation Plan
+# Nola Savings Goals Implementation Plan
 
 **Goal:** Manually tracked savings goals in Insights with a compact Home preview.
 

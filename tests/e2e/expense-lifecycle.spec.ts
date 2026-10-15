@@ -32,9 +32,9 @@ test("opaque expense editor closes with Cancel and keeps the app shell mounted",
   await expect(manualDialog).toBeVisible();
   await page.getByRole("button", { name: "Close add expense" }).click();
   await expect(manualDialog).toBeHidden();
-  await expect(page.getByRole("dialog", { name: "New spending note", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Today", exact: true })).toBeVisible();
   await expect(page.getByRole("textbox", { name: "Spending note" })).toBeVisible();
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Back to spending", exact: true }).click();
   await expect(page.locator(".workspace-compose-button")).toBeVisible();
 });
 
@@ -55,8 +55,9 @@ test("combined overview records income and a monthly budget", async ({ page }) =
   await page.getByRole("button", { name: "Next month" }).click();
   await page.getByRole("textbox", { name: "Set monthly budget" }).fill("500");
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.locator(".cash-summary").getByText("Income", { exact: true })).toBeVisible();
-  await expect(page.locator(".cash-summary").getByText("Expenses", { exact: true })).toBeVisible();
+  const overview = page.getByRole("region", { name: "Overview" });
+  await expect(overview.getByText("Income", { exact: true })).toBeVisible();
+  await expect(overview.getByText("Expenses", { exact: true })).toBeVisible();
   await expect(page.getByText(/Over budget by/)).toBeVisible();
   await expect(page.getByRole("progressbar", { name: "Budget" })).toHaveAttribute("aria-valuenow", "100");
 });

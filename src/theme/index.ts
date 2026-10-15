@@ -24,7 +24,7 @@ export const palettes = {
   dark: {
     background: "#000000", surface: "#1C1C1E", surfaceElevated: "#2C2C2E", raised: "#2C2C2E",
     text: "#F2F2F7", textMuted: "#AEAEB2", border: "#38383A", controlBorder: "#8E8E93",
-    accent: "#0A84FF", accentStrong: "#409CFF", accentSoft: "#061321", onAccent: "#FFFFFF",
+    accent: "#409CFF", accentStrong: "#69A7FF", accentSoft: "#061321", onAccent: "#000000",
     destructive: "#FF453A", onDestructive: "#000000", destructiveSoft: "#3A1C1E",
     success: "#30D158", warning: "#FF9F0A", overlay: "rgba(0, 0, 0, 0.72)",
     chart: ["#FF9F0A", "#0A84FF", "#30D158", "#FF375F", "#64D2FF"],

@@ -9,7 +9,7 @@ import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categor
 import { flushOperations } from "@/lib/offline-sync";
 import { applyCaptureParseData, editCaptureTextData, filterOwnedTagIds, hasActiveFolderName, undoCaptureData } from "@/lib/spending-captures";
 import { clearLocalReminders, setDailyReminderEnabled } from "@/lib/notifications";
-import { accountStorage, secureStorage } from "@/lib/secure-storage";
+import { accountStorage, browserStorage } from "@/lib/browser-storage";
 import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase, supabaseAuthStorageKey } from "@/lib/supabase";
 import { calendarDate, normalizeGoalData, validateContribution, validateGoal, type GoalActionResult } from "@/lib/savings-goals";
 import { validateCategoryBudget } from "@/lib/category-budgets";
@@ -244,7 +244,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let cancelled = false;
     async function hydrate() {
-      const demo = await secureStorage.getItem(DEMO_SESSION_KEY);
+      const demo = await browserStorage.getItem(DEMO_SESSION_KEY);
       if (cancelled) return;
       if (demo) {
         // A local demo session is self-contained and should open without waiting for Supabase.
@@ -427,13 +427,13 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       if (result.user) setUser(toUserIdentity(result.user));
       return;
     }
-    await secureStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: clean }));
+    await browserStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: clean }));
     setUser((current) => current ? { ...current, name: clean } : current);
   };
 
   const signInDemo = async () => {
     const identity = demoIdentity();
-    await secureStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: identity.name }));
+    await browserStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: identity.name }));
     await activateAccount(identity);
   };
 
@@ -441,7 +441,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (user) await writeAccountData(user.id, data);
     await setDailyReminderEnabled(false, user?.isDemo ? undefined : user?.id);
     if (supabase && user && !user.isDemo) await supabase.auth.signOut();
-    await secureStorage.removeItem(DEMO_SESSION_KEY);
+    await browserStorage.removeItem(DEMO_SESSION_KEY);
     ownerRef.current = null;
     recurringOwnerRef.current = null;
     recurringInFlightRef.current = false;
@@ -1076,12 +1076,12 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       ownerRef.current = null;
       // Do not expose the login screen until this device cannot restore the deleted session.
       await Promise.allSettled([
-        secureStorage.removeItem(DEMO_SESSION_KEY),
+        browserStorage.removeItem(DEMO_SESSION_KEY),
         ...(deletedUserId ? [accountStorage.removeItem(appStorageKey(deletedUserId)), accountStorage.removeItem(legacyAppStorageKey(deletedUserId))] : []),
         ...(supabaseAuthStorageKey && user && !user.isDemo ? [
-          secureStorage.removeItem(supabaseAuthStorageKey),
-          secureStorage.removeItem(`${supabaseAuthStorageKey}-user`),
-          secureStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`),
+          browserStorage.removeItem(supabaseAuthStorageKey),
+          browserStorage.removeItem(`${supabaseAuthStorageKey}-user`),
+          browserStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`),
         ] : []),
       ]);
       setUser(null);
@@ -1096,9 +1096,9 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
           } finally {
             // Deletion already revoked refresh tokens; clear this device even if logout is offline.
             if (supabaseAuthStorageKey) {
-              await secureStorage.removeItem(supabaseAuthStorageKey);
-              await secureStorage.removeItem(`${supabaseAuthStorageKey}-user`);
-              await secureStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`);
+              await browserStorage.removeItem(supabaseAuthStorageKey);
+              await browserStorage.removeItem(`${supabaseAuthStorageKey}-user`);
+              await browserStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`);
             }
           }
         })(),

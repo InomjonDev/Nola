@@ -23,13 +23,13 @@ test("workspace screens fit mobile, tablet, and desktop in both themes", async (
       await page.goto("/settings");
       await page.getByRole("button", { name: theme }).click();
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme.toLowerCase());
-      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "Light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+      await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "Light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)");
 
       for (const [path, heading] of routes) {
         await page.goto(path);
         await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible({ timeout: 15000 });
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme.toLowerCase());
-        await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "Light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+        await expect(page.locator(".min-h-dvh.bg-bg")).toHaveCSS("background-color", theme === "Light" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)");
         const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         expect(documentWidth, `${path} at ${width}px in ${theme.toLowerCase()} mode`).toBeLessThanOrEqual(width + 1);
 
@@ -46,7 +46,7 @@ test("workspace screens fit mobile, tablet, and desktop in both themes", async (
             expect(dockTop).toBeGreaterThanOrEqual(listBottom - 1);
           } else {
             await expect(dock).toHaveCSS("position", "fixed");
-            await expect(dock).toHaveCSS("background-color", theme === "Light" ? "rgb(242, 241, 247)" : "rgb(25, 25, 28)");
+            await expect(dock).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
             const dockBottom = await dock.evaluate((element) => element.getBoundingClientRect().bottom);
             const navigationTop = await page.locator(".mobile-nav").evaluate((element) => element.getBoundingClientRect().top);
             expect(dockBottom).toBeLessThanOrEqual(navigationTop);

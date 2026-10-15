@@ -5,7 +5,7 @@ This document maps the records Nola keeps in the browser and the rows it synchro
 ## Storage layers
 
 1. **Auth identity** — Supabase Auth owns the signed-in user, email, provider identity, and session. `public.profiles` stores Nola preferences keyed by the Auth user ID.
-2. **Local app state** — `PersistedAppData` in `src/lib/types.ts` is cached per user in browser `localStorage` through `src/lib/secure-storage.ts`. The wrapper is named `secureStorage`, but its web implementation is ordinary `localStorage`; it does not encrypt data at rest. Writes are queued locally when cloud sync is enabled or offline.
+2. **Local app state** — `PersistedAppData` in `src/lib/types.ts` is cached per user in browser `localStorage` through `src/lib/browser-storage.ts`. This is ordinary browser storage, not encryption at rest. Writes are queued locally when cloud sync is enabled or offline.
 3. **Cloud records** — owned financial and note records live in `public` tables with RLS. `src/lib/offline-sync.ts` retries queued upserts/deletes, sends parents before dependent rows, and caps each flush at 25 operations.
 4. **Derived and external data** — balances and insights are calculated from saved rows; recurring rules generate ordinary income/expense rows. If the user enables AI parsing and submits a note, the server sends its source text to OpenRouter. Web Push endpoints and reminder preferences are stored separately from spending records.
 
@@ -78,7 +78,7 @@ Financial rows generally use `deleted_at` for recoverable deletion. Categories, 
 ## Related source
 
 - Types and local snapshot: `src/lib/types.ts`
-- Local persistence and account scoping: `src/lib/app-store.tsx`, `src/lib/secure-storage.ts`
+- Local persistence and account scoping: `src/lib/app-store.tsx`, `src/lib/browser-storage.ts`
 - Sync order/retries: `src/lib/offline-sync.ts`
 - Demo-only sample records: `src/lib/demo-data.ts`
 - Cloud schema and policy history: `supabase/migrations/`

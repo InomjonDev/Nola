@@ -1,24 +1,22 @@
-# Nola third-party audit
+# Nola PWA third-party inventory
 
-Reviewed for the MVP redesign on 2026-10-01.
+This inventory covers dependencies and external services used by the active Next.js PWA. Review provider settings and terms again before production release.
 
-| Dependency | Purpose | Data sent | Permissions / storage | Decision |
-| --- | --- | --- | --- | --- |
-| Supabase JS | Auth and cloud persistence | Account identity and user-owned app records required for sync | Secure session storage; RLS policies in Postgres | Required for signed-in sync |
-| PostHog capture endpoint | Product funnel measurement | Coarse workflow events and booleans only | Optional on web until cookie consent; no notes, amounts, names, tags, or exports | Keep, privacy-limited |
-| Expo Notifications | Daily local reminder | No expense data; notification copy is generic | Notification permission only after the user enables reminders | Optional, user-controlled |
-| Expo SecureStore | Session and demo-session persistence | Session token or local demo marker | Device secure storage | Required for auth persistence |
-| AsyncStorage | Web offline app data and preferences; small native preferences | Browser-local records on web, theme, consent, reminder preference, notification IDs | Browser/device-local storage | Required for offline-first MVP; native financial records use SecureStore chunks |
-| Expo SecureStore | Native offline account records and auth session | Encrypted device-local account records, session token, demo marker | iOS Keychain / Android Keystore-backed storage | Required for native financial-data protection |
-| NetInfo | Reconnect detection | No user data | Network state only | Required for sync queue |
-| Lucide React Native | Category and navigation icons | None | No network or storage | Keep; ISC-licensed |
-| Expo LinearGradient | Wallet balance card treatment | None | No network or storage | Keep; no external asset |
-| Gesture Handler / Reanimated / Worklets | Native-feeling currency gesture | None | No network or storage | Keep; interaction only |
+| Dependency or service | Purpose | Data involved | Release handling |
+| --- | --- | --- | --- |
+| Supabase Auth and Postgres | Sign-in and cloud sync | Account identity and user-owned financial records | Required for signed-in sync; owner access is enforced with RLS |
+| OpenRouter | Optional spending-note parsing | User-provided note text and parsing context, only after AI parsing is enabled | Server-side API key; disclose external processing and allow the user to disable parsing |
+| PostHog | Optional product analytics | Coarse workflow events and booleans | Disabled until analytics consent; do not send amounts, notes, names, tags, or payment details |
+| Error-reporting collector | Optional sanitized application errors | Redacted message, name, short stack, surface, and release | Configure access control, rate limits, retention, and alerting |
+| Noto Sans | Local font files | None | Bundled with the app; license notice is in `public/fonts/OFL.txt` |
+| Remixicon | UI icons | None | Bundled JavaScript and CSS; no icon service calls |
+| jsPDF | Client-side PDF export | Current export data processed in the browser | No document upload is performed by the library |
+| Browser APIs | Local storage, service worker, install prompt, notifications, file downloads | Device-local app data and user-approved reminder settings | Request permissions only when needed; isolate private API/auth responses from shared caches |
 
-## Data minimization decisions
+## Data minimization
 
-- Analytics does not receive raw financial values, note text, category names, tag names, payment method names, or exported JSON.
-- The reminder is generic and does not expose an amount, category, note, or account balance in notification text.
-- No advertising SDK, location SDK, contacts access, camera access, receipt OCR, or bank-linking SDK is included.
-- Cloud access is protected by owner-scoped RLS policies. Account deletion calls the authenticated database deletion function and clears the local session.
-- The app uses the platform system font stack and no remote images, so there is no separate font or image license to track for the product UI.
+- Analytics excludes raw financial values, note text, category names, tag names, payment method names, and export contents.
+- AI parsing is opt-in and sends the selected spending note to the configured parsing provider. Do not claim that note text stays local when parsing is enabled.
+- Daily reminder delivery is disabled in the current release. If re-enabled after backend verification, reminder copy stays generic and excludes amounts, categories, notes, and balances.
+- The app does not include advertising, location, contacts, camera, or bank-linking SDKs.
+- Cloud record access is protected by owner-scoped RLS policies; account deletion uses an authenticated database function and clears the current browser's local session and data.

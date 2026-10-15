@@ -65,7 +65,7 @@ npm run build
 
 ### 4. Deploy to production
 
-1. Confirm the project reference shown by `supabase link`/CLI status matches the intended production project. `project_id = "walletly"` in local `supabase/config.toml` is only the local CLI project name; do not use it as proof of a remote target.
+1. Confirm the project reference shown by `supabase link`/CLI status matches the intended production project. `project_id = "nola"` in local `supabase/config.toml` is only the local CLI project name; do not use it as proof of a remote target.
 2. Confirm a current backup/restore path and a rollback plan. Review destructive DDL separately; migrations should generally roll forward.
 3. Preview the pending remote migration list before applying. With the verified production project linked, use the CLI preview and then apply:
 

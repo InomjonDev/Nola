@@ -134,6 +134,32 @@ test("returns 401 before reading owner data for an invalid session", async () =>
   assert.equal(readCount, 0);
 });
 
+test("rejects an invalid session before reading a malformed request body", async () => {
+  const { deps } = makeDependencies();
+  const malformed = new Request("http://localhost/api/spending-captures/parse", {
+    method: "POST",
+    headers: { authorization: "Bearer invalid-token", "content-type": "application/json" },
+    body: "{not-json",
+  });
+  const response = await createSpendingParseHandler(deps)(malformed);
+  assert.equal(response.status, 401);
+  assert.equal((await responseBody(response)).error, "unauthenticated");
+});
+
+test("rejects an oversized request before reading consent or capture data", async () => {
+  let consentReads = 0;
+  const { deps } = makeDependencies({
+    readAiConsent: async () => { consentReads += 1; return true; },
+  });
+  const oversized = request({ ...input, sourceText: "a".repeat(40_000) });
+  const response = await createSpendingParseHandler(deps)(oversized);
+  const body = await responseBody(response);
+  assert.equal(response.status, 413);
+  assert.equal(body.error, "text_too_long");
+  assert.equal(body.message, "The spending request is too large.");
+  assert.equal(consentReads, 0);
+});
+
 test("returns 401 when the bearer token is missing", async () => {
   const { deps } = makeDependencies();
   const response = await createSpendingParseHandler(deps)(request(input, ""));

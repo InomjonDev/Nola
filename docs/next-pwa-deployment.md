@@ -1,6 +1,6 @@
 # Nola Next.js PWA Deployment
 
-Nola is the public product name. Keep the existing `walletly.*` browser storage keys, Supabase project ID, `WALLETLY_*` function secrets, `x-walletly-cron-secret` header, Vault names, cron job name, and Expo deep-link scheme unchanged unless applying a coordinated data/configuration migration. These identifiers are retained so existing devices and hosted reminder/auth integrations continue to work.
+Nola is the public product name. Keep the existing browser storage keys, Supabase project ID, `WALLETLY_*` function secrets, `x-walletly-cron-secret` header, Vault names, and cron job name unchanged unless applying a coordinated data/configuration migration. These compatibility identifiers preserve existing browser data and remain reserved for any older hosted integrations; reminder delivery is disabled in the current release.
 
 ## Local Development
 
@@ -20,8 +20,8 @@ Add these redirect URLs in Supabase Auth URL Configuration:
 
 - `http://localhost:3000/auth/callback`
 - `http://localhost:3000/auth/confirm`
-- `https://YOUR_VERCEL_DOMAIN/auth/callback`
-- `https://YOUR_VERCEL_DOMAIN/auth/confirm`
+- `https://nolapp.vercel.app/auth/callback`
+- `https://nolapp.vercel.app/auth/confirm`
 - Any custom production domain callback, for example `https://nola.example.com/auth/callback`
 - The matching custom-domain email confirmation URL, for example `https://nola.example.com/auth/confirm`
 
@@ -65,9 +65,9 @@ Nola requests notification permission only from the Settings reminder action. Th
 
 Closed-app scheduled reminders require backend delivery. The included `supabase/functions/daily-reminders` function is the smallest cron-ready design: deploy it, add storage for Push API subscriptions, connect a Web Push sender, and schedule it from Supabase cron at the desired reminder time.
 
-The production implementation uses these Supabase Edge Function secrets: `WALLETLY_CRON_SECRET`, `WALLETLY_VAPID_PUBLIC_KEY`, `WALLETLY_VAPID_PRIVATE_KEY`, and `WALLETLY_VAPID_SUBJECT`. Set the public VAPID key as `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in the web environment. Generate a VAPID key pair with `npx web-push generate-vapid-keys --json`, then store the private key only in Supabase Function Secrets. Deploy the new migrations and `daily-reminders` function, then schedule an invocation every minute with `pg_cron` and `pg_net`, storing the function URL, publishable key, and cron secret in Supabase Vault. The request must include `x-walletly-cron-secret`; do not put the service role key in the browser or in a committed SQL file. The function uses `reminder_preferences.last_notified_on` as a per-user, timezone-local daily claim, so repeated cron invocations do not send duplicate reminders; users with an expense logged for their local day are skipped.
+To enable reminders in a future release, configure these Supabase Edge Function secrets: `WALLETLY_CRON_SECRET`, `WALLETLY_VAPID_PUBLIC_KEY`, `WALLETLY_VAPID_PRIVATE_KEY`, and `WALLETLY_VAPID_SUBJECT`. Set the subject to a monitored Nola security contact in `mailto:` form. Set the public VAPID key as `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in Vercel and set `NEXT_PUBLIC_DAILY_REMINDERS_ENABLED=true` only after delivery is verified. Generate a VAPID key pair with `npx web-push generate-vapid-keys --json`, then store the private key only in Supabase Function Secrets. Deploy the function, then schedule an invocation every minute with `pg_cron` and `pg_net`, storing the function URL, publishable key, and cron secret in Supabase Vault. The request must include `x-walletly-cron-secret`; do not put the service role key in the browser or in a committed SQL file. The function uses `reminder_preferences.last_notified_on` as a per-user, timezone-local daily claim, so repeated cron invocations do not send duplicate reminders; users with an expense logged for their local day are skipped.
 
-Reminder delivery stays off until a signed-in user enables it from Settings, grants browser permission, and the VAPID public key is configured. If the Edge Function, VAPID secrets, or cron schedule are not deployed, the UI reports that reminders are unavailable rather than pretending a browser timer can run with the app closed.
+Reminder delivery stays off until `NEXT_PUBLIC_DAILY_REMINDERS_ENABLED=true`, the VAPID public key, Edge Function secrets, and the cron schedule are configured and verified. If any part is missing, Settings disables new subscriptions and explains that reminders are unavailable; the user can still turn off a previously saved subscription.
 
 Example Vault-backed schedule:
 

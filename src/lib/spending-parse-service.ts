@@ -41,6 +41,7 @@ export class SpendingParseError extends Error {
 }
 
 const MAX_SOURCE_LENGTH = 4000;
+const MAX_REQUEST_BYTES = 32 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function jsonResponse(status: number, value: Record<string, unknown>) {
@@ -48,6 +49,36 @@ function jsonResponse(status: number, value: Record<string, unknown>) {
     status,
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
+}
+
+async function readJsonBody(request: Request): Promise<unknown> {
+  const advertisedLength = request.headers.get("content-length");
+  if (advertisedLength && /^\d+$/.test(advertisedLength) && Number(advertisedLength) > MAX_REQUEST_BYTES) {
+    throw new SpendingParseError("text_too_long", "The spending request is too large.", 413);
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) throw new SpendingParseError("invalid_request", "Send a valid JSON spending capture request.", 400);
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let bytesRead = 0;
+  let body = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytesRead += value.byteLength;
+      if (bytesRead > MAX_REQUEST_BYTES) {
+        void reader.cancel().catch(() => undefined);
+        throw new SpendingParseError("text_too_long", "The spending request is too large.", 413);
+      }
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return JSON.parse(body) as unknown;
+  } catch (error) {
+    if (error instanceof SpendingParseError) throw error;
+    throw new SpendingParseError("invalid_request", "Send a valid JSON spending capture request.", 400);
+  }
 }
 
 function parseRequestBody(value: unknown): ParseRequest {
@@ -209,19 +240,6 @@ export function createSpendingParseHandler(deps: ParseDependencies) {
       return jsonResponse(405, { error: "method_not_allowed", message: "Use POST to parse spending text." });
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return parseErrorResponse(new SpendingParseError("invalid_request", "Send a valid JSON spending capture request.", 400));
-    }
-    let input: ParseRequest;
-    try {
-      input = parseRequestBody(body);
-    } catch (error) {
-      return parseErrorResponse(error);
-    }
-
     const token = bearerToken(request);
     if (!token) return parseErrorResponse(new SpendingParseError("unauthenticated", "Sign in to parse spending text.", 401));
 
@@ -232,6 +250,13 @@ export function createSpendingParseHandler(deps: ParseDependencies) {
       userId = identity.userId;
     } catch (error) {
       return parseErrorResponse(error instanceof SpendingParseError ? error : new SpendingParseError("unauthenticated", "Your session is invalid. Sign in again.", 401));
+    }
+
+    let input: ParseRequest;
+    try {
+      input = parseRequestBody(await readJsonBody(request));
+    } catch (error) {
+      return parseErrorResponse(error);
     }
 
     let consentEnabled: boolean;

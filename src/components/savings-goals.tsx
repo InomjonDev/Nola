@@ -280,7 +280,7 @@ export function SavingsGoalsView() {
     if (panel !== null || !restoreArchivedFocus.current) return;
     restoreArchivedFocus.current = false;
     if (completionQueue.length === 0) archivedFilter.current?.focus();
-  }, [panel, completionQueue.length]);
+  }, [panel, completionQueue.length, archived]);
 
   function closePanel() {
     setPanel(null);

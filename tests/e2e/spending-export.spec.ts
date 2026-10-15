@@ -52,7 +52,7 @@ test("Settings downloads CSV, Markdown, and a Unicode PDF report for a spending 
 
   await page.locator(".workspace-compose-button").click();
   await page.getByRole("textbox", { name: "Spending note" }).fill(sourceText);
-  await page.getByRole("button", { name: "Save note", exact: true }).last().click();
+  await page.getByRole("button", { name: "Done", exact: true }).last().click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByText("1 expenses added", { exact: true })).toBeVisible();
   await page.goto("/settings");

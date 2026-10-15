@@ -2,6 +2,8 @@
 
 Nola reports uncaught App Router errors through `src/lib/error-reporting.ts`. The payload is intentionally limited to a sanitized message, error name, short stack, surface, platform, and app version. It never sends expense amounts, notes, tags, categories, payment methods, exports, or user email addresses.
 
+The current Vercel production project has no external collector configured, so browser error reports are disabled. Review Vercel runtime and deployment logs for server-side errors until a collector is configured.
+
 ## Configure a collector
 
 Set `NEXT_PUBLIC_ERROR_REPORTING_URL` to an HTTPS collector that accepts JSON `POST` requests. The collector should apply rate limiting, retention limits, access control, and alerting. The app remains usable when the endpoint is absent or unavailable.

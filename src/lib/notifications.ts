@@ -1,4 +1,4 @@
-import { secureStorage } from "@/lib/secure-storage";
+import { browserStorage } from "@/lib/browser-storage";
 import { supabase } from "@/lib/supabase";
 
 const ENABLED_KEY = "walletly.notifications-enabled";
@@ -15,9 +15,15 @@ function isSupported() {
   return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
 }
 
+export function dailyRemindersAvailable() {
+  return process.env.NEXT_PUBLIC_DAILY_REMINDERS_ENABLED === "true"
+    && Boolean(supabase && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim())
+    && isSupported();
+}
+
 export async function notificationsEnabled(userId?: string) {
   if (!isSupported() || !userId || !supabase || Notification.permission !== "granted") return false;
-  if ((await secureStorage.getItem(ENABLED_KEY)) !== "true") return false;
+  if ((await browserStorage.getItem(ENABLED_KEY)) !== "true") return false;
   try {
     const registration = await navigator.serviceWorker.ready;
     const subscription = await registration.pushManager.getSubscription();
@@ -71,7 +77,7 @@ async function removeSubscription(userId?: string) {
 }
 
 export async function clearLocalReminders() {
-  await secureStorage.setItem(ENABLED_KEY, "false");
+  await browserStorage.setItem(ENABLED_KEY, "false");
   if (!isSupported()) return;
   const registration = await navigator.serviceWorker.getRegistration();
   const subscription = await registration?.pushManager.getSubscription();
@@ -80,18 +86,18 @@ export async function clearLocalReminders() {
 
 export async function setDailyReminderEnabled(enabled: boolean, userId?: string) {
   if (!enabled) {
-    await secureStorage.setItem(ENABLED_KEY, "false");
+    await browserStorage.setItem(ENABLED_KEY, "false");
     await removeSubscription(userId);
     return false;
   }
-  if (!userId || !supabase || !isSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return false;
+  if (!userId || !dailyRemindersAvailable()) return false;
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    await secureStorage.setItem(ENABLED_KEY, "false");
+    await browserStorage.setItem(ENABLED_KEY, "false");
     return false;
   }
   const registered = await saveSubscription(userId);
   if (!registered) return false;
-  await secureStorage.setItem(ENABLED_KEY, "true");
+  await browserStorage.setItem(ENABLED_KEY, "true");
   return true;
 }

@@ -36,8 +36,5 @@
     "tests/**/*.ts",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "expo-retired"
-  ]
+  "exclude": ["node_modules"]
 }

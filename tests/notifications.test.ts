@@ -19,6 +19,8 @@ test("scheduled reminders are deduplicated by local delivery date", () => {
 
 test("enabling reminders requires a signed-in account and configured Web Push", () => {
   const source = readFileSync(new URL("../src/lib/notifications.ts", import.meta.url), "utf8");
-  assert.match(source, /!userId \|\| !supabase \|\| !isSupported\(\) \|\| !process\.env\.NEXT_PUBLIC_VAPID_PUBLIC_KEY/);
+  assert.match(source, /process\.env\.NEXT_PUBLIC_DAILY_REMINDERS_ENABLED === ["']true["']/);
+  assert.match(source, /Boolean\(supabase && process\.env\.NEXT_PUBLIC_VAPID_PUBLIC_KEY\?\.trim\(\)\)/);
+  assert.match(source, /!userId \|\| !dailyRemindersAvailable\(\)/);
   assert.doesNotMatch(source, /showNotification\(title/);
 });

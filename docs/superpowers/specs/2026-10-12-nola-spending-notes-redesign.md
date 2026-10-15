@@ -21,7 +21,7 @@ This design uses the supplied Apple Notes screenshots as visual references. It r
 
 ## Current project context
 
-The active app is a Next.js 15 PWA with a React client, a local-first app store, Supabase Auth/Postgres/RLS, and English, Russian, and Uzbek localization. The active `package.json` has no Expo dependency. The README says the Expo implementation is retained under `expo-retired/` while the PWA is active. The supplied project instructions describe Expo, so this spec follows the executable project and README for Phase 1.
+The active app is a Next.js 15 PWA with a React client, a local-first app store, Supabase Auth/Postgres/RLS, and English, Russian, and Uzbek localization. The PWA is the single maintained application target.
 
 The current expense model stores a structured amount, date, category, payment method, note, and tags. The store also contains budgets, category budgets, recurring rules, accounts, income, savings goals, and goal contributions. Existing transactions and account behavior must remain available.
 

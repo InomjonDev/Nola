@@ -9,12 +9,12 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? readSecretKe
 const cronSecret = Deno.env.get("WALLETLY_CRON_SECRET");
 const vapidPublicKey = Deno.env.get("WALLETLY_VAPID_PUBLIC_KEY");
 const vapidPrivateKey = Deno.env.get("WALLETLY_VAPID_PRIVATE_KEY");
-const vapidSubject = Deno.env.get("WALLETLY_VAPID_SUBJECT") ?? "mailto:security@walletly.app";
+const vapidSubject = Deno.env.get("WALLETLY_VAPID_SUBJECT")?.trim();
 
-if (vapidPublicKey && vapidPrivateKey) webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+if (vapidPublicKey && vapidPrivateKey && vapidSubject?.startsWith("mailto:")) webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
 Deno.serve(async (request) => {
-  if (!supabaseUrl || !serviceRoleKey || !cronSecret || !vapidPublicKey || !vapidPrivateKey) return Response.json({ error: "Reminder function is not configured" }, { status: 500 });
+  if (!supabaseUrl || !serviceRoleKey || !cronSecret || !vapidPublicKey || !vapidPrivateKey || !vapidSubject?.startsWith("mailto:")) return Response.json({ error: "Reminder function is not configured" }, { status: 500 });
   if (request.headers.get("x-walletly-cron-secret") !== cronSecret) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });

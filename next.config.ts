@@ -17,12 +17,6 @@ const nextConfig: NextConfig = {
   experimental: { optimizePackageImports: ["@remixicon/react"] },
   poweredByHeader: false,
   outputFileTracingRoot: process.cwd(),
-  // Keep local Expo environment files working while the migration is rolled out.
-  env: {
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.EXPO_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-  },
   async headers() {
     return [
       {

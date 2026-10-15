@@ -1,4 +1,4 @@
-project_id = "walletly"
+project_id = "nola"
 
 [auth]
 site_url = "http://localhost:3000"

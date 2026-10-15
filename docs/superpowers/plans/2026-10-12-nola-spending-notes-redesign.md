@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- The active app is the Next.js PWA; the Expo implementation is retained under `expo-retired/`.
+- The active app is the Next.js PWA.
 - Store every capture's source text and link it to its generated expense records.
 - `7000 somsa 4x` means a total expense of 7,000 UZS and quantity 4; do not multiply the amount by quantity.
 - Automatically save valid parsed expenses and provide one Undo action for the complete capture.

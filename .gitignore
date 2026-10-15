@@ -4,23 +4,8 @@
 node_modules/
 .next/
 
-# Expo
-.expo/
 dist/
 web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
 
 # debug
 npm-debug.*
@@ -43,6 +28,15 @@ yarn-error.*
 .vercel
 .env*
 !.env.example
+
+# signing material and generated native build files
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.kotlin/
 
 # Playwright output
 playwright-report/

@@ -19,7 +19,7 @@ Out of scope: new financial features, changing the database or authentication pr
 
 ## Current implementation
 
-The active package is a Next.js 15 / React 19 PWA. `README.md`, route files, and `package.json` agree on this. The old Expo application is in `expo-retired/`; the root AGENTS.md still describes Expo. This redesign targets the active PWA and retains its routing and data behavior.
+The active package is a Next.js 15 / React 19 PWA. `README.md`, route files, and `package.json` agree on this. This redesign targets the PWA and retains its routing and data behavior.
 
 Theme selection and language selection already exist in `src/theme/theme-provider.tsx` and `src/lib/i18n-provider.tsx`. Translations live in `src/lib/i18n.ts`. Styling currently combines CSS custom properties in `src/app/globals.css`, Tailwind utilities, and a separate palette in `src/theme/index.ts`. The redesign must align these sources and eliminate conflicting visual values.
 
@@ -177,7 +177,7 @@ For this implementation, decorative gradients, glass blur, and grain are unneces
 
 ## Validation and acceptance
 
-Run `npm run lint` and `npm run typecheck`, then the applicable existing interaction tests and a production build. Use the project's current scripts rather than Expo commands against the Next.js package.
+Run `npm run lint` and `npm run typecheck`, then the applicable existing interaction tests and a production build using the project's current npm scripts.
 
 Update the responsive test expectations for a pure-black dark canvas and the revised home heading. Check every main route and the expense/goal sheets at 320, 390, 768, and 1280px in both themes. Exercise every screen in English, Russian, and Uzbek; capture the home, activity, expense sheet, and settings at 390px for all six theme/language combinations, plus representative desktop screenshots.
 
