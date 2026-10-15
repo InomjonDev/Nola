@@ -1,10 +1,40 @@
 # Nola
 
-Nola is a responsive Next.js PWA for private, local-first expense tracking. It uses Supabase Auth, Postgres, and row-level security for cloud sync, with web-native responsive screens.
+### Everyday money, in one clear place.
 
-The Nola rebrand retains existing browser storage and hosted integration identifiers to preserve compatibility with saved data. Daily push reminders stay disabled until a sender and schedule are configured.
+Nola helps you keep up with spending, understand where your money goes, and make steady progress toward savings goals—from your phone, tablet, or computer.
 
-## Run Locally
+[Open Nola](https://nolapp.vercel.app)
+
+## About Nola
+
+- **Purpose:** Make everyday money easier to follow.
+- **Tracks:** Spending, income, budgets, accounts, recurring entries, and savings goals.
+- **Languages:** English, Russian, and Uzbek.
+- **Currencies:** USD, UZS, RUB, EUR, and GBP.
+- **Use it anywhere:** Nola works in your browser and can be installed like an app.
+
+## What you can do
+
+- Record purchases and income, then organize them with categories, tags, and notes.
+- Set monthly and category budgets, and keep recurring transactions in view.
+- Follow account balances and record savings goal deposits or withdrawals.
+- Review spending insights, search past activity, and export your records as CSV, JSON, PDF, or Markdown.
+- Turn a spending note into expense records with optional AI assistance. Check the results before relying on them.
+
+## Your data
+
+Nola saves changes in your browser first. When you sign in, it syncs your records with your account; offline changes wait until you reconnect. You can export your data from Settings.
+
+AI note parsing is optional. When enabled, the selected note and limited context are sent to Google Gemini. On Google's free tier, requests and responses may be used to improve its products, and human reviewers may process them. Do not include sensitive or personal information. [Read the privacy policy](https://nolapp.vercel.app/privacy).
+
+Daily reminders are not available in the current release.
+
+## Install Nola
+
+On Chrome or Edge, use the install prompt. On iPhone or iPad, open Safari’s Share menu and choose **Add to Home Screen**.
+
+## Run locally
 
 ```bash
 npm install
@@ -12,44 +42,4 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000`.
-
-## Production
-
-```bash
-npm run typecheck
-npm run lint
-npm test
-npm run pwa:validate
-npm run seo:validate
-npm run build
-npm start
-```
-
-## PWA Installation
-
-On Chrome or Edge, use the browser install button or Nola's install prompt. On iOS Safari, use Share -> Add to Home Screen. The manifest, app shell, icons, screenshots, and service worker live in `public/`.
-
-## Supabase
-
-Copy the Supabase publishable key into `.env.local`. Add these Supabase Auth redirect URLs:
-
-- `http://localhost:3000/auth/callback`
-- `https://nolapp.vercel.app/auth/callback`
-
-Apply the migrations in `supabase/migrations/` to the Supabase project before enabling cloud sync.
-
-## SEO and production URL
-
-Set `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin users will visit in production, for example `https://nola.example.com`. Nola generates canonical URLs, Open Graph metadata, `robots.txt`, and `sitemap.xml` from that value. The public entry and legal pages are indexable; authenticated workspace routes and the OAuth callback are intentionally noindex.
-
-## Documentation
-
-- Deployment: `docs/next-pwa-deployment.md`
-- Architecture: `docs/pwa-architecture.md`
-- Provider setup: `docs/supabase-provider-setup.md`
-
-## Current Limitations
-
-Daily reminders are disabled in the current release because production push delivery is not configured. Settings explains this and lets an existing subscription be removed. The sender implementation is in `supabase/functions/daily-reminders/`.
-# Nola
+See [Supabase setup](docs/supabase-provider-setup.md), [PWA and deployment](docs/next-pwa-deployment.md), and [app architecture](docs/pwa-architecture.md) for details.
