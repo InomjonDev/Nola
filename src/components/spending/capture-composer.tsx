@@ -46,7 +46,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
     ? savedCapture.parseStatus === "processing" || (savedCapture.parseStatus === "pending" && saveState === "saved")
       ? !store.isOnline ? t("capture.offline") : captureWaitingToSync ? t("capture.syncPending") : t("capture.processing")
       : savedCapture.parseStatus === "parsed"
-        ? t("capture.parseComplete").replace("{count}", String(store.expenses.filter((expense) => expense.captureId === savedCapture.id && !expense.deletedAt).length))
+        ? t("capture.parseComplete").replace("{count}", String(savedCapture.parsedItems?.length ?? store.expenses.filter((expense) => expense.captureId === savedCapture.id && !expense.deletedAt).length))
         : savedCapture.parseStatus === "needs_retry"
           ? captureParseIssueMessage(issues[savedCapture.id], t)
           : null

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { applyCaptureParseData, captureTotal, editCaptureTextData, filterOwnedTagIds, findDailyCapture, hasActiveFolderName, undoCaptureData } from "../src/lib/spending-captures.ts";
-import type { Expense, SpendingCapture } from "../src/lib/types.ts";
+import type { Expense, ParsedCaptureItem, SpendingCapture } from "../src/lib/types.ts";
 
 const captureId = "10000000-0000-4000-8000-000000000001";
 const userId = "20000000-0000-4000-8000-000000000001";
@@ -133,7 +133,7 @@ test("parse replacement applies only client-owned capture tags", () => {
   const tagged = { spendingCaptures: [capture({ tagIds: [tagId], parseStatus: "pending", parsedRevision: null })], expenses: [] as Expense[] };
   const item = { id: "tagged-expense", amount: 7000, currency: "UZS", description: "somsa", quantity: 4, spentAt: "2026-10-12T00:00:00.000Z", categoryId: "food", paymentMethodId: "cash", tagIds: ["model-invented"] };
   const result = applyCaptureParseData(tagged, captureId, 1, [item]);
-  assert.deepEqual(result.spendingCaptures[0].parsedItems?.[0].tagIds, [tagId]);
+  assert.deepEqual((result.spendingCaptures[0].parsedItems?.[0] as ParsedCaptureItem | undefined)?.tagIds, [tagId]);
   assert.deepEqual(result.expenses[0].tagIds, [tagId]);
   assert.deepEqual(filterOwnedTagIds([tagId, "other-user-tag", tagId], [{ id: tagId, userId }, { id: "other-user-tag", userId: "another-user" }], userId), [tagId]);
 });

@@ -5,9 +5,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/app-store";
 import { captureParseIssueFromError, type CaptureParseIssue } from "@/lib/capture-parse-issue";
 import { supabase } from "@/lib/supabase";
-import type { ParsedCaptureItem } from "@/lib/types";
+import type { ParsedCaptureAction } from "@/lib/types";
 
-type ParseResponse = { captureId: string; parseRevision: number; items: ParsedCaptureItem[] };
+type ParseResponse = { captureId: string; parseRevision: number; items: ParsedCaptureAction[] };
 
 function currentLocalDate(value: string) {
   const date = new Date(value);

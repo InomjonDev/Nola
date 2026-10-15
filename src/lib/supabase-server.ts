@@ -86,15 +86,16 @@ export function createSupabaseParseDependencies(
         && (!("parsedRevision" in update) || Number(data.parsed_revision) === update.parsedRevision));
     },
     readParseContext: async (userId, localDate, timeZone): Promise<ParseContext> => {
-      const [profileResult, customCategoriesResult, globalCategoriesResult, methodsResult] = await Promise.all([
+      const [profileResult, customCategoriesResult, globalCategoriesResult, methodsResult, goalsResult] = await Promise.all([
         client.from("profiles").select("currency,default_payment_method_id").eq("id", userId).maybeSingle(),
         client.from("categories").select("id,name").eq("user_id", userId).eq("kind", "custom").is("archived_at", null),
         client.from("categories").select("id,name").eq("kind", "global").is("archived_at", null),
         client.from("payment_methods").select("id,name").eq("user_id", userId).is("archived_at", null),
+        client.from("savings_goals").select("id,name,currency").eq("user_id", userId).is("archived_at", null).is("deleted_at", null),
       ]);
 
-      if (profileResult.error || customCategoriesResult.error || globalCategoriesResult.error || methodsResult.error) {
-        throw profileResult.error ?? customCategoriesResult.error ?? globalCategoriesResult.error ?? methodsResult.error;
+      if (profileResult.error || customCategoriesResult.error || globalCategoriesResult.error || methodsResult.error || goalsResult.error) {
+        throw profileResult.error ?? customCategoriesResult.error ?? globalCategoriesResult.error ?? methodsResult.error ?? goalsResult.error;
       }
       const profile = profileResult.data;
       if (!profile) throw new Error("The authenticated profile is unavailable.");
@@ -109,6 +110,7 @@ export function createSupabaseParseDependencies(
           ...((globalCategoriesResult.data ?? []) as Array<{ id: string; name: string }>),
         ],
         paymentMethods: (methodsResult.data ?? []) as Array<{ id: string; name: string }>,
+        savingsGoals: (goalsResult.data ?? []) as Array<{ id: string; name: string; currency: string }>,
       };
     },
     consumeQuota: async () => {

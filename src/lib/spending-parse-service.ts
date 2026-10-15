@@ -1,9 +1,10 @@
-import type { ParsedCaptureItem, SpendingCapture } from "./types.ts";
+import { SUPPORTED_CURRENCIES } from "./constants.ts";
+import type { ParsedCaptureAction, SpendingCapture } from "./types.ts";
 import { GeminiHttpError } from "./gemini-error.ts";
 import {
   geminiBody,
   ParsedResponseError,
-  validateParsedItems,
+  validateParsedActions,
   type ParseContext,
   type ParseDependencies,
   type ParseRequest,
@@ -26,6 +27,9 @@ export type SpendingParseErrorCode =
   | "provider_model"
   | "invalid_model_response"
   | "empty_result"
+  | "goal_target_required"
+  | "goal_not_found"
+  | "goal_ambiguous"
   | "service_unavailable";
 
 export class SpendingParseError extends Error {
@@ -131,22 +135,39 @@ function bearerToken(request: Request) {
   return match?.[1] ?? null;
 }
 
-function cachedItems(value: unknown): value is ParsedCaptureItem[] {
+function cachedItems(value: unknown): value is ParsedCaptureAction[] {
   if (!Array.isArray(value) || !value.length || value.length > 25) return false;
   const ids = new Set<string>();
   return value.every((item) => {
     if (!item || typeof item !== "object") return false;
-    const candidate = item as Partial<ParsedCaptureItem>;
-    if (typeof candidate.id !== "string" || !candidate.id || ids.has(candidate.id)
-      || typeof candidate.amount !== "number" || !Number.isFinite(candidate.amount) || candidate.amount <= 0
-      || typeof candidate.currency !== "string" || !/^[A-Z]{3}$/.test(candidate.currency)
-      || typeof candidate.description !== "string" || !candidate.description.trim() || candidate.description.length > 160
-      || (candidate.quantity !== null && (typeof candidate.quantity !== "number" || !Number.isFinite(candidate.quantity) || candidate.quantity <= 0))
-      || typeof candidate.spentAt !== "string" || !Number.isFinite(Date.parse(candidate.spentAt))
-      || typeof candidate.categoryId !== "string" || !candidate.categoryId
-      || typeof candidate.paymentMethodId !== "string" || !candidate.paymentMethodId
-      || !Array.isArray(candidate.tagIds) || !candidate.tagIds.every((tag) => typeof tag === "string")) return false;
-    ids.add(candidate.id);
+    const candidate = item as Record<string, unknown>;
+    const id = candidate.id;
+    const currency = candidate.currency;
+    const amount = candidate.type === "goal" ? candidate.targetAmount : candidate.amount;
+    if (typeof id !== "string" || !id || ids.has(id) || typeof currency !== "string"
+      || !/^[A-Z]{3}$/.test(currency)
+      || typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return false;
+    if (candidate.type === "income") {
+      if (typeof candidate.note !== "string" || candidate.note.length > 160 || typeof candidate.receivedAt !== "string" || !Number.isFinite(Date.parse(candidate.receivedAt))) return false;
+    } else if (candidate.type === "goal") {
+      if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(currency)
+        || typeof candidate.name !== "string" || !candidate.name.trim() || candidate.name.length > 80
+        || typeof candidate.icon !== "string" || !["wallet", "plane", "home", "car", "gift", "briefcase", "heart-pulse", "shopping-bag"].includes(candidate.icon)
+        || (candidate.deadline !== null && (typeof candidate.deadline !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(candidate.deadline)))) return false;
+    } else if (candidate.type === "contribution") {
+      if (!(SUPPORTED_CURRENCIES as readonly string[]).includes(currency)
+        || typeof candidate.goalId !== "string" || !candidate.goalId || candidate.kind !== "deposit"
+        || typeof candidate.occurredOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(candidate.occurredOn)
+        || typeof candidate.note !== "string" || candidate.note.length > 160) return false;
+    } else if (candidate.type === undefined || candidate.type === "expense") {
+      if (typeof candidate.description !== "string" || !candidate.description.trim() || candidate.description.length > 160
+        || (candidate.quantity !== null && (typeof candidate.quantity !== "number" || !Number.isFinite(candidate.quantity) || candidate.quantity <= 0))
+        || typeof candidate.spentAt !== "string" || !Number.isFinite(Date.parse(candidate.spentAt))
+        || typeof candidate.categoryId !== "string" || !candidate.categoryId
+        || typeof candidate.paymentMethodId !== "string" || !candidate.paymentMethodId
+        || !Array.isArray(candidate.tagIds) || !candidate.tagIds.every((tag) => typeof tag === "string")) return false;
+    } else return false;
+    ids.add(id);
     return true;
   });
 }
@@ -176,7 +197,7 @@ export async function parseSpendingCapture(
   input: ParseRequest,
   deps: ParseDependencies,
   context: ParseContext,
-): Promise<ParsedCaptureItem[]> {
+): Promise<ParsedCaptureAction[]> {
   let response: unknown;
   try {
     response = await deps.requestGemini(geminiBody(input.sourceText, context));
@@ -199,16 +220,41 @@ export async function parseSpendingCapture(
   }
 
   try {
-    return validateParsedItems(geminiItems(response), context, deps.createId);
+    return validateParsedActions(geminiItems(response), context, deps.createId);
   } catch (error) {
     if (error instanceof ParsedResponseError && error.code === "empty_result") {
       throw new SpendingParseError("empty_result", error.message, 422);
+    }
+    if (error instanceof ParsedResponseError && error.code === "goal_target_required") {
+      throw new SpendingParseError("goal_target_required", error.message, 422);
+    }
+    if (error instanceof ParsedResponseError && error.code === "goal_not_found") {
+      throw new SpendingParseError("goal_not_found", error.message, 422);
+    }
+    if (error instanceof ParsedResponseError && error.code === "goal_ambiguous") {
+      throw new SpendingParseError("goal_ambiguous", error.message, 422);
     }
     if (error instanceof ParsedResponseError && error.code === "invalid_context") {
       throw new SpendingParseError("service_unavailable", "Your spending settings could not be loaded. Try again.", 503);
     }
     throw new SpendingParseError("invalid_model_response", "The parser could not validate this result. Edit the text and try again.", 502);
   }
+}
+
+function preserveCaptureGoalIds(previous: SpendingCapture["parsedItems"], actions: ParsedCaptureAction[], activeGoals: ParseContext["savingsGoals"]) {
+  const previousGoals = (previous ?? []).filter((item): item is Extract<ParsedCaptureAction, { type: "goal" }> => item.type === "goal" && activeGoals.some((goal) => goal.id === item.id));
+  const goalIds = new Map<string, string>();
+  for (const action of actions) {
+    if (action.type !== "goal") continue;
+    const match = previousGoals.find((goal) => goal.name.trim().normalize("NFKC").toLocaleLowerCase("en-US")
+      === action.name.trim().normalize("NFKC").toLocaleLowerCase("en-US"));
+    if (match) goalIds.set(action.id, match.id);
+  }
+  return actions.map((action): ParsedCaptureAction => action.type === "goal" && goalIds.has(action.id)
+    ? { ...action, id: goalIds.get(action.id)! }
+    : action.type === "contribution" && goalIds.has(action.goalId)
+      ? { ...action, goalId: goalIds.get(action.goalId)! }
+      : action);
 }
 
 function parseErrorResponse(error: unknown) {
@@ -346,9 +392,9 @@ export function createSpendingParseHandler(deps: ParseDependencies) {
       return parseErrorResponse(new SpendingParseError("rate_limited", "The AI spending limit has been reached. Try again later. Your note is safe.", 429));
     }
 
-    let items: ParsedCaptureItem[];
+    let items: ParsedCaptureAction[];
     try {
-      items = await parseSpendingCapture(input, deps, context);
+      items = preserveCaptureGoalIds(capture.parsedItems, await parseSpendingCapture(input, deps, context), context.savingsGoals);
     } catch (error) {
       try {
         if (!await markRetryIfCurrent(userId, capture, deps)) return conflictResponse();

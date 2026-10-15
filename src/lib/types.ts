@@ -107,6 +107,12 @@ export type ParsedCaptureItem = {
   tagIds: string[];
 };
 
+export type ParsedCaptureAction =
+  | (ParsedCaptureItem & { type?: "expense" })
+  | { type: "income"; id: string; amount: number; currency: string; receivedAt: string; note: string }
+  | { type: "goal"; id: string; name: string; targetAmount: number; currency: string; icon: SavingsGoal["icon"]; deadline: string | null }
+  | { type: "contribution"; id: string; goalId: string; amount: number; currency: string; kind: "deposit"; occurredOn: string; note: string };
+
 export type SpendingCapture = {
   id: string;
   userId: string;
@@ -117,7 +123,7 @@ export type SpendingCapture = {
   parseStatus: CaptureParseStatus;
   parseRevision: number;
   parsedRevision: number | null;
-  parsedItems: ParsedCaptureItem[] | null;
+  parsedItems: ParsedCaptureAction[] | null;
   deletedAt: string | null;
   updatedAt: string;
 };

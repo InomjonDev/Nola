@@ -22,6 +22,7 @@ const context: ParseContext = {
   defaultPaymentMethodId: "cash-id",
   categories: [{ id: "food-id", name: "Food" }, { id: "other-id", name: "Other" }],
   paymentMethods: [{ id: "cash-id", name: "Cash" }],
+  savingsGoals: [],
 };
 
 function previousItem(): ParsedCaptureItem {
@@ -56,10 +57,10 @@ function makeCapture(overrides: Partial<SpendingCapture> = {}): SpendingCapture 
   };
 }
 
-function geminiResponse(items: unknown) {
+function geminiResponse(expenses: unknown[]) {
   return { candidates: [{ content: { parts: [
     { text: "internal thought", thought: true },
-    { text: JSON.stringify({ items }) },
+    { text: JSON.stringify({ expenses, incomes: [], goals: [], contributions: [] }) },
   ] } }] };
 }
 
@@ -86,7 +87,7 @@ function makeDependencies(overrides: Partial<ParseDependencies> = {}, initialCap
     consumeQuota: async () => { quotaCalls += 1; return true; },
     requestGemini: async () => {
       providerCalls += 1;
-      return geminiResponse([{ amount: 7000, currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]);
+      return geminiResponse([{ amount: 7000, priceBasis: "per_item", currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]);
     },
     isGeminiConfigured: () => true,
     createId: () => `expense-${++generatedId}`,
@@ -124,8 +125,10 @@ test("parses and stores a capture with linked expense IDs", async () => {
   assert.equal(capture?.parseStatus, "parsed");
   assert.equal(capture?.parsedRevision, 1);
   assert.equal(capture?.userId, userId);
-  assert.equal((capture?.parsedItems?.[0])?.amount, 7000);
-  assert.equal((capture?.parsedItems?.[0])?.quantity, 4);
+  const parsed = capture?.parsedItems?.[0];
+  assert.equal(parsed?.type, "expense");
+  assert.equal(parsed && "amount" in parsed ? parsed.amount : undefined, 28000);
+  assert.equal(parsed && "quantity" in parsed ? parsed.quantity : undefined, 4);
   assert.deepEqual(counts(), { quotaCalls: 1, providerCalls: 1 });
 });
 
@@ -220,8 +223,8 @@ test("rejects an invalid model result as a whole and keeps existing items", asyn
   const oldCapture = makeCapture({ parseStatus: "parsed", parsedRevision: 1, parsedItems: [previousItem()] });
   const { deps, saved } = makeDependencies({
     requestGemini: async () => geminiResponse([
-      { amount: 7000, currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null },
-      { amount: -1, currency: null, description: "tea", quantity: null, date: null, category: "Food", paymentMethod: null },
+      { amount: 7000, priceBasis: "per_item", currency: null, description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null },
+      { amount: -1, priceBasis: "total", currency: null, description: "tea", quantity: null, date: null, category: "Food", paymentMethod: null },
     ]),
   }, oldCapture);
   const response = await createSpendingParseHandler(deps)(request({ ...input, parseRevision: 2 }));
@@ -329,7 +332,7 @@ test("discards a delayed success when a newer revision is persisted", async () =
     updatedAt: "2026-10-12T12:01:00.000Z",
   };
   saved.set(captureId, newerCapture);
-  provider.resolve(geminiResponse([{ amount: 7000, currency: "UZS", description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]));
+  provider.resolve(geminiResponse([{ amount: 7000, priceBasis: "per_item", currency: "UZS", description: "somsa", quantity: 4, date: null, category: "Food", paymentMethod: null }]));
 
   const response = await pending;
   assert.equal(response.status, 409);

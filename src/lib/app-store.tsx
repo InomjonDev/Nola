@@ -7,7 +7,7 @@ import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, SUPPORTED
 import { createId } from "@/lib/id";
 import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, spendingCaptureRow, spendingFolderRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toSpendingCapture, toSpendingFolder, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
-import { applyCaptureParseData, editCaptureTextData, filterOwnedTagIds, hasActiveFolderName, undoCaptureData } from "@/lib/spending-captures";
+import { applyCaptureParseData, captureActionIds, editCaptureTextData, filterOwnedTagIds, hasActiveFolderName, restoreCaptureData, trashCaptureData, undoCaptureData } from "@/lib/spending-captures";
 import { clearLocalReminders, setDailyReminderEnabled } from "@/lib/notifications";
 import { accountStorage, browserStorage } from "@/lib/browser-storage";
 import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProvider, supabase, supabaseAuthStorageKey } from "@/lib/supabase";
@@ -15,7 +15,7 @@ import { calendarDate, normalizeGoalData, validateContribution, validateGoal, ty
 import { validateCategoryBudget } from "@/lib/category-budgets";
 import { materializeDueRecurringRules, validateRecurringRule } from "@/lib/recurring";
 import { createDemoData } from "@/lib/demo-data";
-import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, CaptureParseStatus, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureItem, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
+import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, CaptureParseStatus, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureAction, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
   return { profile: null, categories: [...GLOBAL_CATEGORIES], paymentMethods: [], tags: [], expenses: [], spendingCaptures: [], spendingFolders: [], incomeEntries: [], budgets: [], categoryBudgets: [], recurringRules: [], accounts: [], accountAdjustments: [], savingsGoals: [], goalContributions: [], syncQueue: [] };
@@ -40,7 +40,7 @@ type StoreValue = PersistedAppData & {
   saveSpendingCapture: (sourceText: string, folderId: string | null, tagIds: string[]) => string;
   editCaptureSourceText: (captureId: string, sourceText: string, tagIds?: string[]) => boolean;
   setCaptureParseStatus: (captureId: string, parseRevision: number, status: Extract<CaptureParseStatus, "pending" | "processing" | "needs_retry">) => void;
-  setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => boolean;
+  setCaptureParseResult: (captureId: string, parseRevision: number, parsedItems: ParsedCaptureAction[]) => boolean;
   replayCachedCaptureParse: (captureId: string, parseRevision: number) => boolean;
   setAiParsingEnabled: (enabled: boolean) => void;
   trashSpendingCapture: (captureId: string) => void;
@@ -623,13 +623,19 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     });
   };
 
-  const setCaptureParseResult = (captureId: string, parseRevision: number, parsedItems: ParsedCaptureItem[]) => {
+  const setCaptureParseResult = (captureId: string, parseRevision: number, parsedItems: ParsedCaptureAction[]) => {
     const now = new Date().toISOString();
     let changed = false;
     commitData((state) => {
       const currentCapture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user?.id);
       if (!currentCapture) return state;
-      const parsed = applyCaptureParseData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, parseRevision, parsedItems, now);
+      const parsed = applyCaptureParseData({
+        spendingCaptures: state.spendingCaptures,
+        expenses: state.expenses,
+        incomeEntries: state.incomeEntries,
+        savingsGoals: state.savingsGoals,
+        goalContributions: state.goalContributions,
+      }, captureId, parseRevision, parsedItems, now);
       if (parsed.spendingCaptures === state.spendingCaptures) return state;
       changed = true;
       const capture = parsed.spendingCaptures.find((item) => item.id === captureId);
@@ -639,6 +645,16 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       for (const expense of changedExpenses) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
+      for (const entry of parsed.incomeEntries.filter((item) => item.updatedAt === now)) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "upsert", recordId: entry.id, payload: incomeEntryRow(entry) }, cloudEnabled);
+      }
+      for (const goal of parsed.savingsGoals.filter((item) => item.updatedAt === now)) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled);
+      }
+      for (const contribution of parsed.goalContributions.filter((item) => item.updatedAt === now)) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "upsert", recordId: contribution.id, payload: goalContributionRow(contribution) }, cloudEnabled);
+      }
+      goalStateRef.current = { savingsGoals: parsed.savingsGoals, goalContributions: parsed.goalContributions };
       return { ...state, ...parsed, syncQueue };
     });
     return changed;
@@ -653,10 +669,14 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       if (!capture || capture.parseStatus !== "parsed" || capture.parseRevision !== parseRevision || capture.parsedRevision !== parseRevision || !capture.parsedItems?.length) return state;
 
       const cachedIds = new Set(capture.parsedItems.map((item) => item.id));
-      const existingCachedRows = state.expenses.filter((item) => cachedIds.has(item.id));
-      if (existingCachedRows.some((item) => item.userId !== user.id || item.captureId !== captureId)) return state;
-      const existingById = new Map(existingCachedRows.map((item) => [item.id, item]));
-      const needsReplay = capture.parsedItems.some((item) => !existingById.has(item.id))
+      const hasAction = (action: ParsedCaptureAction) => action.type === "income"
+        ? state.incomeEntries.some((item) => item.id === action.id && item.userId === user.id)
+        : action.type === "goal"
+          ? state.savingsGoals.some((item) => item.id === action.id && item.userId === user.id)
+          : action.type === "contribution"
+            ? state.goalContributions.some((item) => item.id === action.id && item.userId === user.id)
+            : state.expenses.some((item) => item.id === action.id && item.userId === user.id && item.captureId === captureId);
+      const needsReplay = capture.parsedItems.some((item) => !hasAction(item))
         || state.expenses.some((item) => item.captureId === captureId && !item.deletedAt && !cachedIds.has(item.id));
       if (!needsReplay) return state;
       const input = {
@@ -667,16 +687,24 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       const replayed = applyCaptureParseData(input, captureId, parseRevision, capture.parsedItems, now);
       if (replayed.spendingCaptures === input.spendingCaptures) return state;
 
-      const cachedExpenses = replayed.expenses.filter((item) => cachedIds.has(item.id))
-        .map((item) => existingById.get(item.id) ?? item);
-      const expenses = [...cachedExpenses, ...replayed.expenses.filter((item) => !cachedIds.has(item.id))];
+      const expenses = replayed.expenses;
       let syncQueue = state.syncQueue;
-      const changedExpenses = replayed.expenses.filter((item) => item.updatedAt === now && !existingById.has(item.id));
+      const changedExpenses = replayed.expenses.filter((item) => item.updatedAt === now && !state.expenses.some((before) => before.id === item.id));
       for (const expense of changedExpenses) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
+      for (const entry of replayed.incomeEntries.filter((item) => item.updatedAt === now && !state.incomeEntries.some((before) => before.id === item.id))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "upsert", recordId: entry.id, payload: incomeEntryRow(entry) }, cloudEnabled);
+      }
+      for (const goal of replayed.savingsGoals.filter((item) => item.updatedAt === now && !state.savingsGoals.some((before) => before.id === item.id))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled);
+      }
+      for (const entry of replayed.goalContributions.filter((item) => item.updatedAt === now && !state.goalContributions.some((before) => before.id === item.id))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "upsert", recordId: entry.id, payload: goalContributionRow(entry) }, cloudEnabled);
+      }
+      goalStateRef.current = { savingsGoals: replayed.savingsGoals, goalContributions: replayed.goalContributions };
       changed = true;
-      return { ...state, expenses, syncQueue };
+      return { ...state, ...replayed, expenses, syncQueue };
     });
     return changed;
   };
@@ -761,7 +789,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     commitData((state) => {
       const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id);
       if (!capture) return state;
-      const undone = undoCaptureData({ spendingCaptures: state.spendingCaptures, expenses: state.expenses }, captureId, now);
+      const undone = undoCaptureData(state, captureId, now);
       if (undone.spendingCaptures === state.spendingCaptures) return state;
       const deletedCapture = undone.spendingCaptures.find((item) => item.id === captureId);
       if (!deletedCapture) return state;
@@ -769,6 +797,16 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       for (const expense of undone.expenses.filter((item) => item.captureId === captureId && item.deletedAt === now)) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
+      for (const entry of undone.incomeEntries.filter((item) => item.deletedAt === now && state.incomeEntries.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "upsert", recordId: entry.id, payload: incomeEntryRow(entry) }, cloudEnabled);
+      }
+      for (const goal of undone.savingsGoals.filter((item) => item.deletedAt === now && state.savingsGoals.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled);
+      }
+      for (const entry of undone.goalContributions.filter((item) => item.deletedAt === now && state.goalContributions.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "upsert", recordId: entry.id, payload: goalContributionRow(entry) }, cloudEnabled);
+      }
+      goalStateRef.current = { savingsGoals: undone.savingsGoals, goalContributions: undone.goalContributions };
       return { ...state, ...undone, syncQueue };
     });
   };
@@ -777,22 +815,27 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (!user) return;
     const now = new Date().toISOString();
     commitData((state) => {
-      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && !item.deletedAt && item.parseStatus !== "undone");
+      const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id);
       if (!capture) return state;
-      const trashedCapture = { ...capture, deletedAt: now, updatedAt: now };
-      const linkedExpenses = state.expenses.map((expense) => expense.captureId === captureId && !expense.deletedAt
-        ? { ...expense, deletedAt: now, updatedAt: now }
-        : expense);
+      const trashed = trashCaptureData(state, captureId, now);
+      if (trashed === state) return state;
+      const trashedCapture = trashed.spendingCaptures.find((item) => item.id === captureId);
+      if (!trashedCapture) return state;
       let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(trashedCapture) }, cloudEnabled);
-      for (const expense of linkedExpenses.filter((item) => item.captureId === captureId && item.deletedAt === now)) {
+      for (const expense of trashed.expenses.filter((item) => item.captureId === captureId && item.deletedAt === now)) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
-      return {
-        ...state,
-        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? trashedCapture : item),
-        expenses: linkedExpenses,
-        syncQueue,
-      };
+      for (const entry of trashed.incomeEntries.filter((item) => item.deletedAt === now && state.incomeEntries.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "upsert", recordId: entry.id, payload: incomeEntryRow(entry) }, cloudEnabled);
+      }
+      for (const goal of trashed.savingsGoals.filter((item) => item.deletedAt === now && state.savingsGoals.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled);
+      }
+      for (const entry of trashed.goalContributions.filter((item) => item.deletedAt === now && state.goalContributions.some((before) => before.id === item.id && before.deletedAt !== now))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "upsert", recordId: entry.id, payload: goalContributionRow(entry) }, cloudEnabled);
+      }
+      goalStateRef.current = { savingsGoals: trashed.savingsGoals, goalContributions: trashed.goalContributions };
+      return { ...state, ...trashed, syncQueue };
     });
   };
 
@@ -802,21 +845,24 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     commitData((state) => {
       const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && item.deletedAt && item.parseStatus !== "undone");
       if (!capture) return state;
-      const trashedAt = capture.deletedAt;
-      const restoredCapture = { ...capture, deletedAt: null, updatedAt: now };
-      const restoredExpenses = state.expenses.map((expense) => expense.captureId === captureId && expense.deletedAt === trashedAt
-        ? { ...expense, deletedAt: null, updatedAt: now }
-        : expense);
+      const restored = restoreCaptureData(state, captureId, now);
+      const restoredCapture = restored.spendingCaptures.find((item) => item.id === captureId);
+      if (!restoredCapture) return state;
       let syncQueue = queue(state, { table: "spending_captures", action: "upsert", recordId: captureId, payload: spendingCaptureRow(restoredCapture) }, cloudEnabled);
-      for (const expense of restoredExpenses.filter((item) => item.captureId === captureId && item.deletedAt === null && state.expenses.some((before) => before.id === item.id && before.deletedAt === trashedAt))) {
+      for (const expense of restored.expenses.filter((item) => item.captureId === captureId && item.deletedAt === null && state.expenses.some((before) => before.id === item.id && before.deletedAt !== null))) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: expense.id, payload: expenseRow(expense) }, cloudEnabled);
       }
-      return {
-        ...state,
-        spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? restoredCapture : item),
-        expenses: restoredExpenses,
-        syncQueue,
-      };
+      for (const entry of restored.incomeEntries.filter((item) => item.updatedAt === now && !item.deletedAt && state.incomeEntries.some((before) => before.id === item.id && before.deletedAt))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "upsert", recordId: entry.id, payload: incomeEntryRow(entry) }, cloudEnabled);
+      }
+      for (const goal of restored.savingsGoals.filter((item) => item.updatedAt === now && !item.deletedAt && state.savingsGoals.some((before) => before.id === item.id && before.deletedAt))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "upsert", recordId: goal.id, payload: savingsGoalRow(goal) }, cloudEnabled);
+      }
+      for (const entry of restored.goalContributions.filter((item) => item.updatedAt === now && !item.deletedAt && state.goalContributions.some((before) => before.id === item.id && before.deletedAt))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "upsert", recordId: entry.id, payload: goalContributionRow(entry) }, cloudEnabled);
+      }
+      goalStateRef.current = { savingsGoals: restored.savingsGoals, goalContributions: restored.goalContributions };
+      return { ...state, ...restored, syncQueue };
     });
   };
 
@@ -826,14 +872,34 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && item.deletedAt && item.parseStatus !== "undone");
       if (!capture) return state;
       const linkedExpenses = state.expenses.filter((expense) => expense.captureId === captureId);
+      const incomeIds = captureActionIds(capture, "income");
+      const goalIds = captureActionIds(capture, "goal");
+      const contributionIds = captureActionIds(capture, "contribution");
+      const linkedGoals = state.savingsGoals.filter((goal) => goalIds.has(goal.id));
+      const removableGoalIds = new Set(linkedGoals.filter((goal) => !state.goalContributions.some((entry) => entry.goalId === goal.id && !contributionIds.has(entry.id))).map((goal) => goal.id));
       let syncQueue = queue(state, { table: "spending_captures", action: "delete", recordId: captureId }, cloudEnabled);
       for (const expense of linkedExpenses) {
         syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "delete", recordId: expense.id }, cloudEnabled);
       }
+      for (const entry of state.incomeEntries.filter((item) => incomeIds.has(item.id))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "income_entries", action: "delete", recordId: entry.id }, cloudEnabled);
+      }
+      for (const entry of state.goalContributions.filter((item) => contributionIds.has(item.id) && !removableGoalIds.has(item.goalId))) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "goal_contributions", action: "delete", recordId: entry.id }, cloudEnabled);
+      }
+      for (const goalId of removableGoalIds) {
+        syncQueue = queue({ ...state, syncQueue }, { table: "savings_goals", action: "delete", recordId: goalId }, cloudEnabled);
+      }
+      const savingsGoals = state.savingsGoals.filter((goal) => !removableGoalIds.has(goal.id));
+      const goalContributions = state.goalContributions.filter((entry) => !contributionIds.has(entry.id));
+      goalStateRef.current = { savingsGoals, goalContributions };
       return {
         ...state,
         spendingCaptures: state.spendingCaptures.filter((item) => item.id !== captureId),
         expenses: state.expenses.filter((expense) => expense.captureId !== captureId),
+        incomeEntries: state.incomeEntries.filter((entry) => !incomeIds.has(entry.id)),
+        savingsGoals,
+        goalContributions,
         syncQueue,
       };
     });

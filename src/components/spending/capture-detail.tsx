@@ -160,7 +160,7 @@ export function CaptureDetail({
   const status = capture.parseStatus === "processing"
     ? t("capture.processing")
     : capture.parseStatus === "parsed"
-      ? t("capture.parseComplete").replace("{count}", String(activeExpenses.length))
+      ? t("capture.parseComplete").replace("{count}", String(capture.parsedItems?.length ?? activeExpenses.length))
       : capture.parseStatus === "needs_retry"
         ? captureParseIssueMessage(issue, t)
         : capture.parseStatus === "pending"
@@ -171,7 +171,8 @@ export function CaptureDetail({
     : capture.parseStatus === "processing" || capture.parseStatus === "needs_retry" || issue
       ? status
       : "";
-  const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
+  const needsClarification = issue === "goalTarget" || issue === "goalNotFound" || issue === "goalAmbiguous";
+  const canRetry = Boolean(onRetry) && issue !== "signIn" && !needsClarification && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const visibleFolders = folders.filter((folder) => !folder.deletedAt).sort((left, right) => left.name.localeCompare(right.name));
   const currencyTotals = [...new Set(activeExpenses.map((expense) => expense.currency))].map((currency) => ({
     currency,

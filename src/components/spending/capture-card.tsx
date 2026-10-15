@@ -59,9 +59,10 @@ export function CaptureCard({
     : capture.parseStatus === "needs_retry"
       ? captureParseIssueMessage(issue, t)
       : capture.parseStatus === "parsed"
-        ? t("capture.parseComplete").replace("{count}", String(linkedExpenses.length))
+        ? t("capture.parseComplete").replace("{count}", String(capture.parsedItems?.length ?? linkedExpenses.length))
         : t("capture.saved");
-  const canRetry = Boolean(onRetry) && issue !== "signIn" && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
+  const needsClarification = issue === "goalTarget" || issue === "goalNotFound" || issue === "goalAmbiguous";
+  const canRetry = Boolean(onRetry) && issue !== "signIn" && !needsClarification && (capture.parseStatus === "needs_retry" || (capture.parseStatus === "pending" && issue === "sync"));
   const capturedAt = new Date(capture.capturedAt);
   let capturedLabel = capture.capturedAt;
   if (Number.isFinite(capturedAt.getTime())) {
@@ -80,6 +81,7 @@ export function CaptureCard({
   }
 
   const expenseCountLabel = `${linkedExpenses.length} ${linkedExpenses.length === 1 ? t("history.expense") : t("history.expenses")}`;
+  const parsedCount = capture.parsedItems?.length ?? linkedExpenses.length;
   const categoryNames = [...new Set(linkedCategories.map((item) => item.label))];
   const totalLabels = currencies.map((currency) => formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language)));
   const accessibleName = `${t("capture.noteLabel")}: ${capture.sourceText.slice(0, 160)}. ${capturedLabel}. ${expenseCountLabel}${categoryNames.length ? `. ${t("expense.category")}: ${categoryNames.join(", ")}` : ""}${totalLabels.length ? `. ${t("capture.total")}: ${totalLabels.join(", ")}` : ""}`;
@@ -108,6 +110,7 @@ export function CaptureCard({
             {linkedCategories.length > 4 && <span className="capture-card-category-more">+{linkedCategories.length - 4}</span>}
           </span>
           <span className="capture-card-expense-count">{expenseCountLabel}</span>
+          {parsedCount > linkedExpenses.length && <span className="capture-card-expense-count">{t("capture.parseComplete").replace("{count}", String(parsedCount))}</span>}
           {presentation !== "timeline" && <span className="capture-card-total-label">{t("capture.total")}</span>}
           <span className="capture-card-total-amounts">
             {currencies.map((currency) => <span key={currency} className="capture-card-total-amount">{formatMoney(captureTotal(expenses, capture.id, currency), currency, languageLocale(language))}</span>)}
