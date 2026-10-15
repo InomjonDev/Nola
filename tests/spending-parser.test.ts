@@ -110,5 +110,5 @@ test("builds a Gemini structured-output request without adding hashtags as model
   assert.equal(userContent.sourceText, "7000 somsa #food");
   assert.match(systemInstruction.parts[0].text, /priceBasis per_item/);
   assert.match(systemInstruction.parts[0].text, /April 2027 is 2027-04-30/);
-  assert.match(systemInstruction.parts[0].text, /A date at the end of a line applies only to that line's expense/);
+  assert.match(systemInstruction.parts[0].text, /A date at the end of a line applies only to that line and never carries to the next/);
 });
