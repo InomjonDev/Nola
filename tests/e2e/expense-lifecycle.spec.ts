@@ -1,9 +1,9 @@
 import { expect, test } from "playwright/test";
 
-import { enterDemo, saveExpense } from "./helpers";
+import { enterAuthenticatedApp, saveExpense } from "./helpers";
 
-test("demo user can add, edit, filter, and delete an expense", async ({ page }) => {
-  await enterDemo(page);
+test("a signed-in user can add, edit, filter, and delete an expense", async ({ page }) => {
+  await enterAuthenticatedApp(page);
   await saveExpense(page, "12.50", "E2E lunch");
   await page.goto("/");
   const search = page.getByRole("searchbox", { name: "Search notes or categories" });
@@ -25,7 +25,7 @@ test("demo user can add, edit, filter, and delete an expense", async ({ page }) 
 });
 
 test("opaque expense editor closes with Cancel and keeps the app shell mounted", async ({ page }) => {
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await page.locator(".workspace-compose-button").click();
   await page.getByRole("button", { name: "Add expense manually", exact: true }).click();
   const manualDialog = page.getByRole("dialog", { name: "Add expense", exact: true });
@@ -39,7 +39,7 @@ test("opaque expense editor closes with Cancel and keeps the app shell mounted",
 });
 
 test("combined overview records income and a monthly budget", async ({ page }) => {
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await saveExpense(page, "650", "Budget test expense");
   await page.goto("/insights");
   await page.getByRole("button", { name: "Add", exact: true }).click();

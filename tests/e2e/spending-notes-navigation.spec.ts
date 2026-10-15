@@ -1,22 +1,22 @@
 import { expect, test, type Page } from "playwright/test";
 
-import { enterDemo } from "./helpers";
+import { E2E_USER_ID, enterAuthenticatedApp } from "./helpers";
 
-const demoDataKey = "walletly.app-data.v2-demo-user";
+const appDataKey = `walletly.app-data.v2-${E2E_USER_ID}`;
 const folderId = "10000000-0000-4000-8000-000000000001";
 const captureId = "20000000-0000-4000-8000-000000000001";
 const expenseId = "30000000-0000-4000-8000-000000000001";
 const lunchTagId = "40000000-0000-4000-8000-000000000001";
 
 async function seedSpendingNote(page: Page) {
-  await page.evaluate(({ storageKey, folder, capture, expense, tag }) => {
+  await page.evaluate(({ storageKey, folder, capture, expense, tag, userId }) => {
     const data = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
     const now = new Date().toISOString();
-    data.tags = [...(data.tags ?? []), { id: tag.id, userId: "demo-user", name: "lunch", updatedAt: now }];
-    data.spendingFolders = [{ id: folder.id, userId: "demo-user", name: folder.name, color: "#D2AE32", deletedAt: null, updatedAt: now }];
+    data.tags = [...(data.tags ?? []), { id: tag.id, userId, name: "lunch", updatedAt: now }];
+    data.spendingFolders = [{ id: folder.id, userId, name: folder.name, color: "#D2AE32", deletedAt: null, updatedAt: now }];
     data.spendingCaptures = [{
       id: capture.id,
-      userId: "demo-user",
+      userId,
       sourceText: "7000 somsa 4x #lunch",
       capturedAt: now,
       folderId: folder.id,
@@ -30,7 +30,7 @@ async function seedSpendingNote(page: Page) {
     }];
     data.expenses = [...(data.expenses ?? []), {
       id: expense.id,
-      userId: "demo-user",
+      userId,
       amount: 7000,
       currency: data.profile.currency,
       spentAt: now,
@@ -45,7 +45,8 @@ async function seedSpendingNote(page: Page) {
     }];
     localStorage.setItem(storageKey, JSON.stringify(data));
   }, {
-    storageKey: demoDataKey,
+    storageKey: appDataKey,
+    userId: E2E_USER_ID,
     folder: { id: folderId, name: "Lunch" },
     capture: { id: captureId },
     expense: { id: expenseId },
@@ -55,7 +56,7 @@ async function seedSpendingNote(page: Page) {
 
 test("spending notes navigate through folders, search, and detail on mobile and desktop", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The navigation flow switches between desktop and mobile widths in one run.");
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await seedSpendingNote(page);
   await page.reload();
 
@@ -87,9 +88,7 @@ test("spending notes navigate through folders, search, and detail on mobile and 
 
   await folderNavigation.getByRole("link", { name: "All spending" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText("Coffee", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^expense: Transport,/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /^expense: Groceries,/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Spending note: 7000 somsa 4x #lunch/ })).toBeVisible();
 
   const search = page.getByRole("searchbox", { name: "Search notes or categories" });
   await search.fill("7000");

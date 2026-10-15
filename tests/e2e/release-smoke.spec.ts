@@ -1,10 +1,10 @@
 import { expect, test } from "playwright/test";
 
-import { enterDemo } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 test("a spending note saves when leaving the editor and opens again", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "Desktop note entry controls are intentionally hidden.");
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await page.locator(".workspace-compose-button").click();
 
   const note = page.getByRole("textbox", { name: "Spending note" });
@@ -20,7 +20,7 @@ test("a spending note saves when leaving the editor and opens again", async ({ p
 
 test("desktop spending layout fills the viewport without note buttons", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "Desktop-only layout check.");
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
 
   const viewportWidth = page.viewportSize()!.width;
   const shellWidth = await page.locator(".app-shell").evaluate((element) => element.getBoundingClientRect().width);

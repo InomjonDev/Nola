@@ -1,11 +1,11 @@
 import { expect, test } from "playwright/test";
 
-import { enterDemo } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 test("workspace screens fit mobile, tablet, and desktop in both themes", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The responsive matrix runs once to cover all target widths.");
   test.setTimeout(180_000);
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
 
   const sizes = [[320, 700], [375, 812], [390, 844], [768, 1024], [1280, 900]] as const;
   const routes = [
@@ -38,19 +38,12 @@ test("workspace screens fit mobile, tablet, and desktop in both themes", async (
         }
         if (path === "/" && width < 1024) {
           const dock = page.locator(".workspace-dock");
-          if (width <= 360) {
-            await expect(dock).toHaveCSS("position", "static");
-            await expect(page.locator(".desktop-capture-action")).toBeVisible();
-            const listBottom = await page.locator(".spending-list-pane").evaluate((element) => element.getBoundingClientRect().bottom);
-            const dockTop = await dock.evaluate((element) => element.getBoundingClientRect().top);
-            expect(dockTop).toBeGreaterThanOrEqual(listBottom - 1);
-          } else {
-            await expect(dock).toHaveCSS("position", "fixed");
-            await expect(dock).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-            const dockBottom = await dock.evaluate((element) => element.getBoundingClientRect().bottom);
-            const navigationTop = await page.locator(".mobile-nav").evaluate((element) => element.getBoundingClientRect().top);
-            expect(dockBottom).toBeLessThanOrEqual(navigationTop);
-          }
+          await expect(dock).toHaveCSS("position", "fixed");
+          await expect(dock).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+          const dockBottom = await dock.evaluate((element) => element.getBoundingClientRect().bottom);
+          const navigationTop = await page.locator(".mobile-nav").evaluate((element) => element.getBoundingClientRect().top);
+          expect(dockBottom).toBeLessThanOrEqual(navigationTop);
+          if (width <= 360) await expect(page.locator(".workspace-compose-button")).toBeVisible();
           await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Search", exact: true })).toHaveCount(0);
           if (width <= 639) await expect(page.getByRole("region", { name: "Savings goals" })).toBeVisible();
         }

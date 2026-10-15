@@ -1,5 +1,5 @@
 import { expect, test } from "playwright/test";
-import { enterDemo } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 test("PWA metadata and service worker are available", async ({ page }) => {
   await page.goto("/");
@@ -16,8 +16,8 @@ test("PWA metadata and service worker are available", async ({ page }) => {
   await expect.poll(async () => page.evaluate(() => navigator.serviceWorker?.controller !== null || navigator.serviceWorker?.getRegistrations().then((items) => items.length > 0))).toBeTruthy();
 });
 
-test("demo reminder opt-in does not claim closed-app delivery is active", async ({ page }) => {
-  await enterDemo(page);
+test("signed-in reminder settings do not claim closed-app delivery is active", async ({ page }) => {
+  await enterAuthenticatedApp(page);
   await page.goto("/settings");
   const reminder = page.getByRole("button", { name: /Daily check-in/ });
   await expect(reminder).toBeDisabled();

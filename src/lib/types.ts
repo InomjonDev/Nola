@@ -26,7 +26,6 @@ export type ConsentRecord = {
 export type UserIdentity = {
   id: string;
   email: string | null;
-  isDemo: boolean;
   name?: string | null;
   provider?: string | null;
   avatarUrl?: string | null;

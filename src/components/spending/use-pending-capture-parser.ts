@@ -55,7 +55,7 @@ export function usePendingCaptureParser() {
   }, [issues, store]);
 
   useEffect(() => {
-    if (!store.user || store.user.isDemo) return;
+    if (!store.user) return;
     setIssues((current) => {
       let changed = false;
       const next = { ...current };
@@ -67,7 +67,7 @@ export function usePendingCaptureParser() {
       }
       return changed ? next : current;
     });
-  }, [store.user?.id, store.user?.isDemo]);
+  }, [store.user?.id]);
 
   useEffect(() => {
     const { user, profile, isOnline, spendingCaptures, syncQueue } = store;
@@ -78,7 +78,7 @@ export function usePendingCaptureParser() {
       const hasOldActiveRows = store.expenses.some((expense) => expense.captureId === capture.id && !expense.deletedAt && !parsedIds.has(expense.id));
       if (hasMissingRows || hasOldActiveRows) store.replayCachedCaptureParse(capture.id, capture.parseRevision);
     }
-    if (!isOnline || (typeof navigator !== "undefined" && !navigator.onLine) || !profile?.aiParsingEnabled || !user || user.isDemo) return;
+    if (!isOnline || (typeof navigator !== "undefined" && !navigator.onLine) || !profile?.aiParsingEnabled || !user) return;
 
     const activeCaptures = spendingCaptures.filter((capture) => !capture.deletedAt && capture.parseStatus === "pending");
     for (const capture of activeCaptures) {
@@ -107,7 +107,7 @@ export function usePendingCaptureParser() {
     const capture = latestCaptures.current.find((item) => item.id === captureId && item.userId === userId);
     const flightKey = `${captureId}:${parseRevision}`;
     if (!capture || capture.deletedAt || capture.parseStatus !== "pending" || capture.parseRevision !== parseRevision
-      || currentStore.user?.id !== userId || currentStore.user.isDemo || !currentStore.isOnline
+      || currentStore.user?.id !== userId || !currentStore.isOnline
       || !currentStore.profile?.aiParsingEnabled || inFlight.current.has(flightKey)) return;
     if (typeof navigator !== "undefined" && !navigator.onLine) return;
     if (currentStore.syncQueue.some((operation) => operation.table === "spending_captures" && operation.recordId === captureId && operation.action === "upsert")) return;

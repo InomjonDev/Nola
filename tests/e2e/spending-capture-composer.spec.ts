@@ -1,38 +1,9 @@
 import { expect, test, type Page } from "playwright/test";
 
-import { oauthSession } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const appDataKey = `walletly.app-data.v2-${userId}`;
-
-async function enterAuthenticatedApp(page: Page, baseURL: string) {
-  const callback = new URL("/auth/callback?code=capture-test", baseURL);
-  await page.route("**/auth/v1/authorize**", (route) => route.fulfill({ status: 302, headers: { location: callback.href } }));
-  await page.route("**/auth/v1/token**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(oauthSession()) }));
-  await page.route("**/rest/v1/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-
-  await page.goto("/");
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
-  await page.getByRole("button", { name: "UZS", exact: true }).click();
-  await page.getByRole("button", { name: "Enter Nola" }).click();
-  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
-  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
-  await expect(page.locator(".workspace-compose-button")).toBeVisible();
-  await page.waitForFunction((key) => {
-    const data = JSON.parse(localStorage.getItem(key) ?? "{}");
-    return data.paymentMethods?.length > 0 && data.syncQueue?.length === 0;
-  }, appDataKey);
-}
-
-async function enterLocalDemo(page: Page) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Try local demo" }).click();
-  await page.getByRole("button", { name: "Enter Nola" }).click();
-  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
-  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
-  await expect(page.locator(".workspace-compose-button")).toBeVisible();
-}
 
 async function openComposer(page: Page, sourceText: string) {
   await page.locator(".workspace-compose-button").click();
@@ -59,8 +30,8 @@ async function completeOneParse(routeBody: { captureId: string; parseRevision: n
   };
 }
 
-test("Not now returns to the autosaved composer and sends no parse request", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("Not now returns to the autosaved composer and sends no parse request", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   let parseRequests = 0;
   await page.route("**/api/spending-captures/parse", async (route) => {
     parseRequests += 1;
@@ -77,38 +48,15 @@ test("Not now returns to the autosaved composer and sends no parse request", asy
   expect(state.expenses ?? []).toHaveLength(0);
 });
 
-test("the demo cannot opt into AI, and sign-in keeps the typed draft", async ({ page, baseURL }) => {
-  const callback = new URL("/auth/callback?code=demo-capture-test", baseURL!);
-  await page.route("**/auth/v1/authorize**", (route) => route.fulfill({ status: 302, headers: { location: callback.href } }));
-  await page.route("**/auth/v1/token**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(oauthSession()) }));
-  await page.route("**/rest/v1/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-  let parseRequests = 0;
-  await page.route("**/api/spending-captures/parse", async (route) => {
-    parseRequests += 1;
-    await route.fulfill({ status: 200, json: {} });
-  });
-  await enterLocalDemo(page);
-
-  await page.locator(".workspace-compose-button").click();
-  await page.getByRole("textbox", { name: "Spending note" }).fill("7000 somsa 4x");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "AI parsing needs an account", level: 3 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Sign in to parse", exact: true }).click();
+test("signed-out visitors must authenticate before they can create notes", async ({ page }) => {
+  await page.goto("/");
   await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
-
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
-  await page.getByRole("button", { name: "UZS", exact: true }).click();
-  await page.getByRole("button", { name: "Enter Nola" }).click();
-  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
-  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
-  await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x");
-  expect(parseRequests).toBe(0);
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
+  await expect(page.locator(".workspace-compose-button")).toHaveCount(0);
 });
 
 test("switching to manual entry preserves the note and returns it on cancel", async ({ page }) => {
-  await enterLocalDemo(page);
+  await enterAuthenticatedApp(page, "UZS");
   await page.locator(".workspace-compose-button").click();
   await page.getByRole("textbox", { name: "Spending note" }).fill("7000 somsa 4x");
   await page.getByRole("button", { name: "Add expense manually", exact: true }).click();
@@ -118,8 +66,8 @@ test("switching to manual entry preserves the note and returns it on cancel", as
   await expect(page.getByRole("textbox", { name: "Spending note" })).toHaveValue("7000 somsa 4x");
 });
 
-test("an offline note stays pending locally until the device reconnects", async ({ context, page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("an offline note stays pending locally until the device reconnects", async ({ context, page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   await context.setOffline(true);
   await page.waitForFunction(() => !navigator.onLine);
   let parseRequests = 0;
@@ -138,8 +86,8 @@ test("an offline note stays pending locally until the device reconnects", async 
   expect(parseRequests).toBe(0);
 });
 
-test("7000 somsa 4x parses as 7,000 UZS with quantity four and group Undo", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("7000 somsa 4x parses as 7,000 UZS with quantity four and group Undo", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   const paymentMethodId = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").paymentMethods[0].id, appDataKey);
   let parseRequests = 0;
   await page.route("**/api/spending-captures/parse", async (route) => {
@@ -154,7 +102,7 @@ test("7000 somsa 4x parses as 7,000 UZS with quantity four and group Undo", asyn
   await openComposer(page, "7000 somsa 4x");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("button", { name: "Spending note: 7000 somsa 4x" })).toBeVisible();
-  await expect(page.getByText("1 expenses added", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved money actions: 1", { exact: true })).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => {
     const data = JSON.parse(localStorage.getItem(key) ?? "{}");
     const expense = data.expenses?.find((item: { captureId: string }) => item.captureId);
@@ -172,8 +120,8 @@ test("7000 somsa 4x parses as 7,000 UZS with quantity four and group Undo", asyn
   }, appDataKey)).toEqual([true, true]);
 });
 
-test("reload replays cached parse results without duplicating or restoring a deleted linked expense", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("reload replays cached parse results without duplicating or restoring a deleted linked expense", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   const paymentMethodId = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").paymentMethods[0].id, appDataKey);
   let parseRequests = 0;
   await page.route("**/api/spending-captures/parse", async (route) => {
@@ -194,10 +142,10 @@ test("reload replays cached parse results without duplicating or restoring a del
 
   await openComposer(page, "7000 somsa 4x and 3000 chai");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("2 expenses added", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved money actions: 2", { exact: true })).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").syncQueue?.length, appDataKey)).toBe(0);
 
-  await page.evaluate((key) => {
+  const beforeReload = await page.evaluate((key) => {
     const data = JSON.parse(localStorage.getItem(key) ?? "{}");
     const captureId = data.spendingCaptures[0].id;
     const deletedId = "44444444-4444-4444-8444-444444444444";
@@ -205,10 +153,6 @@ test("reload replays cached parse results without duplicating or restoring a del
       .map((item: { id: string; deletedAt: string | null; updatedAt: string }) => item.id === deletedId ? { ...item, deletedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : item);
     data.syncQueue = [];
     localStorage.setItem(key, JSON.stringify(data));
-  }, appDataKey);
-  const beforeReload = await page.evaluate((key) => {
-    const data = JSON.parse(localStorage.getItem(key) ?? "{}");
-    const captureId = data.spendingCaptures[0].id;
     return data.expenses.filter((item: { captureId: string | null }) => item.captureId === captureId).map((item: { id: string; deletedAt: string | null }) => [item.id, Boolean(item.deletedAt)]);
   }, appDataKey);
   expect(beforeReload).toEqual([["44444444-4444-4444-8444-444444444444", true]]);
@@ -223,8 +167,8 @@ test("reload replays cached parse results without duplicating or restoring a del
   expect(parseRequests).toBe(1);
 });
 
-test("reload replays every cached expense when the local transaction write was interrupted", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("reload replays every cached expense when the local transaction write was interrupted", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   const paymentMethodId = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").paymentMethods[0].id, appDataKey);
   let parseRequests = 0;
   await page.route("**/api/spending-captures/parse", async (route) => {
@@ -235,7 +179,7 @@ test("reload replays every cached expense when the local transaction write was i
 
   await openComposer(page, "7000 somsa 4x");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("1 expenses added", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved money actions: 1", { exact: true })).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").syncQueue?.length, appDataKey)).toBe(0);
   await page.evaluate((key) => {
     const data = JSON.parse(localStorage.getItem(key) ?? "{}");
@@ -260,8 +204,8 @@ test("reload replays every cached expense when the local transaction write was i
   expect(parseRequests).toBe(1);
 });
 
-test("a provider failure preserves the note and Retry reuses its capture revision", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("a provider failure preserves the note and Retry reuses its capture revision", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   const paymentMethodId = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").paymentMethods[0].id, appDataKey);
   const requestBodies: Array<{ captureId: string; parseRevision: number; sourceText: string }> = [];
   await page.route("**/api/spending-captures/parse", async (route) => {
@@ -280,13 +224,13 @@ test("a provider failure preserves the note and Retry reuses its capture revisio
   await expect(feedback.getByRole("button", { name: "Retry parsing", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Spending note: 7000 somsa 4x" })).toBeVisible();
   await feedback.getByRole("button", { name: "Retry parsing", exact: true }).click();
-  await expect(page.getByText("1 expenses added", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved money actions: 1", { exact: true })).toBeVisible();
   expect(requestBodies).toHaveLength(2);
   expect(requestBodies[1]).toMatchObject({ captureId: requestBodies[0].captureId, parseRevision: requestBodies[0].parseRevision, sourceText: requestBodies[0].sourceText });
 });
 
-test("a 401 parse response exposes a sign-in action while keeping the saved note", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("a 401 parse response exposes a sign-in action while keeping the saved note", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   await page.route("**/auth/v1/logout**", (route) => route.fulfill({ status: 204, body: "" }));
   await page.route("**/api/spending-captures/parse", async (route) => {
     await route.fulfill({ status: 401, json: { error: "unauthenticated", message: "Sign in again." } });

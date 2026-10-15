@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { DEFAULT_PAYMENT_METHODS, DEMO_SESSION_KEY, GLOBAL_CATEGORIES, SUPPORTED_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
+import { DEFAULT_PAYMENT_METHODS, GLOBAL_CATEGORIES, LEGACY_DEMO_SESSION_KEY, SUPPORTED_CURRENCIES, appStorageKey, legacyAppStorageKey } from "@/lib/constants";
 import { createId } from "@/lib/id";
 import { accountAdjustmentRow, accountRow, budgetRow, categoryBudgetRow, categoryRow, expenseRow, goalContributionRow, incomeEntryRow, paymentMethodRow, profileRow, recurringRuleRow, savingsGoalRow, spendingCaptureRow, spendingFolderRow, tagRow, toAccount, toAccountAdjustment, toBudget, toCategory, toCategoryBudget, toExpense, toGoalContribution, toIncomeEntry, toPaymentMethod, toProfile, toRecurringRule, toSavingsGoal, toSpendingCapture, toSpendingFolder, toTag } from "@/lib/mappers";
 import { flushOperations } from "@/lib/offline-sync";
@@ -14,7 +14,6 @@ import { isSupabaseConfigured, sendMagicLink as requestMagicLink, signInWithProv
 import { calendarDate, normalizeGoalData, validateContribution, validateGoal, type GoalActionResult } from "@/lib/savings-goals";
 import { validateCategoryBudget } from "@/lib/category-budgets";
 import { materializeDueRecurringRules, validateRecurringRule } from "@/lib/recurring";
-import { createDemoData } from "@/lib/demo-data";
 import type { Account, AccountAdjustment, AccountAdjustmentDraft, AccountDraft, Budget, BudgetDraft, CaptureParseStatus, Category, CategoryBudget, CategoryBudgetDraft, CategoryIconName, Expense, ExpenseDraft, GoalContribution, GoalContributionDraft, IncomeEntry, IncomeEntryDraft, ParsedCaptureAction, PaymentMethod, PersistedAppData, Profile, RecurringRule, RecurringRuleDraft, SavingsGoal, SavingsGoalDraft, SpendingCapture, SpendingFolder, SyncOperation, Tag, UserIdentity } from "@/lib/types";
 
 function createInitialData(): PersistedAppData {
@@ -31,7 +30,6 @@ type StoreValue = PersistedAppData & {
   signInSocial: (provider: "google") => Promise<boolean>;
   sendMagicLink: (email: string) => Promise<string>;
   updateDisplayName: (name: string) => Promise<void>;
-  signInDemo: () => Promise<void>;
   signOut: () => Promise<void>;
   completeOnboarding: (currency: string, paymentMethodName: string) => void;
   saveExpense: (draft: ExpenseDraft, id?: string) => string;
@@ -138,18 +136,7 @@ function toUserIdentity(authUser: User): UserIdentity {
   const provider = typeof authUser.app_metadata?.provider === "string" ? authUser.app_metadata.provider : authUser.identities?.[0]?.provider ?? null;
   const name = [metadata?.full_name, metadata?.name].find((value): value is string => typeof value === "string" && value.trim().length > 0) ?? null;
   const avatarUrl = [metadata?.avatar_url, metadata?.picture].find((value): value is string => typeof value === "string" && value.trim().length > 0) ?? null;
-  return { id: authUser.id, email: authUser.email ?? null, isDemo: false, name, provider, avatarUrl, createdAt: authUser.created_at ?? null };
-}
-
-function demoIdentity(saved?: string | null): UserIdentity {
-  let name = "Demo wallet";
-  try {
-    const parsed = saved ? JSON.parse(saved) as { name?: unknown } : null;
-    if (typeof parsed?.name === "string" && parsed.name.trim()) name = parsed.name.trim().slice(0, 80);
-  } catch {
-    name = "Demo wallet";
-  }
-  return { id: "demo-user", email: null, isDemo: true, name, provider: "demo", avatarUrl: null, createdAt: null };
+  return { id: authUser.id, email: authUser.email ?? null, name, provider, avatarUrl, createdAt: authUser.created_at ?? null };
 }
 
 export function AppStoreProvider({ children }: PropsWithChildren) {
@@ -175,7 +162,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   const recurringOwnerRef = useRef<string | null>(null);
   const recurringInFlightRef = useRef(false);
   const recurringCursorsRef = useRef(new Map<string, string>());
-  const cloudEnabled = isSupabaseConfigured && Boolean(user && !user.isDemo);
+  const cloudEnabled = isSupabaseConfigured && Boolean(user);
 
   const activateAccount = useCallback(async (identity: UserIdentity) => {
     setHydrated(false);
@@ -244,13 +231,8 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let cancelled = false;
     async function hydrate() {
-      const demo = await browserStorage.getItem(DEMO_SESSION_KEY);
+      await browserStorage.removeItem(LEGACY_DEMO_SESSION_KEY);
       if (cancelled) return;
-      if (demo) {
-        // A local demo session is self-contained and should open without waiting for Supabase.
-        await activateAccount(demoIdentity(demo));
-        return;
-      }
       if (!supabase) {
         setHydrated(true);
         return;
@@ -278,7 +260,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (!supabase) return;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
-        if (_event === "INITIAL_SESSION" || ownerRef.current === "demo-user") {
+        if (_event === "INITIAL_SESSION") {
           setHydrated(true);
           return;
         }
@@ -420,28 +402,17 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const updateDisplayName = async (name: string) => {
     const clean = name.trim().slice(0, 80);
-    if (!user || !clean) return;
-    if (supabase && !user.isDemo) {
-      const { data: result, error } = await supabase.auth.updateUser({ data: { full_name: clean } });
-      if (error) throw error;
-      if (result.user) setUser(toUserIdentity(result.user));
-      return;
-    }
-    await browserStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: clean }));
-    setUser((current) => current ? { ...current, name: clean } : current);
-  };
-
-  const signInDemo = async () => {
-    const identity = demoIdentity();
-    await browserStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ name: identity.name }));
-    await activateAccount(identity);
+    if (!user || !supabase || !clean) return;
+    const { data: result, error } = await supabase.auth.updateUser({ data: { full_name: clean } });
+    if (error) throw error;
+    if (result.user) setUser(toUserIdentity(result.user));
   };
 
   const signOut = async () => {
     if (user) await writeAccountData(user.id, data);
-    await setDailyReminderEnabled(false, user?.isDemo ? undefined : user?.id);
-    if (supabase && user && !user.isDemo) await supabase.auth.signOut();
-    await browserStorage.removeItem(DEMO_SESSION_KEY);
+    await setDailyReminderEnabled(false, user?.id);
+    if (supabase && user) await supabase.auth.signOut();
+    await browserStorage.removeItem(LEGACY_DEMO_SESSION_KEY);
     ownerRef.current = null;
     recurringOwnerRef.current = null;
     recurringInFlightRef.current = false;
@@ -452,11 +423,6 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
 
   const completeOnboarding = (currency: string, paymentMethodName: string) => {
     if (!user) return;
-    if (user.isDemo) {
-      if (data.expenses.length) return;
-      setData(createDemoData(user.id, currency, paymentMethodName));
-      return;
-    }
     const now = new Date().toISOString();
     const paymentMethods = DEFAULT_PAYMENT_METHODS.map((name) => ({ id: createId(), userId: user.id, name, archivedAt: null, updatedAt: now }));
     const payment = paymentMethods.find((item) => item.name === paymentMethodName) ?? paymentMethods[0];
@@ -668,7 +634,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       const capture = state.spendingCaptures.find((item) => item.id === captureId && item.userId === user.id && !item.deletedAt);
       if (!capture || capture.parseStatus !== "parsed" || capture.parseRevision !== parseRevision || capture.parsedRevision !== parseRevision || !capture.parsedItems?.length) return state;
 
-      const cachedIds = new Set(capture.parsedItems.map((item) => item.id));
+      const cachedExpenseIds = new Set(capture.parsedItems.filter((item) => item.type === "expense" || item.type === undefined).map((item) => item.id));
       const hasAction = (action: ParsedCaptureAction) => action.type === "income"
         ? state.incomeEntries.some((item) => item.id === action.id && item.userId === user.id)
         : action.type === "goal"
@@ -676,15 +642,36 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
           : action.type === "contribution"
             ? state.goalContributions.some((item) => item.id === action.id && item.userId === user.id)
             : state.expenses.some((item) => item.id === action.id && item.userId === user.id && item.captureId === captureId);
+      const wasDeleted = (action: ParsedCaptureAction) => action.type === "income"
+        ? state.incomeEntries.some((item) => item.id === action.id && item.userId === user.id && item.deletedAt)
+        : action.type === "goal"
+          ? state.savingsGoals.some((item) => item.id === action.id && item.userId === user.id && item.deletedAt)
+          : action.type === "contribution"
+            ? state.goalContributions.some((item) => item.id === action.id && item.userId === user.id && item.deletedAt)
+            : state.expenses.some((item) => item.id === action.id && item.userId === user.id && item.captureId === captureId && item.deletedAt);
+      const replayItems = capture.parsedItems.filter((item) => !wasDeleted(item));
+      const staleExpenses = state.expenses.filter((item) => item.captureId === captureId && !item.deletedAt && !cachedExpenseIds.has(item.id));
       const needsReplay = capture.parsedItems.some((item) => !hasAction(item))
-        || state.expenses.some((item) => item.captureId === captureId && !item.deletedAt && !cachedIds.has(item.id));
+        || staleExpenses.length > 0;
       if (!needsReplay) return state;
+      if (!replayItems.length) {
+        let syncQueue = state.syncQueue;
+        const staleIds = new Set(staleExpenses.map((item) => item.id));
+        const expenses = state.expenses.map((item) => {
+          if (!staleIds.has(item.id)) return item;
+          const deleted = { ...item, deletedAt: now, updatedAt: now };
+          syncQueue = queue({ ...state, syncQueue }, { table: "expenses", action: "upsert", recordId: item.id, payload: expenseRow(deleted) }, cloudEnabled);
+          return deleted;
+        });
+        changed = true;
+        return { ...state, expenses, syncQueue };
+      }
       const input = {
         ...state,
         spendingCaptures: state.spendingCaptures.map((item) => item.id === captureId ? { ...item, parseStatus: "pending" as const, parsedRevision: null } : item),
-        expenses: state.expenses.filter((item) => !cachedIds.has(item.id)),
+        expenses: state.expenses.filter((item) => !cachedExpenseIds.has(item.id) || Boolean(item.deletedAt)),
       };
-      const replayed = applyCaptureParseData(input, captureId, parseRevision, capture.parsedItems, now);
+      const replayed = applyCaptureParseData(input, captureId, parseRevision, replayItems, now);
       if (replayed.spendingCaptures === input.spendingCaptures) return state;
 
       const expenses = replayed.expenses;
@@ -1134,7 +1121,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
     if (deleteAccountRequest.current) return deleteAccountRequest.current;
     const request = (async () => {
       const deletedUserId = user?.id;
-      if (supabase && user && !user.isDemo) {
+      if (supabase && user) {
         const { error } = await supabase.rpc("delete_own_account");
         if (error) throw error;
       }
@@ -1142,9 +1129,9 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       ownerRef.current = null;
       // Do not expose the login screen until this device cannot restore the deleted session.
       await Promise.allSettled([
-        browserStorage.removeItem(DEMO_SESSION_KEY),
+        browserStorage.removeItem(LEGACY_DEMO_SESSION_KEY),
         ...(deletedUserId ? [accountStorage.removeItem(appStorageKey(deletedUserId)), accountStorage.removeItem(legacyAppStorageKey(deletedUserId))] : []),
-        ...(supabaseAuthStorageKey && user && !user.isDemo ? [
+        ...(supabaseAuthStorageKey && user ? [
           browserStorage.removeItem(supabaseAuthStorageKey),
           browserStorage.removeItem(`${supabaseAuthStorageKey}-user`),
           browserStorage.removeItem(`${supabaseAuthStorageKey}-code-verifier`),
@@ -1156,7 +1143,7 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       await Promise.allSettled([
         clearLocalReminders(),
         (async () => {
-          if (!supabase || !user || user.isDemo) return;
+          if (!supabase || !user) return;
           try {
             await supabase.auth.signOut({ scope: "local" });
           } finally {
@@ -1190,7 +1177,6 @@ export function AppStoreProvider({ children }: PropsWithChildren) {
       signInSocial,
       sendMagicLink,
       updateDisplayName,
-      signInDemo,
       signOut,
       completeOnboarding,
       saveExpense,

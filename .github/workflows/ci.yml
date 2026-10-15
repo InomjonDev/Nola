@@ -26,5 +26,5 @@ jobs:
       - run: npm run seo:validate
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - name: Release smoke on mobile, tablet, and desktop
-        run: npx playwright test tests/e2e/release-smoke.spec.ts
+      - name: Auth and release smoke on mobile, tablet, and desktop
+        run: npx playwright test tests/e2e/email-magic-link.spec.ts tests/e2e/release-smoke.spec.ts

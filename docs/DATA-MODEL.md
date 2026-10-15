@@ -9,8 +9,6 @@ This document maps the records Nola keeps in the browser and the rows it synchro
 3. **Cloud records** — owned financial and note records live in `public` tables with RLS. `src/lib/offline-sync.ts` retries queued upserts/deletes, sends parents before dependent rows, and caps each flush at 25 operations.
 4. **Derived and external data** — balances and insights are calculated from saved rows; recurring rules generate ordinary income/expense rows. If the user enables AI parsing and submits a note, the server sends its source text to Google Gemini. Web Push endpoints and reminder preferences are stored separately from spending records.
 
-The demo identity (`demo-user`) and `createDemoData()` are browser-only fixtures. Demo state is not a Supabase Auth user and the demo disables AI parsing.
-
 ## Domain map
 
 ```mermaid
@@ -51,7 +49,7 @@ erDiagram
 
 The local snapshot is user-scoped when read and written. The app merges local and remote rows by ID and `updated_at`; the database additionally compares `client_updated_at` to reject stale client overwrites. IDs are generated client-side for offline creation and sent with upserts so retries remain idempotent.
 
-`UserIdentity` is derived from the current Auth user (ID, email, provider, display name, avatar URL, and Auth creation time); the demo identity stays local. Consent, cookie consent, language, theme, and notification opt-in are separate browser preferences rather than finance tables. Auth profile metadata is display data only and is not an authorization source.
+`UserIdentity` is derived from the current Auth user (ID, email, provider, display name, avatar URL, and Auth creation time). Consent, cookie consent, language, theme, and notification opt-in are separate browser preferences rather than finance tables. Auth profile metadata is display data only and is not an authorization source.
 
 ## Spending notes and expenses
 
@@ -80,5 +78,4 @@ Financial rows generally use `deleted_at` for recoverable deletion. Categories, 
 - Types and local snapshot: `src/lib/types.ts`
 - Local persistence and account scoping: `src/lib/app-store.tsx`, `src/lib/browser-storage.ts`
 - Sync order/retries: `src/lib/offline-sync.ts`
-- Demo-only sample records: `src/lib/demo-data.ts`
 - Cloud schema and policy history: `supabase/migrations/`

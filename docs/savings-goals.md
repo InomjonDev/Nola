@@ -11,7 +11,7 @@ Goals live in **Insights > Goals** (`/insights?tab=goals`). Home previews up to 
 - A new savings deposit that takes an active goal from below target to reached triggers one short confetti burst and an archive prompt. The prompt offers Archive and Keep active; archiving moves to the archived filter, and keeping it active will not repeat the prompt on reload. Editing a target or recording a withdrawal does not trigger the celebration. Confetti is suppressed for reduced-motion preferences.
 - Archived goals remain available in the archive and in exports. Reopening preserves their history. Goal deletion is a syncable tombstone; deleted goals and their contributions disappear from the UI and exports. Account deletion physically cascades through both tables.
 - The device rejects withdrawals above its known balance. Separate offline devices can still withdraw against the same balance; after merge, a negative balance is shown explicitly rather than hidden or clamped. Resolve it by reviewing history and adding missing savings.
-- Existing sync errors are surfaced on the goals view. Local/demo tracking works without a database migration; cloud tracking needs the schema below.
+- Existing sync errors are surfaced on the goals view. Authenticated local-first tracking works without a database migration; cloud tracking needs the schema below.
 - The service worker caches only same-origin shell/static responses, excluding authenticated requests and auth/API routes. It does not cache Supabase financial responses. Cache version v4 retires older shared caches.
 
 ## Database Activation

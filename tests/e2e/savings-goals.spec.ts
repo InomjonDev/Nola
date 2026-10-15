@@ -3,7 +3,7 @@ import { expect, test, type Page } from "playwright/test";
 
 import { createTranslator, languageLocale } from "../../src/lib/i18n";
 import { formatAmountDraft } from "../../src/lib/currency-input";
-import { enterDemo, oauthSession } from "./helpers";
+import { enterAuthenticatedApp, oauthSession } from "./helpers";
 
 async function createGoal(page: Page, name = "Emergency fund", target = "100") {
   await page.goto("/goals");
@@ -27,7 +27,7 @@ async function contribute(page: Page, amount: string, kind: "deposit" | "withdra
 
 test("goals support lifecycle, history, withdrawals, exports, and navigation", async ({ page }) => {
   test.setTimeout(90_000);
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await createGoal(page);
   await page.getByRole("button", { name: "Emergency fund", exact: true }).click();
   await page.getByRole("button", { name: "Edit goal" }).click();
@@ -96,11 +96,11 @@ test("goals support lifecycle, history, withdrawals, exports, and navigation", a
   await page.getByRole("button", { name: "Export JSON" }).click();
   const json = await jsonDownload;
   const exported = JSON.parse(await readFile((await json.path())!, "utf8"));
-  expect(exported.savingsGoals).toHaveLength(2);
-  expect(exported.savingsGoals).toEqual(expect.arrayContaining([expect.objectContaining({ targetAmount: 200 }), expect.objectContaining({ name: "Future plans" })]));
-  expect(exported.goalContributions).toHaveLength(4);
-  expect(exported.expenses).toHaveLength(3);
-  expect(exported.incomeEntries).toHaveLength(1);
+  expect(exported.savingsGoals).toHaveLength(1);
+  expect(exported.savingsGoals[0]).toMatchObject({ name: "Travel fund", targetAmount: 200 });
+  expect(exported.goalContributions).toHaveLength(3);
+  expect(exported.expenses).toHaveLength(0);
+  expect(exported.incomeEntries).toHaveLength(0);
   const csvDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export CSV" }).click();
   const csv = await readFile((await (await csvDownload).path())!, "utf8");
@@ -114,14 +114,15 @@ test("goals support lifecycle, history, withdrawals, exports, and navigation", a
   await expect(page.getByRole("dialog", { name: "Travel fund" })).toBeVisible();
   await page.getByRole("button", { name: "Delete goal" }).click();
   await page.getByRole("dialog", { name: "Delete this savings goal?" }).getByRole("button", { name: "Delete goal" }).click();
-  await expect(page.getByText("Future plans", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Travel fund", exact: true })).toHaveCount(0);
+  await expect(page.getByText("No savings goals yet.", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Future plans", { exact: true })).toBeVisible();
+  await expect(page.getByText("No savings goals yet.", { exact: true })).toBeVisible();
 });
 
 test("goal sheets are keyboard accessible, localized, themed and responsive", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await createGoal(page, "A very long savings goal name for our next family adventure", "1000");
   for (const language of ["en", "ru", "uz"] as const) {
     const t = createTranslator(language);
@@ -229,7 +230,7 @@ test("cloud goals recover offline changes with parent ordering and idempotent re
 
 test("cached PWA goals survive a fully offline reload and new contributions", async ({ context, page }) => {
   test.setTimeout(90_000);
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await createGoal(page, "Offline PWA", "100");
   await expect(await contribute(page, "40")).toBeHidden();
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
@@ -252,7 +253,7 @@ test("cached PWA goals survive a fully offline reload and new contributions", as
 
 test("all financial amount fields live-format by locale and preserve the edit caret", async ({ page }) => {
   test.setTimeout(180_000);
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await createGoal(page, "Formatting goal", "250");
 
   for (const language of ["en", "ru", "uz"] as const) {

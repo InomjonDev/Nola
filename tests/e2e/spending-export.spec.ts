@@ -1,34 +1,14 @@
 import { readFileSync } from "node:fs";
-import { expect, test, type Page } from "playwright/test";
+import { expect, test } from "playwright/test";
 
-import { oauthSession } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const appDataKey = `walletly.app-data.v2-${userId}`;
 const sourceText = "7000 somsa 4x, Oʻzbekiston, Ўзбекистон, Қўқон, расходы";
 
-async function enterAuthenticatedApp(page: Page, baseURL: string) {
-  const callback = new URL("/auth/callback?code=export-test", baseURL);
-  await page.route("**/auth/v1/authorize**", (route) => route.fulfill({ status: 302, headers: { location: callback.href } }));
-  await page.route("**/auth/v1/token**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(oauthSession()) }));
-  await page.route("**/rest/v1/**", (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
-
-  await page.goto("/");
-  await page.getByRole("button", { name: "Continue with Google" }).click();
-  await expect(page.getByRole("heading", { name: "Set up your wallet" })).toBeVisible();
-  await page.getByRole("button", { name: "UZS", exact: true }).click();
-  await page.getByRole("button", { name: "Enter Nola" }).click();
-  const analyticsDecline = page.getByRole("button", { name: "Continue without analytics", exact: true });
-  if (await analyticsDecline.isVisible().catch(() => false)) await analyticsDecline.click();
-  await expect(page.locator(".workspace-compose-button")).toBeVisible();
-  await page.waitForFunction((key) => {
-    const data = JSON.parse(localStorage.getItem(key) ?? "{}");
-    return data.paymentMethods?.length > 0 && data.syncQueue?.length === 0;
-  }, appDataKey);
-}
-
-test("Settings downloads CSV, Markdown, and a Unicode PDF report for a spending note", async ({ page, baseURL }) => {
-  await enterAuthenticatedApp(page, baseURL!);
+test("Settings downloads CSV, Markdown, and a Unicode PDF report for a spending note", async ({ page }) => {
+  await enterAuthenticatedApp(page, "UZS");
   const paymentMethodId = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? "{}").paymentMethods[0].id, appDataKey);
   await page.route("**/api/spending-captures/parse", async (route) => {
     const body = route.request().postDataJSON() as { captureId: string; parseRevision: number; sourceText: string };
@@ -54,7 +34,7 @@ test("Settings downloads CSV, Markdown, and a Unicode PDF report for a spending 
   await page.getByRole("textbox", { name: "Spending note" }).fill(sourceText);
   await page.getByRole("button", { name: "Done", exact: true }).last().click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("1 expenses added", { exact: true })).toBeVisible();
+  await expect(page.getByText("Saved money actions: 1", { exact: true })).toBeVisible();
   await page.goto("/settings");
 
   const csvPromise = page.waitForEvent("download");

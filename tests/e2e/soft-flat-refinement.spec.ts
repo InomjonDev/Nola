@@ -1,9 +1,9 @@
 import { expect, test } from "playwright/test";
-import { enterDemo } from "./helpers";
+import { enterAuthenticatedApp } from "./helpers";
 
 test("icon-only navigation and contextual add controls stay flat and reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await expect(navigation.getByRole("link")).toHaveCount(4);
   for (const name of ["Spending", "Insights", "Goals", "Profile"]) await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
@@ -20,8 +20,7 @@ test("icon-only navigation and contextual add controls stay flat and reachable",
   const overview = page.getByRole("region", { name: "Overview" });
   await expect(overview.getByText("Income", { exact: true })).toBeVisible();
   await expect(overview.getByText("Expenses", { exact: true })).toBeVisible();
-  await expect(page.locator('.finance-row[data-kind="income"]').first()).toBeVisible();
-  await expect(page.locator('.finance-row[data-kind="expense"]').first()).toBeVisible();
+  await expect(page.getByText("No income or expenses this month.", { exact: true })).toBeVisible();
   await page.goto("/goals");
   await expect(page.getByRole("button", { name: "New goal", exact: true })).toHaveClass(/primary-add/);
   await page.getByRole("button", { name: "New goal", exact: true }).click();
@@ -29,7 +28,7 @@ test("icon-only navigation and contextual add controls stay flat and reachable",
 });
 
 test("combined overview can create, edit, and delete income without changing expense totals", async ({ page }) => {
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await page.goto("/insights");
   const expenseTotal = page.locator(".cash-flow-summary-metric").filter({ hasText: "Expenses" }).locator(".cash-flow-summary-metric-value");
   const initialExpenses = await expenseTotal.innerText();
@@ -46,15 +45,15 @@ test("combined overview can create, edit, and delete income without changing exp
   await editor.getByRole("button", { name: "Add income", exact: true }).click();
   await expect(editor).toBeHidden();
   const incomeTotal = page.locator(".cash-flow-summary-metric").filter({ hasText: "Income" }).locator(".cash-flow-summary-metric-value");
-  await expect(incomeTotal).toHaveText("$2,050.00");
+  await expect(incomeTotal).toHaveText("$250.00");
   const row = page.locator('.finance-row[data-kind="income"]').filter({ hasText: "Pay day" });
   await row.click();
   editor = page.getByRole("dialog", { name: "Edit income", exact: true });
   await editor.getByRole("textbox", { name: "Add income", exact: true }).fill("300");
   await editor.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(incomeTotal).toHaveText("$2,100.00");
+  await expect(incomeTotal).toHaveText("$300.00");
   await row.click();
   await editor.getByRole("button", { name: "Delete income", exact: true }).click();
-  await expect(incomeTotal).toHaveText("$1,800.00");
+  await expect(incomeTotal).toHaveText("$0.00");
   await expect(expenseTotal).toHaveText(initialExpenses);
 });

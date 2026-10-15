@@ -18,7 +18,7 @@ export type AnalyticsEvent =
   | "account_deleted";
 
 export function track(event: AnalyticsEvent, distinctId: string, properties: Record<string, string | number | boolean> = {}) {
-  if (!key || distinctId === "demo-user" || typeof window === "undefined") return;
+  if (!key || typeof window === "undefined") return;
   if (window.localStorage.getItem(COOKIE_CONSENT_KEY) !== "true") return;
   void fetch(`${host.replace(/\/$/, "")}/capture/`, {
     method: "POST",

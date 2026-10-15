@@ -21,7 +21,7 @@ export function appStorageKey(userId: string) {
 export function legacyAppStorageKey(userId: string) {
   return `${APP_STORAGE_PREFIX}:${userId}`;
 }
-export const DEMO_SESSION_KEY = "walletly.demo-session";
+export const LEGACY_DEMO_SESSION_KEY = "walletly.demo-session";
 export const CONSENT_KEY = "walletly.privacy-consent.v1";
 export const COOKIE_CONSENT_KEY = "walletly.cookie-consent.v1";
 export const TOUR_SEEN_KEY = "walletly.tour-seen.v1";

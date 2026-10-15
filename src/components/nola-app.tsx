@@ -443,11 +443,7 @@ export function NolaApp({
 									item => item.id === id && !item.deletedAt,
 								)
 								if (!capture) return
-								if (store.user?.isDemo) {
-									saveCaptureResume({ draftText: capture.sourceText })
-									setCaptureDraftText(capture.sourceText)
-									setCaptureComposerOpen(true)
-								} else saveCaptureResume({ captureId: capture.id })
+								saveCaptureResume({ captureId: capture.id })
 								void store.signOut()
 							}}
 						/>
@@ -496,11 +492,6 @@ export function NolaApp({
 						setCaptureDraftText('')
 						restoreCaptureFocus()
 					}}
-					onSignIn={sourceText => {
-						saveCaptureResume({ draftText: sourceText })
-						setCaptureDraftText(sourceText)
-						void store.signOut()
-					}}
 					onManualEntry={sourceText => {
 						setCaptureComposerOpen(false)
 						setCaptureDraftText(sourceText)
@@ -526,11 +517,7 @@ export function NolaApp({
 					onRetry={() => captureParser.retryCapture(feedbackCapture.id)}
 					onRetrySync={store.retrySync}
 					onSignIn={() => {
-						if (store.user?.isDemo) {
-							saveCaptureResume({ draftText: feedbackCapture.sourceText })
-							setCaptureDraftText(feedbackCapture.sourceText)
-							setCaptureComposerOpen(true)
-						} else saveCaptureResume({ captureId: feedbackCapture.id })
+						saveCaptureResume({ captureId: feedbackCapture.id })
 						void store.signOut()
 					}}
 					onUndo={() => undoCapture(feedbackCapture.id)}
@@ -581,13 +568,6 @@ function AuthScreen() {
 					>
 						<GoogleLogo />
 						{t('auth.continueGoogle')}
-					</button>
-					<button
-						className='control w-full justify-center bg-accent text-on-accent'
-						disabled={busy}
-						onClick={() => void store.signInDemo()}
-					>
-						{t('auth.tryDemo')}
 					</button>
 				</div>
 				{message && (
@@ -2127,9 +2107,7 @@ function ProfileView() {
 	const totalSpendings = totalSpendingForCurrency(active, currency)
 	const streak = currentSpendingStreak(active)
 	const noteCount = activeSpendingNoteCount(store.spendingCaptures)
-	const providerLabel = store.user?.isDemo
-		? t('profile.demoWorkspace')
-		: store.user?.provider === 'google'
+	const providerLabel = store.user?.provider === 'google'
 			? t('profile.googleAccount')
 			: t('profile.emailAccount')
 	const displayName =
@@ -2188,7 +2166,7 @@ function ProfileView() {
 						</button>
 					</div>
 					<p className='profile-email'>
-						{store.user?.email ?? t('profile.localDemoAccount')}
+						{store.user?.email ?? t('profile.account')}
 					</p>
 				</div>
 				{nameEditorOpen && (
@@ -2393,10 +2371,8 @@ function SettingsView() {
 	const exportEvents = useRef<number[]>([])
 	useEffect(() => {
 		setRemindersAvailable(dailyRemindersAvailable())
-		void notificationsEnabled(
-			store.user?.isDemo ? undefined : store.user?.id,
-		).then(setReminders)
-	}, [store.user?.id, store.user?.isDemo])
+		void notificationsEnabled(store.user?.id).then(setReminders)
+	}, [store.user?.id])
 
 	async function exportData(type: 'json' | 'csv' | 'markdown' | 'pdf') {
 		const decision = consumeRollingWindow(
@@ -2473,14 +2449,14 @@ function SettingsView() {
 									if (reminders) {
 										await setDailyReminderEnabled(
 											false,
-											store.user?.isDemo ? undefined : store.user?.id,
+											store.user?.id,
 										)
 										setReminders(false)
 										return
 									}
 									const enabled = await setDailyReminderEnabled(
 										true,
-										store.user?.isDemo ? undefined : store.user?.id,
+										store.user?.id,
 									)
 									setReminders(enabled)
 									if (!enabled)
@@ -2535,10 +2511,6 @@ function SettingsView() {
 								open
 								onContinue={() => setAiNoticeOpen(false)}
 								onNotNow={() => setAiNoticeOpen(false)}
-								onSignIn={() => {
-									setAiNoticeOpen(false)
-									void store.signOut()
-								}}
 							/>
 						)}
 					</div>

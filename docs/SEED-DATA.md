@@ -7,18 +7,11 @@
 | `supabase/migrations/202610010001_expense_tracker_mvp.sql` | Five global categories with stable IDs: Food, Transport, Bills, Shopping, Entertainment | Every database built from migrations | Product reference data |
 | `supabase/migrations/202610020002_category_icons.sql` | Icon values for global categories | Migration replay/deployment | Product reference data |
 | `supabase/migrations/20261012220000_nola_spending_notes.sql` | The global Other category | Migration replay/deployment | Product reference data |
-| `src/lib/demo-data.ts` | Local sample methods/accounts, tag, expenses, income, budgets, a recurring rule, a goal, and a contribution | Browser local demo only | UI demonstration and local exploration |
 | `supabase/tests/rls.sql` | Two synthetic user IDs and policy assertions inside a rolled-back transaction | Disposable local database | RLS regression checks |
 | `supabase/tests/savings_goals.sql` | Synthetic users, a goal, and contribution used for FK, RLS, immutable-field, retry, and cascade checks | Disposable local database | Savings-goal database checks |
 | `tests/e2e/*.spec.ts` | Browser storage fixtures and mocked Auth/Data API responses | Playwright browser contexts | End-to-end test setup |
 
-There is currently no `supabase/seed.sql`. The browser demo is not a database seed and must not be uploaded to a hosted project. Global categories are the only application rows inserted by migrations.
-
-## Demo fixture shape
-
-`createDemoData()` builds `PersistedAppData` under the special local identity `demo-user`. It currently includes three example expenses (coffee, transport, groceries), one monthly income entry, one overall budget, weekly/monthly category budgets, one monthly expense rule, three accounts matching the three payment methods, one savings goal, and one deposit. IDs are generated when the demo data is created; they are not stable database IDs. The demo profile disables AI parsing and `syncQueue` starts empty.
-
-The demo must remain isolated from Auth users and the Supabase Data API. Do not add production users, real emails, real spending, push endpoints, auth tokens, or provider/API secrets to any fixture.
+There is currently no `supabase/seed.sql`; global categories are the only application rows inserted by migrations. Nola does not provide sample users or sample financial records in the app.
 
 ## Disposable pre-launch scenario
 

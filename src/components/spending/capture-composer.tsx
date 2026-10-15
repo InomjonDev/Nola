@@ -13,13 +13,12 @@ import { extractHashtags } from "@/lib/spending-parser";
 
 type SaveState = "idle" | "saving" | "saved";
 
-export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", issues = {}, onSignIn, onManualEntry }: {
+export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", issues = {}, onManualEntry }: {
   folderId: string | null;
   onSaved: (captureId: string) => void;
   onClose: () => void;
   initialText?: string;
   issues?: Record<string, CaptureParseIssue>;
-  onSignIn?: (sourceText: string) => void;
   onManualEntry?: (sourceText: string) => void;
 }) {
   const store = useAppStore();
@@ -42,7 +41,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
     ? store.spendingCaptures.find((capture) => capture.id === captureIdRef.current)
     : undefined;
   const captureWaitingToSync = Boolean(savedCapture && store.syncQueue.some((operation) => operation.table === "spending_captures" && operation.recordId === savedCapture.id && operation.action === "upsert"));
-  const liveParseMessage = savedCapture && store.user && !store.user.isDemo && store.profile?.aiParsingEnabled
+  const liveParseMessage = savedCapture && store.user && store.profile?.aiParsingEnabled
     ? savedCapture.parseStatus === "processing" || (savedCapture.parseStatus === "pending" && saveState === "saved")
       ? !store.isOnline ? t("capture.offline") : captureWaitingToSync ? t("capture.syncPending") : t("capture.processing")
       : savedCapture.parseStatus === "parsed"
@@ -160,7 +159,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
       return;
     }
     setError("");
-    if (store.user?.isDemo || !store.profile?.aiParsingEnabled) setShowNotice(true);
+    if (!store.profile?.aiParsingEnabled) setShowNotice(true);
     else finishCapture();
   }
 
@@ -176,7 +175,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
       <header className="editor-toolbar capture-editor-toolbar">
         <button type="button" className="capture-editor-back" aria-label={t("common.back")} title={t("common.back")} onClick={closeComposer}><ChevronLeft size={28} aria-hidden="true" /></button>
         <div className="capture-editor-title-group">
-          <h2 id="capture-composer-title" className="editor-title">{showNotice ? t(store.user?.isDemo ? "capture.demoGateTitle" : "capture.privacyTitle") : t("history.today")}</h2>
+          <h2 id="capture-composer-title" className="editor-title">{showNotice ? t("capture.privacyTitle") : t("history.today")}</h2>
           {!showNotice && <div
             className="capture-editor-help"
             onMouseEnter={() => setHelpHovered(true)}
@@ -224,7 +223,7 @@ export function CaptureComposer({ folderId, onSaved, onClose, initialText = "", 
         </div>
       </header>
       <div className={`capture-editor-content${showNotice ? " capture-editor-notice-content" : ""}`}>
-        {showNotice ? <AiProcessingNotice open onContinue={finishCapture} onNotNow={() => { setShowNotice(false); setError(""); }} onSignIn={() => { flushAutoSave(); onSignIn?.(sourceTextRef.current); }} /> : <>
+        {showNotice ? <AiProcessingNotice open onContinue={finishCapture} onNotNow={() => { setShowNotice(false); setError(""); }} /> : <>
           <label className="sr-only" htmlFor="capture-source">{t("capture.noteLabel")}</label>
           <textarea
             ref={sourceField}

@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 
-import { enterDemo, oauthSession, saveExpense } from "./helpers";
+import { enterAuthenticatedApp, oauthSession, saveExpense } from "./helpers";
 
 for (const { deletionSucceeds, cleanupFails } of [{ deletionSucceeds: true, cleanupFails: false }, { deletionSucceeds: true, cleanupFails: true }, { deletionSucceeds: false, cleanupFails: false }]) {
   test(`cloud deletion ${deletionSucceeds ? `clears the session without writing deleted reminder preferences${cleanupFails ? " even if cleanup services fail" : ""}` : "preserves the session and data on failure"}`, async ({ page, baseURL }) => {
@@ -58,7 +58,7 @@ for (const { deletionSucceeds, cleanupFails } of [{ deletionSucceeds: true, clea
 }
 
 test("settings exports JSON and account deletion returns to auth", async ({ page }) => {
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await saveExpense(page, "4.00", "Export check");
   await page.goto("/settings");
   const downloadPromise = page.waitForEvent("download");
@@ -69,11 +69,11 @@ test("settings exports JSON and account deletion returns to auth", async ({ page
   const dialog = page.getByRole("dialog", { name: "Delete your Nola account?" });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Delete permanently" }).click();
-  await expect(page.getByRole("button", { name: "Try local demo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue with Google" })).toBeVisible();
 });
 
 test("settings limits repeated export generation", async ({ page }) => {
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   await page.goto("/settings");
 
   for (let index = 0; index < 5; index += 1) {

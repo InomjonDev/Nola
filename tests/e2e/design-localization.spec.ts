@@ -2,7 +2,7 @@ import { expect, test, type Page } from "playwright/test";
 
 import { createTranslator, languageLocale, type TranslationKey } from "../../src/lib/i18n";
 import type { Language } from "../../src/lib/types";
-import { enterDemo, saveExpense } from "./helpers";
+import { enterAuthenticatedApp, saveExpense } from "./helpers";
 
 async function noPageOverflow(page: Page) {
   const size = await page.evaluate(() => ({ document: document.documentElement.scrollWidth, viewport: innerWidth }));
@@ -40,7 +40,7 @@ async function checkVisibleTextContrast(page: Page) {
 test("every screen stays readable across themes and languages", async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 390, height: 844 });
-  await enterDemo(page);
+  await enterAuthenticatedApp(page);
   for (const [amount, note] of [["8", "Lunch"], ["14", "Market"], ["25", "Dinner"]]) await saveExpense(page, amount, note);
   const routes: Array<[string, TranslationKey]> = [
     ["/", "nav.spending"], ["/insights", "nav.insights"],
@@ -102,11 +102,7 @@ test("every screen stays readable across themes and languages", async ({ page },
 
 test("large UZS amounts, keyboard focus, and responsive text stay usable", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
-  await page.goto("/");
-  await page.getByRole("button", { name: "Try local demo" }).click();
-  await page.getByRole("button", { name: "UZS", exact: true }).click();
-  await page.getByRole("button", { name: "Enter Nola" }).click();
-  await page.getByRole("button", { name: "Continue without analytics", exact: true }).click();
+  await enterAuthenticatedApp(page, "UZS");
   const add = page.getByRole("button", { name: "Write a spending note", exact: true });
   await add.click();
   await page.getByRole("button", { name: "Add expense manually", exact: true }).click();
