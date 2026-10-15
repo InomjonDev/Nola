@@ -22,6 +22,19 @@ Nola helps you keep up with spending, understand where your money goes, and make
 - Review spending insights, search past activity, and export your records as CSV, JSON, PDF, or Markdown.
 - Turn a spending note into expense records with optional AI assistance. Check the results before relying on them.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Spending</strong><br /><img src="docs/screenshots/01-spending.png" width="280" alt="Nola spending screen with category totals and recent expenses" /></td>
+    <td align="center"><strong>Insights</strong><br /><img src="docs/screenshots/02-insights.png" width="280" alt="Nola insights screen with a monthly spending chart and balance" /></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Savings goals</strong><br /><img src="docs/screenshots/03-goals.png" width="280" alt="Nola savings goal progress screen" /></td>
+    <td align="center"><strong>Spending notes</strong><br /><img src="docs/screenshots/04-note-ai-dollar.png" width="280" alt="Nola spending note screen with optional AI expense parsing" /></td>
+  </tr>
+</table>
+
 ## Your data
 
 Nola saves changes in your browser first. When you sign in, it syncs your records with your account; offline changes wait until you reconnect. You can export your data from Settings.
