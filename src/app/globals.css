@@ -2548,7 +2548,8 @@ textarea::placeholder {
 }
 @media (min-width: 1024px) {
 	.app-shell {
-		max-width: 1480px;
+		width: 90vw;
+		max-width: 2200px;
 		grid-template-columns: 176px minmax(0, 1fr);
 		gap: 32px;
 		padding: 24px 32px 48px;
@@ -2562,8 +2563,9 @@ textarea::placeholder {
 	.desktop-nav .nav-link-label {
 		display: block;
 	}
-	.desktop-capture-action {
-		display: inline-flex;
+	.desktop-capture-action,
+	.workspace-compose-button {
+		display: none;
 	}
 	.spending-workspace {
 		grid-template-columns: 220px minmax(0, 1fr);
